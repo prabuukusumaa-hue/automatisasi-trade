@@ -666,7 +666,7 @@ canvas#miniChart { display: block; width: 100%; height: 90px; }
 <div class="cfg-bar layer">
   <div class="cfg-group grow">
     <div class="cfg-label">Gemini API Key</div>
-    <input type="password" id="geminiKey" placeholder="AIzaSy..." style="width:100%">
+    <input type="password" id="geminiKey" placeholder="API key tersimpan di server ✓" style="width:100%;opacity:0.5" disabled>
   </div>
   <div class="cfg-group sm">
     <div class="cfg-label">Market</div>
@@ -861,9 +861,7 @@ const G = {
   autoInterval: null,
 };
 
-const HL = 'https://api.hyperliquid.xyz/info';
-const PROXY = 'https://corsproxy.io/?';
-const GEMINI_URL = key => `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${key}`;
+const BACKEND = '/api/claude'; // semua request lewat backend Vercel
 
 // ── Clock ──
 setInterval(() => {
@@ -880,10 +878,8 @@ function switchMode(m, el) {
 // SYSTEM CONTROL
 // ═══════════════════════════════════════════════════════
 function startNexus() {
-  const key = document.getElementById('geminiKey').value.trim();
-  if (!key) { feed('sys', '❌ Masukkan Gemini API Key terlebih dahulu.'); return; }
-
-  G.geminiKey = key;
+  // API key aman di Vercel environment variables
+  G.geminiKey = 'server-side';
   G.coin = document.getElementById('coinSel').value;
   G.tf = document.getElementById('tfSel').value;
   G.maxSize = parseInt(document.getElementById('sizeSel').value);
@@ -896,7 +892,7 @@ function startNexus() {
 
   feed('sys',
     `▶ NEXUS ONLINE\n` +
-    `  AI Engine  : Gemini 1.5 Pro\n` +
+    `  AI Engine  : Gemini 2.5 Pro\n` +
     `  Data Source: Hyperliquid DEX (Public API)\n` +
     `  Market     : ${G.coin}-PERP\n` +
     `  Timeframe  : ${G.tf}\n` +
@@ -938,13 +934,15 @@ function clearFeed() { document.getElementById('feed').innerHTML = ''; }
 // HYPERLIQUID DATA
 // ═══════════════════════════════════════════════════════
 async function hlPost(body) {
-  const r = await fetch(PROXY + encodeURIComponent(HL), {
+  const r = await fetch(BACKEND, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify({ action: 'hl', ...body }),
   });
-  if (!r.ok) throw new Error('HL ' + r.status);
-  return r.json();
+  if (!r.ok) throw new Error('Backend error ' + r.status);
+  const d = await r.json();
+  if (!d.success) throw new Error(d.error || 'Backend error');
+  return d.data;
 }
 
 async function fetchMarket() {
@@ -1193,7 +1191,7 @@ function computeIndicators(candles) {
 // MAIN CYCLE
 // ═══════════════════════════════════════════════════════
 async function runCycle() {
-  if (!G.running || !G.geminiKey) return;
+  if (!G.running) return;
 
   setGState('fetching');
   setLoading(true);
@@ -1243,7 +1241,7 @@ async function runCycle() {
 
     // 3. GEMINI ANALYSIS
     setGState('thinking');
-    feed('sys', '✦ Gemini 1.5 Pro sedang menganalisis data...');
+    feed('sys', '✦ Gemini 2.5 Pro sedang menganalisis data...');
 
     const sysPrompt = `Kamu adalah NEXUS-GEMINI, seorang quantitative trader dan algorithmic trading specialist dengan spesialisasi di crypto perpetual futures. Pengalamanmu: 12+ tahun trading di berbagai market cycles, expert di technical analysis, funding rate analysis, dan liquidity analysis.
 
@@ -1303,28 +1301,17 @@ EXECUTION_NOTE: [catatan eksekusi spesifik]`;
 // GEMINI API
 // ═══════════════════════════════════════════════════════
 async function callGemini(systemPrompt, userMsg) {
-  const body = {
-    contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userMsg }] }],
-    generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: 1200,
-      topP: 0.85
-    }
-  };
-
-  const res = await fetch(GEMINI_URL(G.geminiKey), {
+  // Gemini dipanggil lewat backend Vercel (API key aman di server)
+  const res = await fetch(BACKEND, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    body: JSON.stringify({ action: 'analyze', systemPrompt, userMsg }),
   });
 
-  if (!res.ok) {
-    const e = await res.json();
-    throw new Error(e.error?.message || 'Gemini API error ' + res.status);
-  }
-
+  if (!res.ok) throw new Error('Backend error ' + res.status);
   const d = await res.json();
-  return d.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini';
+  if (!d.success) throw new Error(d.error || 'Gemini error dari backend');
+  return d.text || 'No response from Gemini';
 }
 
 // ═══════════════════════════════════════════════════════
