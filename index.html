@@ -1,656 +1,1395 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>APEX Trading System — Claude × Hyperliquid</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;900&display=swap" rel="stylesheet"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX — AI Trading System</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
-:root{
-  --bg:#050510;--bg2:#07071a;--bg3:#0d0d22;--bg4:#0a0a1c;
-  --border:#0f0f28;--border2:#1a1a35;
-  --text:#c8d0e7;--dim:#3a4a6a;--dimmer:#1a1a35;
-  --buy:#00ff88;--sell:#ff4444;--hold:#f0b429;
-  --blue:#00d4ff;--purple:#aa88ff;--accent:#5566aa;
-}
-body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh;}
-::-webkit-scrollbar{width:4px;background:transparent;}
-::-webkit-scrollbar-thumb{background:#1a1a35;}
+  :root {
+    --bg: #080b0f;
+    --surface: #0d1117;
+    --surface2: #161b22;
+    --surface3: #1c2330;
+    --border: #30363d;
+    --green: #00ff88;
+    --green-dim: #00ff8822;
+    --red: #ff4757;
+    --red-dim: #ff475722;
+    --yellow: #ffd32a;
+    --yellow-dim: #ffd32a22;
+    --blue: #58a6ff;
+    --blue-dim: #58a6ff15;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --text-muted: #484f58;
+    --font-mono: 'Space Mono', monospace;
+    --font-sans: 'DM Sans', sans-serif;
+  }
 
-/* HEADER */
-#header{background:var(--bg2);border-bottom:1px solid var(--border2);padding:16px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
-.logo{font-size:18px;font-weight:900;letter-spacing:.15em;color:var(--blue);}
-.logo span{color:#445;}
-.subtitle{font-size:9px;color:#334;letter-spacing:.2em;text-transform:uppercase;margin-top:2px;}
-.phase-badge{font-size:9px;padding:3px 10px;letter-spacing:.2em;text-transform:uppercase;border:1px solid #1a1a2a;color:#333;background:#ffffff08;transition:all .3s;}
-.phase-badge.fetching{color:var(--blue);border-color:#00d4ff44;background:#00d4ff10;animation:blink 1s step-start infinite;}
-.phase-badge.analyzing{color:var(--purple);border-color:#aa88ff44;background:#aa88ff10;animation:blink 1s step-start infinite;}
-.phase-badge.executing{color:var(--buy);border-color:#00ff8844;background:#00ff8810;animation:blink 1s step-start infinite;}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* API KEY BAR */
-#apibar{background:#04040e;border-bottom:1px solid #0a0a18;padding:10px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-#apibar label{font-size:9px;color:#334;letter-spacing:.2em;text-transform:uppercase;}
-#apikey{background:#0d0d22;border:1px solid #1c1c38;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 12px;width:320px;outline:none;letter-spacing:.05em;}
-#apikey:focus{border-color:var(--blue);}
-.key-status{font-size:10px;padding:3px 8px;}
-.key-status.ok{color:var(--buy);}
-.key-status.no{color:#ff4444;}
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-/* CONTROL BAR */
-#ctrlbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-#coininput{background:var(--bg3);border:1px solid #1c1c38;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:18px;padding:8px 14px;width:120px;outline:none;text-transform:uppercase;letter-spacing:.1em;}
-#coininput:focus{border-color:var(--blue);}
-.btn{background:transparent;border:1px solid var(--blue);color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 18px;cursor:pointer;letter-spacing:.15em;text-transform:uppercase;font-weight:700;transition:all .15s;}
-.btn:hover{background:var(--blue);color:#000;}
-.btn.active{background:var(--blue);color:#000;}
-.btn.auto{border-color:var(--hold);color:var(--hold);}
-.btn.auto:hover,.btn.auto.active{background:var(--hold);color:#000;}
-.btn.quick{border-color:var(--accent);color:var(--accent);padding:4px 10px;font-size:10px;}
-.btn.quick:hover,.btn.quick.active{background:var(--accent);color:#fff;}
-.btn:disabled{opacity:.4;cursor:not-allowed;}
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
 
-/* GRID */
-#grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);}
-.panel{background:var(--bg2);padding:18px;overflow:hidden;}
-.panel.full{grid-column:1/-1;}
-.panel-title{font-size:9px;letter-spacing:.25em;color:#334;text-transform:uppercase;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:7px;}
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
 
-/* STATS */
-.stat{padding:8px 0;border-bottom:1px solid var(--bg3);}
-.stat-label{font-size:9px;color:#2a3a5a;letter-spacing:.2em;text-transform:uppercase;margin-bottom:3px;}
-.stat-val{font-size:14px;font-weight:700;letter-spacing:.05em;}
+  .logo {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--green);
+    text-shadow: 0 0 20px var(--green);
+  }
 
-/* VERDICT */
-#verdict-box{text-align:center;margin-bottom:16px;}
-#verdict{font-size:52px;font-weight:900;letter-spacing:.1em;line-height:1;transition:color .4s,text-shadow .4s;}
-#verdict.BUY{color:var(--buy);text-shadow:0 0 40px #00ff8855;}
-#verdict.SELL{color:var(--sell);text-shadow:0 0 40px #ff444455;}
-#verdict.HOLD{color:var(--hold);text-shadow:0 0 40px #f0b42955;}
-.timeframe-tag{font-size:10px;color:#334;letter-spacing:.2em;margin-top:4px;}
+  .logo span { color: var(--text-dim); font-weight: 400; font-size: 11px; letter-spacing: 2px; display: block; margin-top: 2px; }
 
-/* GAUGE */
-.gauge-wrap{display:flex;flex-direction:column;align-items:center;}
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
 
-/* THESIS */
-#thesis-box{background:var(--bg4);padding:12px;margin-bottom:14px;border-left:2px solid #333;transition:border-color .4s;}
-#thesis-box.BUY{border-color:var(--buy);}
-#thesis-box.SELL{border-color:var(--sell);}
-#thesis-box.HOLD{border-color:var(--hold);}
-#thesis{font-size:11px;color:#8899bb;line-height:1.6;}
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  .status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
 
-/* SIGNALS */
-.signal-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--bg3);}
-.signal-label{font-size:9px;color:#2a3a5a;letter-spacing:.15em;text-transform:uppercase;}
-.signal-badge{font-size:9px;padding:2px 8px;letter-spacing:.15em;text-transform:uppercase;}
-.signal-badge.bullish{color:var(--buy);background:#00ff8810;}
-.signal-badge.bearish{color:var(--sell);background:#ff444410;}
-.signal-badge.neutral{color:var(--hold);background:#f0b42910;}
-.signal-badge.ranging{color:var(--hold);background:#f0b42910;}
-.signal-badge.broken{color:#ff6666;background:#ff444410;}
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
 
-/* ORDER FLOW BAR */
-.flow-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;display:flex;margin:6px 0;}
-.flow-buy{background:var(--buy);transition:width .6s;}
-.flow-sell{flex:1;background:var(--sell);}
-.flow-labels{display:flex;justify-content:space-between;font-size:10px;}
+  .status-text { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); }
 
-/* LOG */
-#logbox{max-height:300px;overflow-y:auto;padding-right:4px;}
-.log-line{display:flex;gap:8px;padding:3px 0;font-size:11px;border-bottom:1px solid #0a0a1a;line-height:1.4;}
-.log-time{color:#1a1a30;flex-shrink:0;font-size:10px;}
-.log-msg{word-break:break-word;}
-.log-system .log-msg{color:#3a4a6a;}
-.log-data .log-msg{color:#7a8aaa;}
-.log-buy .log-msg{color:var(--buy);}
-.log-sell .log-msg{color:var(--sell);}
-.log-hold .log-msg{color:var(--hold);}
-.log-error .log-msg{color:#ff6666;}
-.log-quote .log-msg{color:#6688cc;font-style:italic;}
+  .btn-scan {
+    background: var(--green);
+    color: #000;
+    border: none;
+    padding: 8px 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-scan:hover { background: #00ffaa; box-shadow: 0 0 20px var(--green); }
+  .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* TRADES */
-.trade-row{display:grid;grid-template-columns:55px 70px 95px 55px 1fr;gap:8px;font-size:11px;padding:7px 4px;border-bottom:1px solid var(--bg3);align-items:center;}
-.trade-row.BUY{color:var(--buy);}
-.trade-row.SELL{color:var(--sell);}
-.trade-id{font-size:9px;color:#334;}
-.trade-time{font-size:9px;color:#2a3a5a;}
+  .auto-badge {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .auto-badge.active {
+    border-color: var(--yellow);
+    color: var(--yellow);
+    box-shadow: 0 0 10px var(--yellow-dim);
+  }
 
-/* RECENT TRADES */
-.rtrade{background:#0a0a1a;border:1px solid #111128;padding:5px 9px;font-size:10px;display:inline-flex;gap:8px;align-items:center;}
-.rtrade.A .rside{color:var(--buy);}
-.rtrade.B .rside{color:var(--sell);}
-.rpx{color:var(--text);}
-.rsz{color:#2a3a5a;}
+  /* ── Layout ── */
+  .container { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
 
-/* SPARKLINE */
-canvas{display:block;}
+  /* ── Wallet Config ── */
+  .wallet-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
 
-/* FOOTER */
-#footer{background:#04040e;border-top:1px solid #0a0a18;padding:8px 20px;text-align:center;font-size:9px;color:#1e1e35;letter-spacing:.15em;text-transform:uppercase;}
+  .wallet-bar label {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
 
-/* EMPTY STATES */
-.empty{color:#1a1a30;font-size:12px;text-align:center;padding:50px 20px;line-height:2;}
+  .wallet-bar input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    outline: none;
+    flex: 1;
+    min-width: 200px;
+    transition: border-color 0.2s;
+  }
+  .wallet-bar input:focus { border-color: var(--green); }
+  .wallet-bar input::placeholder { color: var(--text-muted); }
 
-/* ANIMATIONS */
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
-@keyframes slideIn{from{transform:translateY(-4px);opacity:0}to{transform:none;opacity:1}}
+  .wallet-group { display: flex; align-items: center; gap: 8px; flex: 1; }
+
+  .toggle-auto {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .toggle-switch {
+    width: 36px; height: 20px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: all 0.2s;
+  }
+  .toggle-switch.on { background: var(--green-dim); border-color: var(--green); }
+  .toggle-switch.on::after { background: var(--green); left: 18px; }
+
+  /* ── Market Grid ── */
+  .section-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .market-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .market-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .coin-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+  .coin-card:hover { border-color: var(--blue); }
+  .coin-card.selected { border-color: var(--green); }
+  .coin-card.buy { border-color: var(--green); background: linear-gradient(135deg, var(--surface), var(--green-dim)); }
+  .coin-card.sell { border-color: var(--red); background: linear-gradient(135deg, var(--surface), var(--red-dim)); }
+
+  .coin-symbol {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .coin-price {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .coin-change {
+    font-size: 11px;
+    font-family: var(--font-mono);
+  }
+  .coin-change.up { color: var(--green); }
+  .coin-change.down { color: var(--red); }
+
+  .coin-meta {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .coin-meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  .signal-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-size: 9px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 3px 7px;
+  }
+  .signal-badge.BUY { background: var(--green); color: #000; }
+  .signal-badge.SELL { background: var(--red); color: #fff; }
+  .signal-badge.HOLD { background: var(--surface3); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* ── Main Analysis Panel ── */
+  .analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .analysis-grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+  }
+
+  .panel-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .panel-body { padding: 16px; }
+
+  /* ── Best Trade Card ── */
+  .best-trade {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .best-trade-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .best-trade-symbol {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .best-trade-symbol.BUY { color: var(--green); text-shadow: 0 0 20px var(--green); }
+  .best-trade-symbol.SELL { color: var(--red); text-shadow: 0 0 20px var(--red); }
+
+  .confidence-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--surface3);
+    margin: 12px 0;
+    position: relative;
+  }
+  .confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), #00ffff);
+    transition: width 1s ease;
+    box-shadow: 0 0 10px var(--green);
+  }
+
+  .trade-levels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .level-box {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    padding: 8px;
+    text-align: center;
+  }
+
+  .level-label {
+    font-size: 9px;
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .level-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .level-value.entry { color: var(--blue); }
+  .level-value.sl { color: var(--red); }
+  .level-value.tp { color: var(--green); }
+
+  .trade-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .meta-box {
+    background: var(--surface3);
+    padding: 8px;
+    text-align: center;
+  }
+  .meta-label { font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px; }
+  .meta-value { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--text); margin-top: 2px; }
+
+  .reasoning-box {
+    background: var(--surface3);
+    border-left: 3px solid var(--green);
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+
+  .invalidation-box {
+    background: var(--red-dim);
+    border-left: 3px solid var(--red);
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin: 8px 0;
+  }
+  .invalidation-box strong { color: var(--red); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; }
+
+  /* ── Execute Button ── */
+  .btn-execute {
+    width: 100%;
+    padding: 14px;
+    background: var(--green);
+    color: #000;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-execute:hover { background: #00ffaa; box-shadow: 0 0 30px rgba(0,255,136,0.4); }
+  .btn-execute:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-execute.sell { background: var(--red); color: #fff; }
+  .btn-execute.sell:hover { background: #ff6b81; box-shadow: 0 0 30px rgba(255,71,87,0.4); }
+
+  /* ── Analysis List ── */
+  .analysis-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .analysis-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    gap: 12px;
+    align-items: start;
+  }
+
+  .analysis-symbol {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .analysis-trend {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    margin-top: 3px;
+  }
+  .analysis-trend.BULLISH { color: var(--green); }
+  .analysis-trend.BEARISH { color: var(--red); }
+  .analysis-trend.SIDEWAYS { color: var(--yellow); }
+
+  .analysis-reasoning {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .analysis-indicators {
+    margin-top: 6px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .indicator-tag {
+    font-size: 9px;
+    font-family: var(--font-mono);
+    padding: 2px 6px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  /* ── Order Book ── */
+  .orderbook {
+    display: grid;
+    grid-template-columns: 1fr 1px 1fr;
+    gap: 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .ob-divider { background: var(--border); }
+
+  .ob-col { padding: 0 8px; }
+  .ob-header { color: var(--text-muted); font-size: 9px; letter-spacing: 1px; margin-bottom: 6px; padding: 0 8px 6px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+
+  .ob-row { display: flex; justify-content: space-between; padding: 2px 8px; margin: 1px 0; transition: background 0.1s; }
+  .ob-row:hover { background: var(--surface3); }
+  .ob-row.bid { color: var(--green); }
+  .ob-row.ask { color: var(--red); }
+
+  /* ── Trade Log ── */
+  .trade-log {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    transition: background 0.15s;
+  }
+  .log-item:hover { background: var(--surface2); }
+
+  .log-time { color: var(--text-muted); min-width: 60px; }
+  .log-type { padding: 2px 8px; font-size: 9px; font-weight: 700; min-width: 40px; text-align: center; }
+  .log-type.BUY { background: var(--green); color: #000; }
+  .log-type.SELL { background: var(--red); color: #fff; }
+  .log-type.INFO { background: var(--surface3); color: var(--text-dim); border: 1px solid var(--border); }
+  .log-msg { color: var(--text-dim); flex: 1; }
+  .log-status { font-size: 9px; letter-spacing: 1px; }
+  .log-status.ok { color: var(--green); }
+  .log-status.err { color: var(--red); }
+  .log-status.pending { color: var(--yellow); }
+
+  /* ── Loading State ── */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8,11,15,0.92);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .loading-overlay.active { display: flex; }
+
+  .loading-text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: var(--green);
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .loading-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .loading-step {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .loading-step.active { color: var(--green); }
+  .loading-step.done { color: var(--text-dim); }
+  .loading-step .step-icon { width: 16px; text-align: center; }
+
+  /* ── Market Summary ── */
+  .market-summary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--blue);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    font-family: var(--font-sans);
+  }
+
+  .sentiment-badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    margin-bottom: 8px;
+  }
+  .sentiment-badge.BULLISH { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+  .sentiment-badge.BEARISH { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+  .sentiment-badge.NEUTRAL { background: var(--surface3); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* ── Empty state ── */
+  .empty-state {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 2px;
+  }
+
+  /* ── Confirm Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8,11,15,0.95);
+    z-index: 600;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--green);
+    padding: 24px;
+    width: 420px;
+    max-width: 90vw;
+    box-shadow: 0 0 40px rgba(0,255,136,0.1);
+  }
+
+  .modal-title {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--green);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+
+  .modal-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+  .modal-detail span:first-child { color: var(--text-muted); }
+  .modal-detail span:last-child { color: var(--text); font-weight: 700; }
+
+  .modal-warning {
+    background: rgba(255,71,87,0.1);
+    border: 1px solid var(--red);
+    padding: 10px 14px;
+    margin: 16px 0;
+    font-size: 11px;
+    color: var(--red);
+    font-family: var(--font-mono);
+    line-height: 1.5;
+  }
+
+  .modal-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .btn-cancel {
+    padding: 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-cancel:hover { border-color: var(--red); color: var(--red); }
+
+  .btn-confirm {
+    padding: 12px;
+    background: var(--green);
+    color: #000;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-confirm:hover { background: #00ffaa; }
+  .btn-confirm.sell-confirm { background: var(--red); color: #fff; }
+  .btn-confirm.sell-confirm:hover { background: #ff6b81; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* ── Timer ── */
+  .timer-bar {
+    height: 2px;
+    background: var(--surface3);
+    position: relative;
+    overflow: hidden;
+  }
+  .timer-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width linear;
+  }
+
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div id="header">
-  <div>
-    <div class="logo">⬡ APEX <span>TRADING SYSTEM</span></div>
-    <div class="subtitle">Claude AI × Hyperliquid · Perpetuals Analysis Engine</div>
-  </div>
-  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-    <span class="phase-badge" id="phase-badge">STANDBY</span>
-    <span class="phase-badge" id="auto-badge" style="display:none;color:var(--hold);border-color:#f0b42944;background:#f0b42910;">AUTO 30s</span>
-  </div>
-</div>
-
-<!-- API KEY BAR -->
-<div id="apibar">
-  <label>Anthropic API Key:</label>
-  <input type="password" id="apikey" placeholder="sk-ant-api03-xxxxxxxxxxxxxxxx" oninput="checkKey()"/>
-  <span class="key-status no" id="key-status">● Belum diisi</span>
-  <span style="font-size:9px;color:#223;letter-spacing:.1em;">Kunci tersimpan di browser saja, tidak dikirim ke server manapun.</span>
-</div>
-
-<!-- CONTROL BAR -->
-<div id="ctrlbar">
-  <input id="coininput" type="text" value="BTC" maxlength="8" placeholder="BTC" onkeydown="if(event.key==='Enter')analyze()"/>
-  <button class="btn" id="analyze-btn" onclick="analyze()" disabled>▶ ANALYZE</button>
-  <button class="btn auto" id="auto-btn" onclick="toggleAuto()">⟳ AUTO</button>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;">
-    <button class="btn quick" onclick="quickCoin('BTC')">BTC</button>
-    <button class="btn quick" onclick="quickCoin('ETH')">ETH</button>
-    <button class="btn quick" onclick="quickCoin('SOL')">SOL</button>
-    <button class="btn quick" onclick="quickCoin('DOGE')">DOGE</button>
-    <button class="btn quick" onclick="quickCoin('PEPE')">PEPE</button>
-    <button class="btn quick" onclick="quickCoin('ARB')">ARB</button>
-    <button class="btn quick" onclick="quickCoin('AVAX')">AVAX</button>
-    <button class="btn quick" onclick="quickCoin('LINK')">LINK</button>
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-text" id="loadingText">INITIALIZING APEX...</div>
+  <div class="loading-steps">
+    <div class="loading-step" id="step1"><span class="step-icon">○</span> CONNECTING TO HYPERLIQUID</div>
+    <div class="loading-step" id="step2"><span class="step-icon">○</span> FETCHING MARKET DATA</div>
+    <div class="loading-step" id="step3"><span class="step-icon">○</span> COMPUTING INDICATORS</div>
+    <div class="loading-step" id="step4"><span class="step-icon">○</span> GEMINI ANALYZING MARKETS</div>
+    <div class="loading-step" id="step5"><span class="step-icon">○</span> GENERATING TRADE PLAN</div>
   </div>
 </div>
 
-<!-- MAIN GRID -->
-<div id="grid">
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-title">⚠ CONFIRM TRADE EXECUTION</div>
+    <div id="modalDetails"></div>
+    <div class="modal-warning">
+      PERINGATAN: Ini adalah eksekusi trade nyata di Hyperliquid Mainnet menggunakan dana asli. Pastikan kamu telah memahami risiko trading derivatives.
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">CANCEL</button>
+      <button class="btn-confirm" id="btnConfirm" onclick="confirmTrade()">EXECUTE TRADE</button>
+    </div>
+  </div>
+</div>
 
-  <!-- PANEL 1: MARKET DATA -->
-  <div class="panel" id="panel-market">
-    <div class="panel-title">◈ HYPERLIQUID MARKET DATA</div>
-    <div id="market-content">
-      <div class="empty">Masukkan nama coin dan klik<br>▶ ANALYZE untuk mulai.<br><br>Pastikan API Key sudah diisi.</div>
+<!-- Header -->
+<header>
+  <div class="logo">
+    APEX
+    <span>AI TRADING SYSTEM v2.0</span>
+  </div>
+  <div class="header-right">
+    <div class="status-dot" id="statusDot"></div>
+    <div class="status-text" id="statusText">OFFLINE</div>
+    <div class="auto-badge" id="autoBadge" onclick="toggleAutoScan()">AUTO: OFF</div>
+    <button class="btn-scan" id="btnScan" onclick="runFullCycle()">▶ SCAN MARKET</button>
+  </div>
+</header>
+
+<!-- Timer bar -->
+<div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:0%"></div></div>
+
+<div class="container">
+
+  <!-- Wallet Config -->
+  <div class="wallet-bar">
+    <div class="wallet-group">
+      <label>WALLET ADDRESS</label>
+      <input type="text" id="walletAddress" placeholder="0x..." />
+    </div>
+    <div class="wallet-group">
+      <label>PRIVATE KEY</label>
+      <input type="password" id="privateKey" placeholder="0x... (disimpan di browser saja)" />
+    </div>
+    <div class="wallet-group">
+      <label>SIZE (USD)</label>
+      <input type="number" id="tradeSize" value="100" min="10" max="10000" style="max-width:100px" />
+    </div>
+    <label class="toggle-auto" onclick="toggleAutoExec()">
+      <div class="toggle-switch" id="autoExecToggle"></div>
+      AUTO EXEC
+    </label>
+  </div>
+
+  <!-- Market Overview -->
+  <div class="section-title">MARKET OVERVIEW — TOP 5 BY VOLUME</div>
+  <div class="market-grid" id="marketGrid">
+    <div class="empty-state" style="grid-column:1/-1">KLIK "SCAN MARKET" UNTUK MEMULAI</div>
+  </div>
+
+  <!-- Analysis -->
+  <div class="analysis-grid">
+
+    <!-- Left: Analysis per coin -->
+    <div>
+      <div class="section-title">GEMINI ANALYSIS</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">AI MARKET ANALYSIS</div>
+          <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)" id="lastUpdate">—</div>
+        </div>
+        <div class="panel-body">
+          <div id="marketSummaryBox"></div>
+          <div class="analysis-list" id="analysisList">
+            <div class="empty-state">BELUM ADA DATA ANALISIS</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Best Trade -->
+    <div>
+      <div class="section-title">BEST TRADE SETUP</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">TRADE RECOMMENDATION</div>
+          <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)" id="confLabel">CONFIDENCE: —</div>
+        </div>
+        <div class="panel-body" id="bestTradePanel">
+          <div class="empty-state">SCAN MARKET UNTUK MELIHAT<br>TRADE SETUP TERBAIK</div>
+        </div>
+      </div>
+
+      <!-- Order Book -->
+      <div style="margin-top:16px">
+        <div class="section-title">ORDER BOOK</div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title" id="obTitle">ORDER BOOK</div></div>
+          <div class="panel-body" style="padding:12px 0">
+            <div class="ob-header"><span>BIDS (BUY)</span><span style="margin-left:auto">ASKS (SELL)</span></div>
+            <div class="orderbook" id="orderbook">
+              <div class="empty-state" style="grid-column:1/-1;font-size:10px">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Trade Log -->
+  <div class="section-title">TRADE LOG</div>
+  <div class="trade-log" id="tradeLog">
+    <div class="log-item">
+      <span class="log-time">—</span>
+      <span class="log-type INFO">INFO</span>
+      <span class="log-msg">Sistem siap. Klik SCAN MARKET untuk memulai analisis.</span>
+      <span class="log-status ok">READY</span>
     </div>
   </div>
 
-  <!-- PANEL 2: APEX ANALYSIS -->
-  <div class="panel" id="panel-analysis">
-    <div class="panel-title">◈ APEX ANALYSIS (CLAUDE AI)</div>
-    <div id="analysis-content">
-      <div class="empty">APEX menunggu data pasar.<br><br>Sinyal BUY/SELL/HOLD<br>akan muncul di sini.</div>
-    </div>
-  </div>
-
-  <!-- PANEL 3: LOG + TRADES -->
-  <div class="panel" id="panel-log">
-    <div class="panel-title">◈ EXECUTION LOG</div>
-    <div id="logbox"></div>
-    <div class="panel-title" style="margin-top:18px;">◈ TRADE HISTORY (SIMULASI)</div>
-    <div id="trades-box">
-      <div style="color:#1a1a30;font-size:11px;">Belum ada trade.</div>
-    </div>
-  </div>
-
-  <!-- PANEL 4: RECENT TRADES (FULL WIDTH) -->
-  <div class="panel full" id="panel-recent" style="display:none;">
-    <div class="panel-title">◈ RECENT TRADES LIVE — <span id="recent-coin-label"></span>-PERP (HYPERLIQUID)</div>
-    <div id="recent-trades" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-  </div>
-
-</div>
-
-<!-- FOOTER -->
-<div id="footer">
-  ⚠ SIMULASI ONLY — Tidak ada order nyata yang ditempatkan. Eksekusi real memerlukan wallet signing. Bukan saran keuangan.
 </div>
 
 <script>
-// ─── STATE ───────────────────────────────────────────────────────────────────
-let currentCoin = 'BTC';
-let marketData = null;
-let analysis = null;
-let trades = [];
-let logs = [];
-let priceHistory = [];
-let chatHistory = [];
-let autoInterval = null;
-let isLoading = false;
-let phase = 'idle';
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let state = {
+  marketData: [],
+  analysis: null,
+  autoScan: false,
+  autoExec: false,
+  scanInterval: null,
+  timerInterval: null,
+  pendingTrade: null,
+  isScanning: false,
+  scanCount: 0,
+};
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-const fmt = (n, d=2) => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-const fmtPct = n => (n>=0?'+':'')+fmt(n,2)+'%';
-const ts = () => new Date().toLocaleTimeString('en-US',{hour12:false});
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
-const getKey = () => document.getElementById('apikey').value.trim();
+const SCAN_INTERVAL_MS = 60000; // 60 seconds
 
-function checkKey(){
-  const k = getKey();
-  const ok = k.startsWith('sk-ant') && k.length > 20;
-  document.getElementById('key-status').textContent = ok ? '● Siap' : '● Belum valid';
-  document.getElementById('key-status').className = 'key-status '+(ok?'ok':'no');
-  document.getElementById('analyze-btn').disabled = !ok;
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+function fmt(n, d=2) {
+  if (!n && n !== 0) return '—';
+  const num = parseFloat(n);
+  if (Math.abs(num) >= 1e9) return (num/1e9).toFixed(1) + 'B';
+  if (Math.abs(num) >= 1e6) return (num/1e6).toFixed(1) + 'M';
+  if (Math.abs(num) >= 1e3) return num.toLocaleString('en-US', {maximumFractionDigits:d});
+  return num.toFixed(d);
 }
 
-function setPhase(p){
-  phase = p;
-  const badge = document.getElementById('phase-badge');
-  badge.className = 'phase-badge '+(p!=='idle'?p:'');
-  badge.textContent = p==='idle'?'STANDBY':p==='fetching'?'◉ FETCHING DATA':p==='analyzing'?'◉ APEX THINKING':'◉ EXECUTING';
+function now() {
+  return new Date().toTimeString().slice(0,8);
 }
 
-// ─── LOGGING ─────────────────────────────────────────────────────────────────
-function addLog(msg, type='system'){
-  const box = document.getElementById('logbox');
-  const div = document.createElement('div');
-  div.className = `log-line log-${type}`;
-  div.innerHTML = `<span class="log-time">${ts()}</span><span class="log-msg">${msg}</span>`;
-  box.appendChild(div);
-  if(box.children.length > 80) box.removeChild(box.firstChild);
-  box.scrollTop = box.scrollHeight;
-}
-
-// ─── HYPERLIQUID API ─────────────────────────────────────────────────────────
-async function hlFetch(body){
-  const r = await fetch('https://api.hyperliquid.xyz/info',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
-  if(!r.ok) throw new Error('Hyperliquid '+r.status);
-  return r.json();
-}
-
-async function fetchMarketData(coin){
-  const [meta, trades, funding] = await Promise.all([
-    hlFetch({type:'metaAndAssetCtxs'}),
-    hlFetch({type:'recentTrades',coin}),
-    hlFetch({type:'fundingHistory',coin,startTime:Date.now()-86400000})
-  ]);
-  const assets = meta[0]?.universe||[];
-  const ctxs = meta[1]||[];
-  const idx = assets.findIndex(a=>a.name===coin);
-  if(idx===-1) throw new Error(`Coin "${coin}" tidak ditemukan di Hyperliquid`);
-  const ctx = ctxs[idx]||{};
-  const asset = assets[idx];
-  const recentTrades = (trades||[]).slice(0,20);
-  const avgFunding = funding?.length
-    ? funding.slice(-8).reduce((s,f)=>s+parseFloat(f.fundingRate||0),0)/Math.min(8,funding.length) : 0;
-  const markPx = parseFloat(ctx.markPx||0);
-  const prevDayPx = parseFloat(ctx.prevDayPx||markPx);
-  const change24h = prevDayPx?((markPx-prevDayPx)/prevDayPx)*100:0;
-  const oiUsd = parseFloat(ctx.openInterest||0)*markPx;
-  const buyVol = recentTrades.filter(t=>t.side==='A').reduce((s,t)=>s+parseFloat(t.sz||0),0);
-  const sellVol = recentTrades.filter(t=>t.side==='B').reduce((s,t)=>s+parseFloat(t.sz||0),0);
-  const totalVol = buyVol+sellVol;
-  const buyRatio = totalVol?(buyVol/totalVol)*100:50;
-  const prices = recentTrades.map(t=>parseFloat(t.px||0)).filter(Boolean);
-  const high = prices.length?Math.max(...prices):markPx;
-  const low = prices.length?Math.min(...prices):markPx;
-  return {
-    coin, markPx, prevDayPx, change24h,
-    volume24h:parseFloat(ctx.dayNtlVlm||0),
-    openInterest:oiUsd,
-    funding:avgFunding*100,
-    maxLeverage:asset.maxLeverage||20,
-    buyRatio, sellRatio:100-buyRatio,
-    high, low,
-    spread:((high-low)/markPx)*100,
-    recentTrades:recentTrades.slice(0,12),
-    premium:parseFloat(ctx.premium||0)*100,
-    impactBid:parseFloat((ctx.impactPxs||[])[0]||markPx),
-    impactAsk:parseFloat((ctx.impactPxs||[])[1]||markPx),
-    midPx:parseFloat(ctx.midPx||markPx)
-  };
-}
-
-// ─── CLAUDE API ───────────────────────────────────────────────────────────────
-async function analyzeWithClaude(md){
-  const system = `You are APEX — an elite quantitative trader with 15 years experience in crypto perpetuals. Ex-Jump Trading and Citadel. You specialize in Hyperliquid perps.
-
-Personality: cold, precise, data-driven. Short punchy sentences. No fluff.
-
-Output MUST be valid JSON only, no markdown, no preamble:
-{
-  "verdict": "BUY"|"SELL"|"HOLD",
-  "confidence": 0-100,
-  "entry": number,
-  "stopLoss": number,
-  "takeProfit": [number, number],
-  "leverage": number,
-  "positionSize": "1-3% of capital",
-  "timeframe": "scalp|intraday|swing",
-  "thesis": "2-3 brutal sentences.",
-  "risks": ["risk1","risk2"],
-  "marketStructure": "bullish|bearish|ranging|broken",
-  "keyLevels": {"support": number, "resistance": number},
-  "signals": {
-    "momentum": "bullish|bearish|neutral",
-    "funding": "bullish|bearish|neutral",
-    "orderflow": "bullish|bearish|neutral"
-  }
-}`;
-
-  const userMsg = `Analyze this Hyperliquid perp and give me a trade:
-
-ASSET: ${md.coin}-PERP
-Mark Price: $${fmt(md.markPx,4)}
-24h Change: ${fmtPct(md.change24h)}
-24h Volume: $${fmt(md.volume24h/1e6,2)}M
-Open Interest: $${fmt(md.openInterest/1e6,2)}M
-Funding Rate (8h avg): ${fmt(md.funding,4)}%
-Max Leverage: ${md.maxLeverage}x
-Buy Pressure: ${fmt(md.buyRatio,1)}%
-Sell Pressure: ${fmt(md.sellRatio,1)}%
-Recent High: $${fmt(md.high,4)}
-Recent Low: $${fmt(md.low,4)}
-Impact Bid: $${fmt(md.impactBid,4)}
-Impact Ask: $${fmt(md.impactAsk,4)}
-Premium: ${fmt(md.premium,4)}%
-
-Return ONLY the JSON. No markdown.`;
-
-  const messages = [
-    ...chatHistory.slice(-6),
-    {role:'user',content:userMsg}
-  ];
-
-  const resp = await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key':getKey(),
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body:JSON.stringify({
-      model:'claude-sonnet-4-20250514',
-      max_tokens:1000,
-      system,
-      messages
-    })
-  });
-  if(!resp.ok){
-    const err = await resp.json().catch(()=>({}));
-    throw new Error('Claude: '+(err.error?.message||resp.status));
-  }
-  const data = await resp.json();
-  const raw = data.content?.map(c=>c.text||'').join('')||'{}';
-  const clean = raw.replace(/```json|```/g,'').trim();
-  return JSON.parse(clean);
-}
-
-// ─── RENDER MARKET ────────────────────────────────────────────────────────────
-function renderMarket(md){
-  const chgColor = md.change24h>=0?'var(--buy)':'var(--sell)';
-  const sparkId = 'sparkcanvas';
-
-  document.getElementById('market-content').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
-      <div>
-        <div style="font-size:11px;color:#334;letter-spacing:.2em;">${md.coin}-PERP</div>
-        <div style="font-size:28px;font-weight:900;color:#e0e8ff;letter-spacing:-.02em;">$${fmt(md.markPx,md.markPx>100?2:4)}</div>
-        <div style="font-size:13px;color:${chgColor};font-weight:700;">${fmtPct(md.change24h)} 24h</div>
-      </div>
-      <canvas id="${sparkId}" width="110" height="36"></canvas>
-    </div>
-    ${statRow('24h Volume','$'+fmt(md.volume24h/1e6,2)+'M','var(--text)')}
-    ${statRow('Open Interest','$'+fmt(md.openInterest/1e6,2)+'M','var(--text)')}
-    ${statRow('Funding 8h avg',fmt(md.funding,4)+'%',md.funding>=0?'var(--buy)':'var(--sell)')}
-    ${statRow('Max Leverage',md.maxLeverage+'x','var(--purple)')}
-    ${statRow('Impact Bid','$'+fmt(md.impactBid,4),'var(--buy)')}
-    ${statRow('Impact Ask','$'+fmt(md.impactAsk,4),'var(--sell)')}
-    ${statRow('Premium',fmt(md.premium,4)+'%','var(--hold)')}
-    <div style="margin-top:14px;">
-      <div class="panel-title">ORDER FLOW</div>
-      <div class="flow-bar"><div class="flow-buy" style="width:${md.buyRatio}%;"></div><div class="flow-sell"></div></div>
-      <div class="flow-labels">
-        <span style="color:var(--buy);">BUY ${fmt(md.buyRatio,1)}%</span>
-        <span style="color:var(--sell);">SELL ${fmt(md.sellRatio,1)}%</span>
-      </div>
-    </div>
+function addLog(type, msg, status='ok') {
+  const log = document.getElementById('tradeLog');
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  item.innerHTML = `
+    <span class="log-time">${now()}</span>
+    <span class="log-type ${type}">${type}</span>
+    <span class="log-msg">${msg}</span>
+    <span class="log-status ${status}">${status.toUpperCase()}</span>
   `;
-  drawSparkline(sparkId, priceHistory, md.change24h>=0?'#00ff88':'#ff4444');
+  log.insertBefore(item, log.firstChild);
+  // Keep max 50 logs
+  while (log.children.length > 50) log.removeChild(log.lastChild);
 }
 
-function statRow(label, val, color){
-  return `<div class="stat"><div class="stat-label">${label}</div><div class="stat-val" style="color:${color};">${val}</div></div>`;
+// ═══════════════════════════════════════════════════════
+// LOADING STEPS
+// ═══════════════════════════════════════════════════════
+function setStep(stepNum) {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`step${i}`);
+    if (!el) continue;
+    el.classList.remove('active', 'done');
+    if (i < stepNum) {
+      el.classList.add('done');
+      el.querySelector('.step-icon').textContent = '✓';
+    } else if (i === stepNum) {
+      el.classList.add('active');
+      el.querySelector('.step-icon').textContent = '▶';
+    } else {
+      el.querySelector('.step-icon').textContent = '○';
+    }
+  }
 }
 
-function drawSparkline(id, data, color){
-  if(data.length < 2) return;
-  const c = document.getElementById(id);
-  if(!c) return;
-  const ctx = c.getContext('2d');
-  const w=c.width, h=c.height;
-  ctx.clearRect(0,0,w,h);
-  const min=Math.min(...data), max=Math.max(...data), range=max-min||1;
-  ctx.beginPath();
-  ctx.strokeStyle=color;
-  ctx.lineWidth=1.5;
-  data.forEach((v,i)=>{
-    const x=(i/(data.length-1))*w;
-    const y=h-((v-min)/range)*h;
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  });
-  ctx.stroke();
-  // dot
-  const lx=w, ly=h-((data[data.length-1]-min)/range)*h;
-  ctx.beginPath();
-  ctx.arc(lx,ly,3,0,Math.PI*2);
-  ctx.fillStyle=color;
-  ctx.fill();
-}
+// ═══════════════════════════════════════════════════════
+// MAIN CYCLE
+// ═══════════════════════════════════════════════════════
+async function runFullCycle() {
+  if (state.isScanning) return;
+  state.isScanning = true;
 
-// ─── RENDER ANALYSIS ─────────────────────────────────────────────────────────
-function renderAnalysis(a){
-  const vc = a.verdict==='BUY'?'var(--buy)':a.verdict==='SELL'?'var(--sell)':'var(--hold)';
-  const tp0 = (a.takeProfit||[])[0]||0;
-  const tp1 = (a.takeProfit||[])[1]||0;
-  const decimals = marketData?.markPx > 100 ? 2 : 4;
+  const btnScan = document.getElementById('btnScan');
+  btnScan.disabled = true;
+  btnScan.textContent = 'SCANNING...';
 
-  document.getElementById('analysis-content').innerHTML = `
-    <div id="verdict-box">
-      <div id="verdict" class="${a.verdict}">${a.verdict}</div>
-      <div class="timeframe-tag">${(a.timeframe||'').toUpperCase()} TRADE</div>
-      <div class="gauge-wrap">
-        <svg width="88" height="56" viewBox="0 0 88 88" style="margin-top:-32px;">
-          <circle cx="44" cy="44" r="36" fill="none" stroke="#1a1a2e" stroke-width="8"
-            stroke-dasharray="${2*Math.PI*36*.75} ${2*Math.PI*36}" stroke-dashoffset="${-2*Math.PI*36*.125}"
-            stroke-linecap="round" transform="rotate(135 44 44)"/>
-          <circle cx="44" cy="44" r="36" fill="none" stroke="${vc}" stroke-width="8"
-            stroke-dasharray="${2*Math.PI*36*.75} ${2*Math.PI*36}"
-            stroke-dashoffset="${2*Math.PI*36*.75-(2*Math.PI*36*.75*a.confidence/100)+2*Math.PI*36*.125}"
-            stroke-linecap="round" transform="rotate(135 44 44)"/>
-          <text x="44" y="50" text-anchor="middle" fill="${vc}" font-size="14" font-weight="700" font-family="JetBrains Mono,monospace">${a.confidence}</text>
-        </svg>
-        <div style="font-size:9px;color:#334;letter-spacing:.2em;">CONFIDENCE %</div>
-      </div>
-    </div>
-    <div id="thesis-box" class="${a.verdict}">
-      <div class="stat-label" style="margin-bottom:5px;">THESIS</div>
-      <div id="thesis">${a.thesis||'-'}</div>
-    </div>
-    ${statRow('Entry','$'+fmt(a.entry,decimals),'var(--text)')}
-    ${statRow('Stop Loss','$'+fmt(a.stopLoss,decimals),'var(--sell)')}
-    ${statRow('Take Profit 1','$'+fmt(tp0,decimals),'var(--buy)')}
-    ${statRow('Take Profit 2','$'+fmt(tp1,decimals),'#00cc66')}
-    ${statRow('Leverage',(a.leverage||1)+'x','var(--purple)')}
-    ${statRow('Position Size',a.positionSize||'-','var(--hold)')}
-    <div style="margin-top:14px;">
-      <div class="panel-title">SIGNAL MATRIX</div>
-      ${signalRow('Momentum',a.signals?.momentum)}
-      ${signalRow('Funding',a.signals?.funding)}
-      ${signalRow('Order Flow',a.signals?.orderflow)}
-      ${signalRow('Structure',a.marketStructure)}
-    </div>
-    ${a.keyLevels?`
-    <div style="margin-top:14px;">
-      <div class="panel-title">KEY LEVELS</div>
-      <div style="display:flex;gap:16px;">
-        <div class="stat"><div class="stat-label">Support</div><div class="stat-val" style="color:var(--buy);font-size:12px;">$${fmt(a.keyLevels.support,decimals)}</div></div>
-        <div class="stat"><div class="stat-label">Resistance</div><div class="stat-val" style="color:var(--sell);font-size:12px;">$${fmt(a.keyLevels.resistance,decimals)}</div></div>
-      </div>
-    </div>`:''}
-    ${a.risks?.length?`
-    <div style="margin-top:14px;">
-      <div class="panel-title">RISK FACTORS</div>
-      ${a.risks.map(r=>`<div style="font-size:10px;color:#ff664488;padding:3px 0;border-bottom:1px solid var(--bg3);">⚠ ${r}</div>`).join('')}
-    </div>`:''}
-  `;
-}
-
-function signalRow(label, val){
-  const v = (val||'neutral').toLowerCase();
-  const cls = ['bullish','bearish','neutral','ranging','broken'].includes(v)?v:'neutral';
-  return `<div class="signal-row"><span class="signal-label">${label}</span><span class="signal-badge ${cls}">● ${v}</span></div>`;
-}
-
-// ─── RENDER RECENT TRADES ─────────────────────────────────────────────────────
-function renderRecentTrades(md){
-  const panel = document.getElementById('panel-recent');
-  const box = document.getElementById('recent-trades');
-  document.getElementById('recent-coin-label').textContent = md.coin;
-  panel.style.display = 'block';
-  box.innerHTML = md.recentTrades.map(t=>`
-    <div class="rtrade ${t.side}">
-      <span class="rside">${t.side==='A'?'BUY':'SELL'}</span>
-      <span class="rpx">$${fmt(parseFloat(t.px||0),md.markPx>100?2:4)}</span>
-      <span class="rsz">${parseFloat(t.sz||0).toFixed(3)}</span>
-    </div>
-  `).join('');
-}
-
-// ─── RENDER TRADES ────────────────────────────────────────────────────────────
-function renderTrades(){
-  const box = document.getElementById('trades-box');
-  if(!trades.length){ box.innerHTML='<div style="color:#1a1a30;font-size:11px;">Belum ada trade.</div>'; return; }
-  box.innerHTML = trades.map(t=>`
-    <div class="trade-row ${t.side}">
-      <span class="trade-id">${t.id}</span>
-      <span style="font-weight:700;letter-spacing:.1em;">${t.side}</span>
-      <span style="color:#8899bb;">$${fmt(t.price,t.price>100?2:4)}</span>
-      <span style="color:var(--purple);">${t.leverage}x</span>
-      <span class="trade-time">${t.time}</span>
-    </div>
-  `).join('');
-}
-
-// ─── MAIN CYCLE ───────────────────────────────────────────────────────────────
-async function runCycle(coin){
-  if(isLoading) return;
-  isLoading = true;
-  document.getElementById('analyze-btn').disabled = true;
+  document.getElementById('loadingOverlay').classList.add('active');
+  document.getElementById('loadingText').textContent = 'APEX SCANNING MARKETS...';
+  document.getElementById('statusDot').className = 'status-dot';
+  document.getElementById('statusText').textContent = 'SCANNING';
 
   try {
-    // PHASE 1: FETCH
-    setPhase('fetching');
-    addLog(`→ Meminta data ${coin} dari Hyperliquid…`, 'system');
-    const md = await fetchMarketData(coin);
-    marketData = md;
-    priceHistory = [...priceHistory.slice(-60), md.markPx];
-    renderMarket(md);
-    renderRecentTrades(md);
-    addLog(`✓ Data diterima — $${fmt(md.markPx,4)} | ${fmtPct(md.change24h)} | Vol $${fmt(md.volume24h/1e6,1)}M`, 'data');
-    addLog(`  OI: $${fmt(md.openInterest/1e6,2)}M | Funding: ${fmt(md.funding,4)}% | Buy: ${fmt(md.buyRatio,1)}%`, 'data');
+    // Step 1-3: Fetch data
+    setStep(1);
+    await sleep(300);
+    setStep(2);
+    addLog('INFO', 'Mengambil data market dari Hyperliquid...', 'pending');
+
+    const res = await fetch('/api/trade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'full_cycle' }),
+    });
+
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+    setStep(3);
+    await sleep(200);
+    setStep(4);
+
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Unknown error');
+
+    state.marketData = data.marketData;
+    state.analysis = data.analysis;
+    state.scanCount++;
+
+    setStep(5);
     await sleep(300);
 
-    // PHASE 2: ANALYZE
-    setPhase('analyzing');
-    addLog(`→ Mengirim ke APEX (Claude) untuk analisis…`, 'system');
-    const result = await analyzeWithClaude(md);
-    analysis = result;
-    chatHistory = [...chatHistory, {role:'user',content:`Analyze ${coin}`},{role:'assistant',content:JSON.stringify(result)}];
-    renderAnalysis(result);
-    addLog(`✓ APEX verdict: ${result.verdict} | Confidence: ${result.confidence}% | ${(result.timeframe||'').toUpperCase()}`, result.verdict==='BUY'?'buy':result.verdict==='SELL'?'sell':'hold');
-    addLog(`  Entry: $${fmt(result.entry,4)} | SL: $${fmt(result.stopLoss,4)} | TP1: $${fmt((result.takeProfit||[])[0],4)}`, 'data');
-    addLog(`  "${result.thesis}"`, 'quote');
-    await sleep(300);
+    // Render UI
+    renderMarketGrid();
+    renderAnalysis();
+    renderBestTrade();
+    renderOrderBook();
 
-    // PHASE 3: EXECUTE
-    if(result.verdict !== 'HOLD'){
-      setPhase('executing');
-      addLog(`→ Mengirim sinyal ${result.verdict} ke Hyperliquid executor…`, 'system');
-      await sleep(500);
-      const trade = {
-        id: Math.random().toString(36).slice(2,8).toUpperCase(),
-        coin: md.coin,
-        side: result.verdict,
-        price: md.markPx,
-        leverage: result.leverage||1,
-        status: 'SIMULATED',
-        time: ts()
-      };
-      trades = [trade, ...trades.slice(0,19)];
-      renderTrades();
-      addLog(`✓ Order [${trade.id}] — ${trade.side} ${md.coin} @ $${fmt(trade.price,md.markPx>100?2:4)} | ${trade.leverage}x | SIMULASI`, trade.side==='BUY'?'buy':'sell');
-    } else {
-      addLog(`⏸ HOLD — Tidak ada eksekusi. ${result.thesis}`, 'hold');
+    document.getElementById('lastUpdate').textContent = `UPDATED ${now()}`;
+    document.getElementById('statusDot').className = 'status-dot';
+    document.getElementById('statusText').textContent = `LIVE · SCAN #${state.scanCount}`;
+
+    addLog('INFO', `Scan #${state.scanCount} selesai. ${state.analysis?.analysis?.length || 0} coins dianalisis.`, 'ok');
+
+    // Auto execute if enabled
+    if (state.autoExec && state.analysis?.best_trade) {
+      const bt = state.analysis.best_trade;
+      if (bt.confidence >= 75) {
+        addLog(bt.action, `Auto-exec: ${bt.action} ${bt.symbol} @ ${bt.entry}`, 'pending');
+        await executeTrade(bt);
+      } else {
+        addLog('INFO', `Auto-exec skip: confidence ${bt.confidence}% < 75%`, 'ok');
+      }
     }
 
-  } catch(e){
-    addLog(`✗ Error: ${e.message}`, 'error');
-    alert('Error: '+e.message+'\n\nPastikan:\n1. API Key Anthropic sudah benar\n2. Nama coin tersedia di Hyperliquid\n3. Koneksi internet stabil');
+    // Start auto scan timer
+    if (state.autoScan) startTimer();
+
+  } catch (err) {
+    console.error(err);
+    addLog('INFO', `Error: ${err.message}`, 'err');
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'ERROR';
   } finally {
-    setPhase('idle');
-    isLoading = false;
-    document.getElementById('analyze-btn').disabled = false;
+    state.isScanning = false;
+    btnScan.disabled = false;
+    btnScan.textContent = '▶ SCAN MARKET';
+    document.getElementById('loadingOverlay').classList.remove('active');
   }
 }
 
-// ─── CONTROLS ─────────────────────────────────────────────────────────────────
-function analyze(){
-  const c = document.getElementById('coininput').value.toUpperCase().trim();
-  if(!c) return;
-  if(c !== currentCoin){ priceHistory=[]; chatHistory=[]; }
-  currentCoin = c;
-  runCycle(c);
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════════
+// RENDER MARKET GRID
+// ═══════════════════════════════════════════════════════
+function renderMarketGrid() {
+  const grid = document.getElementById('marketGrid');
+  const analysis = state.analysis?.analysis || [];
+  grid.innerHTML = '';
+
+  state.marketData.forEach(coin => {
+    const an = analysis.find(a => a.symbol === coin.symbol);
+    const signal = an?.signal || 'HOLD';
+    const trend = an?.trend || 'SIDEWAYS';
+
+    const priceNow = coin.price;
+    const pricePrev = coin.change24h;
+    const changePct = pricePrev > 0 ? ((priceNow - pricePrev) / pricePrev * 100) : 0;
+    const changeClass = changePct >= 0 ? 'up' : 'down';
+    const changeSign = changePct >= 0 ? '+' : '';
+
+    const cardClass = signal === 'BUY' ? 'buy' : signal === 'SELL' ? 'sell' : '';
+
+    grid.innerHTML += `
+      <div class="coin-card ${cardClass}" onclick="focusCoin('${coin.symbol}')">
+        <div class="signal-badge ${signal}">${signal}</div>
+        <div class="coin-symbol">${coin.symbol}/USDC</div>
+        <div class="coin-price" style="color:${changePct>=0?'var(--green)':'var(--red)'}">${fmt(priceNow, 2)}</div>
+        <div class="coin-change ${changeClass}">${changeSign}${changePct.toFixed(2)}%</div>
+        <div class="coin-meta">
+          <div class="coin-meta-row"><span>VOL 24H</span><span>${fmt(coin.volume24h)}</span></div>
+          <div class="coin-meta-row"><span>OI</span><span>${fmt(coin.openInterest)}</span></div>
+          <div class="coin-meta-row"><span>FUNDING</span><span style="color:${coin.fundingRate>=0?'var(--green)':'var(--red)'}">${(coin.fundingRate*100).toFixed(4)}%</span></div>
+          <div class="coin-meta-row"><span>RSI</span><span style="color:${coin.indicators.rsi>70?'var(--red)':coin.indicators.rsi<30?'var(--green)':'var(--text-dim)'}">${coin.indicators.rsi}</span></div>
+        </div>
+      </div>
+    `;
+  });
 }
 
-function quickCoin(c){
-  document.getElementById('coininput').value = c;
-  if(c !== currentCoin){ priceHistory=[]; chatHistory=[]; }
-  currentCoin = c;
-  runCycle(c);
+// ═══════════════════════════════════════════════════════
+// RENDER ANALYSIS
+// ═══════════════════════════════════════════════════════
+function renderAnalysis() {
+  const an = state.analysis;
+  if (!an) return;
+
+  // Market Summary
+  const summBox = document.getElementById('marketSummaryBox');
+  summBox.innerHTML = `
+    <div class="market-summary">
+      <div class="sentiment-badge ${an.market_sentiment}">${an.market_sentiment}</div>
+      <div>${an.market_summary || '—'}</div>
+    </div>
+  `;
+
+  // Per-coin analysis
+  const list = document.getElementById('analysisList');
+  list.innerHTML = '';
+
+  (an.analysis || []).forEach(item => {
+    const coin = state.marketData.find(c => c.symbol === item.symbol);
+    list.innerHTML += `
+      <div class="analysis-item">
+        <div>
+          <div class="analysis-symbol">${item.symbol}</div>
+          <div class="analysis-trend ${item.trend}">${item.trend}</div>
+          <div style="margin-top:6px"><span class="signal-badge ${item.signal}" style="position:static;display:inline-block">${item.signal}</span></div>
+        </div>
+        <div>
+          <div class="analysis-reasoning">${item.reasoning}</div>
+          <div class="analysis-indicators">
+            <span class="indicator-tag">RSI ${coin?.indicators?.rsi || '—'}</span>
+            <span class="indicator-tag">SMA20 ${coin?.indicators?.sma20 || '—'}</span>
+            <span class="indicator-tag" style="color:${parseFloat(coin?.fundingRate||0)>=0?'var(--green)':'var(--red)'}">FR ${coin ? (coin.fundingRate*100).toFixed(4)+'%' : '—'}</span>
+            <span class="indicator-tag">S: ${item.support ? fmt(item.support) : '—'}</span>
+            <span class="indicator-tag">R: ${item.resistance ? fmt(item.resistance) : '—'}</span>
+          </div>
+        </div>
+        <div style="text-align:right;font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--blue)">${item.confidence}%</div>
+      </div>
+    `;
+  });
 }
 
-function toggleAuto(){
-  const btn = document.getElementById('auto-btn');
-  const badge = document.getElementById('auto-badge');
-  if(autoInterval){
-    clearInterval(autoInterval);
-    autoInterval = null;
-    btn.textContent = '⟳ AUTO';
-    btn.classList.remove('active');
-    badge.style.display = 'none';
-    addLog('Auto-refresh dimatikan.', 'system');
+// ═══════════════════════════════════════════════════════
+// RENDER BEST TRADE
+// ═══════════════════════════════════════════════════════
+function renderBestTrade() {
+  const bt = state.analysis?.best_trade;
+  if (!bt) return;
+
+  document.getElementById('confLabel').textContent = `CONFIDENCE: ${bt.confidence}%`;
+
+  const isBuy = bt.action === 'BUY';
+  const panel = document.getElementById('bestTradePanel');
+
+  panel.innerHTML = `
+    <div class="best-trade">
+      <div class="best-trade-header">
+        <div>
+          <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:2px;margin-bottom:4px">BEST SETUP</div>
+          <div class="best-trade-symbol ${bt.action}">${bt.action} ${bt.symbol}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted)">RISK/REWARD</div>
+          <div style="font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--text)">${bt.risk_reward || '—'}</div>
+        </div>
+      </div>
+
+      <div style="font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-bottom:4px">CONFIDENCE ${bt.confidence}%</div>
+      <div class="confidence-bar">
+        <div class="confidence-fill" style="width:${bt.confidence}%;background:${isBuy?'linear-gradient(90deg,var(--green),#00ffff)':'linear-gradient(90deg,var(--red),#ff8800)'}"></div>
+      </div>
+
+      <div class="trade-levels">
+        <div class="level-box">
+          <div class="level-label">ENTRY</div>
+          <div class="level-value entry">${fmt(bt.entry)}</div>
+        </div>
+        <div class="level-box">
+          <div class="level-label">STOP LOSS</div>
+          <div class="level-value sl">${fmt(bt.stop_loss)}</div>
+        </div>
+        <div class="level-box">
+          <div class="level-label">TP1</div>
+          <div class="level-value tp">${fmt(bt.take_profit_1)}</div>
+        </div>
+      </div>
+
+      <div class="trade-meta-grid">
+        <div class="meta-box">
+          <div class="meta-label">LEVERAGE</div>
+          <div class="meta-value">${bt.leverage}x</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">SIZE USD</div>
+          <div class="meta-value">$${document.getElementById('tradeSize')?.value || bt.size_usd}</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">RISK</div>
+          <div class="meta-value" style="color:${bt.risk_level==='LOW'?'var(--green)':bt.risk_level==='HIGH'?'var(--red)':'var(--yellow)'}">${bt.risk_level}</div>
+        </div>
+      </div>
+
+      <div class="reasoning-box">${bt.reasoning}</div>
+
+      <div class="invalidation-box">
+        <strong>INVALIDATION: </strong>${bt.invalidation}
+      </div>
+    </div>
+
+    <button class="btn-execute ${bt.action.toLowerCase()}" onclick="openModal()">
+      ⚡ EXECUTE ${bt.action} ${bt.symbol}
+    </button>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER ORDER BOOK
+// ═══════════════════════════════════════════════════════
+function renderOrderBook() {
+  const bt = state.analysis?.best_trade;
+  const symbol = bt?.symbol || state.marketData[0]?.symbol;
+  if (!symbol) return;
+
+  const coin = state.marketData.find(c => c.symbol === symbol);
+  if (!coin) return;
+
+  document.getElementById('obTitle').textContent = `ORDER BOOK — ${symbol}`;
+
+  const bids = coin.orderBook.bids || [];
+  const asks = coin.orderBook.asks || [];
+  const maxLen = Math.max(bids.length, asks.length);
+
+  let html = '';
+  for (let i = 0; i < Math.min(maxLen, 5); i++) {
+    const bid = bids[i];
+    const ask = asks[i];
+    html += `
+      <div class="ob-row bid">
+        <span>${bid ? fmt(bid.px) : '—'}</span>
+        <span>${bid ? fmt(bid.sz, 4) : '—'}</span>
+      </div>
+      <div class="ob-divider"></div>
+      <div class="ob-row ask">
+        <span>${ask ? fmt(ask.px) : '—'}</span>
+        <span>${ask ? fmt(ask.sz, 4) : '—'}</span>
+      </div>
+    `;
+  }
+
+  document.getElementById('orderbook').innerHTML = html || '<div class="empty-state" style="grid-column:1/-1">—</div>';
+}
+
+// ═══════════════════════════════════════════════════════
+// FOCUS COIN
+// ═══════════════════════════════════════════════════════
+function focusCoin(symbol) {
+  const coin = state.marketData.find(c => c.symbol === symbol);
+  if (!coin) return;
+
+  // Update order book
+  document.getElementById('obTitle').textContent = `ORDER BOOK — ${symbol}`;
+  const bids = coin.orderBook.bids || [];
+  const asks = coin.orderBook.asks || [];
+
+  let html = '';
+  for (let i = 0; i < Math.min(5, Math.max(bids.length, asks.length)); i++) {
+    const bid = bids[i];
+    const ask = asks[i];
+    html += `
+      <div class="ob-row bid"><span>${bid?fmt(bid.px):'—'}</span><span>${bid?fmt(bid.sz,4):'—'}</span></div>
+      <div class="ob-divider"></div>
+      <div class="ob-row ask"><span>${ask?fmt(ask.px):'—'}</span><span>${ask?fmt(ask.sz,4):'—'}</span></div>
+    `;
+  }
+  document.getElementById('orderbook').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+// TRADE EXECUTION
+// ═══════════════════════════════════════════════════════
+function openModal() {
+  const bt = state.analysis?.best_trade;
+  if (!bt) return;
+
+  state.pendingTrade = bt;
+  const isBuy = bt.action === 'BUY';
+  const size = document.getElementById('tradeSize')?.value || bt.size_usd;
+
+  document.getElementById('modalDetails').innerHTML = `
+    <div class="modal-detail"><span>ACTION</span><span style="color:${isBuy?'var(--green)':'var(--red)'}">${bt.action}</span></div>
+    <div class="modal-detail"><span>SYMBOL</span><span>${bt.symbol}-PERP</span></div>
+    <div class="modal-detail"><span>ENTRY</span><span>$${fmt(bt.entry)}</span></div>
+    <div class="modal-detail"><span>STOP LOSS</span><span style="color:var(--red)">$${fmt(bt.stop_loss)}</span></div>
+    <div class="modal-detail"><span>TAKE PROFIT</span><span style="color:var(--green)">$${fmt(bt.take_profit_1)}</span></div>
+    <div class="modal-detail"><span>LEVERAGE</span><span>${bt.leverage}x</span></div>
+    <div class="modal-detail"><span>SIZE</span><span>$${size}</span></div>
+    <div class="modal-detail"><span>RISK LEVEL</span><span>${bt.risk_level}</span></div>
+    <div class="modal-detail"><span>CONFIDENCE</span><span>${bt.confidence}%</span></div>
+  `;
+
+  const confirmBtn = document.getElementById('btnConfirm');
+  confirmBtn.className = `btn-confirm ${isBuy ? '' : 'sell-confirm'}`;
+  confirmBtn.textContent = `EXECUTE ${bt.action}`;
+
+  document.getElementById('confirmModal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('confirmModal').classList.remove('active');
+  state.pendingTrade = null;
+}
+
+async function confirmTrade() {
+  if (!state.pendingTrade) return;
+  closeModal();
+  await executeTrade(state.pendingTrade);
+}
+
+async function executeTrade(bt) {
+  const wallet = document.getElementById('walletAddress')?.value;
+  const pk = document.getElementById('privateKey')?.value;
+  const size = document.getElementById('tradeSize')?.value || bt.size_usd;
+
+  if (!wallet || !pk) {
+    addLog('INFO', 'Wallet address & private key diperlukan untuk eksekusi trade!', 'err');
+    return;
+  }
+
+  addLog(bt.action, `Mengeksekusi ${bt.action} ${bt.symbol} @ ${fmt(bt.entry)} | Size: $${size} | Lev: ${bt.leverage}x`, 'pending');
+
+  try {
+    const res = await fetch('/api/trade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'execute_trade',
+        tradeParams: { ...bt, size_usd: size },
+        walletAddress: wallet,
+        privateKey: pk,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      addLog(bt.action, `Order submitted: ${bt.action} ${bt.symbol} | Entry: $${fmt(bt.entry)} | SL: $${fmt(bt.stop_loss)} | TP: $${fmt(bt.take_profit_1)}`, 'ok');
+    } else {
+      addLog('INFO', `Trade gagal: ${data.error}`, 'err');
+    }
+  } catch (err) {
+    addLog('INFO', `Trade error: ${err.message}`, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// AUTO SCAN
+// ═══════════════════════════════════════════════════════
+function toggleAutoScan() {
+  state.autoScan = !state.autoScan;
+  const badge = document.getElementById('autoBadge');
+  badge.textContent = `AUTO: ${state.autoScan ? 'ON' : 'OFF'}`;
+  badge.className = `auto-badge ${state.autoScan ? 'active' : ''}`;
+
+  if (state.autoScan) {
+    addLog('INFO', 'Auto scan aktif — setiap 60 detik', 'ok');
+    startTimer();
   } else {
-    addLog('Auto-refresh aktif setiap 30 detik.', 'system');
-    btn.textContent = '⏹ STOP AUTO';
-    btn.classList.add('active');
-    badge.style.display = 'inline';
-    autoInterval = setInterval(()=>runCycle(currentCoin), 30000);
-    runCycle(currentCoin);
+    clearInterval(state.scanInterval);
+    clearInterval(state.timerInterval);
+    document.getElementById('timerFill').style.width = '0%';
+    addLog('INFO', 'Auto scan dimatikan', 'ok');
   }
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-addLog('APEX Trading System siap. Masukkan API Key lalu pilih coin.', 'system');
-addLog('Data pasar dari Hyperliquid · Analisis oleh Claude AI.', 'system');
+function startTimer() {
+  clearInterval(state.scanInterval);
+  clearInterval(state.timerInterval);
+
+  let elapsed = 0;
+  const fill = document.getElementById('timerFill');
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+
+  state.timerInterval = setInterval(() => {
+    elapsed += 500;
+    fill.style.width = `${(elapsed / SCAN_INTERVAL_MS) * 100}%`;
+    if (elapsed >= SCAN_INTERVAL_MS) {
+      elapsed = 0;
+      fill.style.width = '0%';
+    }
+  }, 500);
+
+  state.scanInterval = setInterval(() => {
+    runFullCycle();
+  }, SCAN_INTERVAL_MS);
+}
+
+function toggleAutoExec() {
+  state.autoExec = !state.autoExec;
+  const toggle = document.getElementById('autoExecToggle');
+  toggle.className = `toggle-switch ${state.autoExec ? 'on' : ''}`;
+  addLog('INFO', `Auto-execute ${state.autoExec ? 'AKTIF — trade akan dieksekusi otomatis (confidence ≥75%)' : 'NONAKTIF'}`, state.autoExec ? 'ok' : 'pending');
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  addLog('INFO', 'APEX Trading System v2.0 siap. Masukkan wallet address & private key, lalu klik SCAN MARKET.', 'ok');
+});
 </script>
 </body>
 </html>
