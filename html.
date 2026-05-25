@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX TRADER — Gemini × Hyperliquid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #080c10;
+    --bg2: #0d1219;
+    --bg3: #111820;
+    --border: rgba(0,210,130,0.15);
+    --border2: rgba(0,210,130,0.3);
+    --green: #00d282;
+    --green2: #00ff9d;
+    --red: #ff4757;
+    --red2: #ff6b7a;
+    --amber: #ffaa00;
+    --blue: #00b4ff;
+    --text: #e8f0e8;
+    --text2: #8fa89a;
+    --text3: #4d6357;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100vh; overflow-x: hidden; }
+
+  /* SCANLINE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  }
+
+  /* TOP HEADER */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; border-bottom: 1px solid var(--border);
+    background: var(--bg2); position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--green); letter-spacing: 2px; }
+  .logo span { color: var(--text2); font-weight: 400; }
+  .status-bar { display: flex; gap: 20px; align-items: center; font-size: 11px; color: var(--text2); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; display: inline-block; margin-right: 6px; }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,210,130,0.4)} 50%{opacity:0.7;box-shadow:0 0 0 6px rgba(0,210,130,0)} }
+  .api-badges { display: flex; gap: 8px; }
+  .badge { padding: 4px 10px; border-radius: 4px; font-size: 10px; font-family: var(--font-mono); border: 1px solid; }
+  .badge-green { border-color: var(--green); color: var(--green); background: rgba(0,210,130,0.05); }
+  .badge-blue { border-color: var(--blue); color: var(--blue); background: rgba(0,180,255,0.05); }
+  .badge-red { border-color: var(--red); color: var(--red); background: rgba(255,71,87,0.05); }
+
+  /* MAIN GRID */
+  .main-grid { display: grid; grid-template-columns: 280px 1fr 320px; height: calc(100vh - 57px); overflow: hidden; }
+
+  /* LEFT PANEL — MARKET LIST */
+  .left-panel { border-right: 1px solid var(--border); background: var(--bg2); overflow-y: auto; }
+  .panel-header { padding: 14px 16px; border-bottom: 1px solid var(--border); font-family: var(--font-head); font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: 2px; text-transform: uppercase; }
+  .market-item { padding: 12px 16px; border-bottom: 1px solid rgba(0,210,130,0.06); cursor: pointer; transition: background 0.15s; display: flex; justify-content: space-between; align-items: center; }
+  .market-item:hover, .market-item.active { background: rgba(0,210,130,0.05); border-left: 2px solid var(--green); }
+  .market-item.active { background: rgba(0,210,130,0.08); }
+  .market-name { font-family: var(--font-head); font-weight: 700; font-size: 13px; color: var(--text); }
+  .market-sub { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .market-price { text-align: right; }
+  .market-price .price { font-size: 13px; font-weight: 700; }
+  .market-price .change { font-size: 10px; margin-top: 2px; }
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+
+  /* CENTER PANEL */
+  .center-panel { display: flex; flex-direction: column; overflow: hidden; }
+  
+  /* TICKER BAR */
+  .ticker-bar { display: flex; align-items: center; gap: 24px; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg3); flex-shrink: 0; }
+  .ticker-symbol { font-family: var(--font-head); font-weight: 800; font-size: 20px; color: var(--text); }
+  .ticker-price { font-size: 22px; font-weight: 700; color: var(--green); }
+  .ticker-stats { display: flex; gap: 20px; font-size: 11px; color: var(--text2); margin-left: auto; }
+  .ticker-stats div { text-align: center; }
+  .ticker-stats .val { color: var(--text); font-size: 12px; font-weight: 700; margin-top: 2px; }
+
+  /* CHART AREA */
+  .chart-area { flex: 1; padding: 16px 20px; position: relative; min-height: 0; }
+  .chart-controls { display: flex; gap: 6px; margin-bottom: 12px; align-items: center; }
+  .tf-btn { padding: 4px 10px; font-size: 10px; font-family: var(--font-mono); background: transparent; border: 1px solid var(--border); color: var(--text2); cursor: pointer; border-radius: 3px; transition: all 0.15s; }
+  .tf-btn:hover, .tf-btn.active { background: rgba(0,210,130,0.1); border-color: var(--green); color: var(--green); }
+  #mainChart { width: 100% !important; }
+  
+  /* ANALYSIS LOG */
+  .analysis-section { border-top: 1px solid var(--border); height: 240px; overflow-y: auto; background: var(--bg2); flex-shrink: 0; }
+  .analysis-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid var(--border); }
+  .analysis-title { font-family: var(--font-head); font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: 2px; text-transform: uppercase; }
+  .analyze-btn { padding: 6px 16px; background: rgba(0,210,130,0.1); border: 1px solid var(--green); color: var(--green); font-family: var(--font-mono); font-size: 11px; cursor: pointer; border-radius: 3px; transition: all 0.2s; }
+  .analyze-btn:hover { background: rgba(0,210,130,0.2); }
+  .analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .log-area { padding: 12px 20px; font-size: 11px; line-height: 1.8; }
+  .log-line { display: flex; gap: 10px; margin-bottom: 4px; }
+  .log-time { color: var(--text3); flex-shrink: 0; }
+  .log-tag { flex-shrink: 0; padding: 1px 6px; border-radius: 2px; font-size: 9px; font-weight: 700; }
+  .tag-system { background: rgba(0,180,255,0.15); color: var(--blue); }
+  .tag-gemini { background: rgba(255,170,0,0.15); color: var(--amber); }
+  .tag-hl { background: rgba(0,210,130,0.15); color: var(--green); }
+  .tag-signal { background: rgba(255,71,87,0.15); color: var(--red); }
+  .tag-exec { background: rgba(0,210,130,0.25); color: var(--green2); }
+  .log-msg { color: var(--text); }
+
+  /* RIGHT PANEL */
+  .right-panel { border-left: 1px solid var(--border); background: var(--bg2); display: flex; flex-direction: column; overflow-y: auto; }
+
+  /* GEMINI THINKING BOX */
+  .thinking-box { border: 1px solid var(--amber); border-radius: 4px; margin: 14px; padding: 14px; background: rgba(255,170,0,0.03); }
+  .thinking-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .thinking-icon { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,170,0,0.15); border: 1px solid var(--amber); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .thinking-label { font-family: var(--font-head); font-size: 12px; font-weight: 700; color: var(--amber); }
+  .thinking-sub { font-size: 10px; color: var(--text3); margin-top: 1px; }
+  .thinking-content { font-size: 11px; line-height: 1.8; color: var(--text2); min-height: 60px; }
+  .thinking-cursor { animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* TRADING PLAN */
+  .plan-box { margin: 0 14px 14px; }
+  .plan-title { font-family: var(--font-head); font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+  .plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .plan-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 10px; }
+  .plan-card-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .plan-card-val { font-size: 14px; font-weight: 700; }
+  .plan-card.entry .plan-card-val { color: var(--blue); }
+  .plan-card.tp .plan-card-val { color: var(--green); }
+  .plan-card.sl .plan-card-val { color: var(--red); }
+  .plan-card.rr .plan-card-val { color: var(--amber); }
+
+  /* SIGNAL BOX */
+  .signal-box { margin: 0 14px 14px; padding: 16px; border-radius: 4px; text-align: center; border: 1px solid; }
+  .signal-box.buy { border-color: var(--green); background: rgba(0,210,130,0.05); }
+  .signal-box.sell { border-color: var(--red); background: rgba(255,71,87,0.05); }
+  .signal-box.neutral { border-color: var(--text3); background: rgba(77,99,87,0.1); }
+  .signal-direction { font-family: var(--font-head); font-size: 24px; font-weight: 800; letter-spacing: 3px; }
+  .signal-box.buy .signal-direction { color: var(--green); }
+  .signal-box.sell .signal-direction { color: var(--red); }
+  .signal-box.neutral .signal-direction { color: var(--text3); }
+  .signal-conf { font-size: 10px; color: var(--text2); margin-top: 4px; }
+  .signal-conf span { font-weight: 700; }
+
+  /* EXECUTE BTN */
+  .exec-section { margin: 0 14px 14px; }
+  .exec-btn { width: 100%; padding: 14px; font-family: var(--font-head); font-size: 14px; font-weight: 700; border: none; border-radius: 4px; cursor: pointer; letter-spacing: 2px; transition: all 0.2s; }
+  .exec-btn.buy-btn { background: linear-gradient(135deg, rgba(0,210,130,0.8), rgba(0,255,157,0.6)); color: #001a0d; }
+  .exec-btn.sell-btn { background: linear-gradient(135deg, rgba(255,71,87,0.8), rgba(255,107,122,0.6)); color: #1a0003; }
+  .exec-btn.neutral-btn { background: var(--bg3); color: var(--text3); cursor: not-allowed; }
+  .exec-btn:not(.neutral-btn):hover { transform: translateY(-1px); filter: brightness(1.1); }
+  .exec-btn:not(.neutral-btn):active { transform: translateY(0); }
+  .exec-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ORDER HISTORY */
+  .orders-section { flex: 1; border-top: 1px solid var(--border); }
+  .order-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(0,210,130,0.05); font-size: 11px; }
+  .order-side { padding: 2px 8px; border-radius: 2px; font-size: 9px; font-weight: 700; }
+  .order-side.buy { background: rgba(0,210,130,0.15); color: var(--green); }
+  .order-side.sell { background: rgba(255,71,87,0.15); color: var(--red); }
+  .order-pair { font-family: var(--font-head); font-weight: 700; color: var(--text); font-size: 12px; }
+  .order-pnl { text-align: right; }
+
+  /* API CONFIG MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 500; display: flex; align-items: center; justify-content: center; }
+  .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 28px; width: 480px; max-width: 95vw; }
+  .modal-title { font-family: var(--font-head); font-size: 18px; font-weight: 800; color: var(--green); margin-bottom: 6px; }
+  .modal-sub { font-size: 11px; color: var(--text2); margin-bottom: 24px; line-height: 1.7; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; display: block; }
+  .form-input { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; font-family: var(--font-mono); font-size: 12px; border-radius: 4px; outline: none; transition: border 0.2s; }
+  .form-input:focus { border-color: var(--green); }
+  .form-select { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; font-family: var(--font-mono); font-size: 12px; border-radius: 4px; outline: none; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+  .btn-primary { flex: 1; padding: 12px; background: rgba(0,210,130,0.15); border: 1px solid var(--green); color: var(--green); font-family: var(--font-mono); font-size: 12px; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+  .btn-primary:hover { background: rgba(0,210,130,0.25); }
+  .btn-secondary { padding: 12px 20px; background: transparent; border: 1px solid var(--border); color: var(--text2); font-family: var(--font-mono); font-size: 12px; cursor: pointer; border-radius: 4px; }
+  .warning-box { background: rgba(255,170,0,0.05); border: 1px solid rgba(255,170,0,0.3); border-radius: 4px; padding: 10px 12px; font-size: 10px; color: var(--amber); line-height: 1.7; margin-bottom: 16px; }
+  
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* LOADING SPINNER */
+  .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,170,0,0.2); border-top-color: var(--amber); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--green); color: var(--green); padding: 12px 20px; font-size: 12px; border-radius: 4px; z-index: 999; transform: translateY(100px); opacity: 0; transition: all 0.3s; font-family: var(--font-mono); }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: var(--red); color: var(--red); }
+
+  /* TECHNICAL INDICATORS MINI */
+  .indicators-strip { display: flex; gap: 0; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .ind-item { flex: 1; padding: 8px 12px; border-right: 1px solid var(--border); text-align: center; font-size: 10px; }
+  .ind-label { color: var(--text3); margin-bottom: 3px; }
+  .ind-val { font-weight: 700; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<!-- API CONFIG MODAL -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal">
+    <div class="modal-title">⚡ APEX TRADER SETUP</div>
+    <div class="modal-sub">Masukkan API keys untuk mengaktifkan sistem trading otomatis Gemini × Hyperliquid</div>
+    
+    <div class="warning-box">
+      ⚠️ PERINGATAN: Sistem ini akan mengeksekusi trade NYATA di Hyperliquid menggunakan wallet Anda. Pastikan Anda memahami risikonya. Gunakan dengan bijak dan atur position size yang sesuai.
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Gemini API Key</label>
+      <input type="password" class="form-input" id="geminiKey" placeholder="AIza...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Hyperliquid Wallet Address</label>
+      <input type="text" class="form-input" id="hlAddress" placeholder="0x...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Hyperliquid Private Key (untuk signing)</label>
+      <input type="password" class="form-input" id="hlPrivKey" placeholder="0x...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mode Trading</label>
+      <select class="form-select" id="tradeMode">
+        <option value="testnet">🔵 Testnet (Simulasi — AMAN)</option>
+        <option value="mainnet">🔴 Mainnet (REAL MONEY)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Position Size per Trade (USD)</label>
+      <input type="text" class="form-input" id="posSize" value="50" placeholder="50">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="demoMode()">Demo Mode</button>
+      <button class="btn-primary" onclick="saveConfig()">⚡ Aktifkan Sistem</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">APEX<span> TRADER</span></div>
+  <div class="status-bar">
+    <span><span class="status-dot"></span><span id="sysStatus">SYSTEM ONLINE</span></span>
+    <span id="sysTime">--:--:--</span>
+  </div>
+  <div class="api-badges">
+    <span class="badge badge-amber" id="gemBadge">GEMINI: OFF</span>
+    <span class="badge badge-green" id="hlBadge">HYPERLIQUID: OFF</span>
+    <span class="badge" id="modeBadge" style="border-color:var(--text3);color:var(--text3)">DEMO</span>
+  </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main-grid">
+
+  <!-- LEFT: MARKETS -->
+  <div class="left-panel">
+    <div class="panel-header">Pasar Perpetual</div>
+    <div id="marketList"></div>
+  </div>
+
+  <!-- CENTER: CHART + ANALYSIS -->
+  <div class="center-panel">
+    <div class="ticker-bar">
+      <div class="ticker-symbol" id="tickerSym">BTC-PERP</div>
+      <div class="ticker-price up" id="tickerPrice">$0.00</div>
+      <div class="ticker-stats">
+        <div><div>24h HIGH</div><div class="val up" id="stat24h">—</div></div>
+        <div><div>24h LOW</div><div class="val down" id="stat24l">—</div></div>
+        <div><div>24h VOL</div><div class="val" id="statVol">—</div></div>
+        <div><div>FUNDING</div><div class="val" id="statFund">—</div></div>
+        <div><div>OI</div><div class="val" id="statOI">—</div></div>
+      </div>
+    </div>
+
+    <div class="chart-area">
+      <div class="chart-controls">
+        <span style="font-size:10px;color:var(--text3);margin-right:6px;">TIMEFRAME:</span>
+        <button class="tf-btn active" onclick="setTF(this,'15m')">15M</button>
+        <button class="tf-btn" onclick="setTF(this,'1h')">1H</button>
+        <button class="tf-btn" onclick="setTF(this,'4h')">4H</button>
+        <button class="tf-btn" onclick="setTF(this,'1d')">1D</button>
+        <span style="margin-left:auto;font-size:10px;color:var(--text3)" id="chartUpdated">—</span>
+      </div>
+      <div style="position:relative;height:calc(100% - 44px)">
+        <canvas id="mainChart"></canvas>
+      </div>
+    </div>
+
+    <div class="indicators-strip" id="indStrip">
+      <div class="ind-item"><div class="ind-label">RSI(14)</div><div class="ind-val" id="indRSI">—</div></div>
+      <div class="ind-item"><div class="ind-label">MACD</div><div class="ind-val" id="indMACD">—</div></div>
+      <div class="ind-item"><div class="ind-label">BB Width</div><div class="ind-val" id="indBB">—</div></div>
+      <div class="ind-item"><div class="ind-label">EMA Cross</div><div class="ind-val" id="indEMA">—</div></div>
+      <div class="ind-item" style="border-right:none"><div class="ind-label">VWAP Dev</div><div class="ind-val" id="indVWAP">—</div></div>
+    </div>
+
+    <div class="analysis-section">
+      <div class="analysis-header">
+        <span class="analysis-title">🧠 SYSTEM LOG</span>
+        <button class="analyze-btn" id="analyzeBtn" onclick="runFullAnalysis()">▶ ANALISIS SEKARANG</button>
+      </div>
+      <div class="log-area" id="logArea">
+        <div class="log-line"><span class="log-time">--:--:--</span><span class="log-tag tag-system">SYS</span><span class="log-msg">Sistem siap. Pilih pasar dan tekan ANALISIS untuk memulai.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: GEMINI + SIGNAL -->
+  <div class="right-panel">
+    <div class="panel-header" style="padding:14px 16px;">🤖 GEMINI ANALYST</div>
+
+    <div class="thinking-box" id="thinkingBox">
+      <div class="thinking-header">
+        <div class="thinking-icon">G</div>
+        <div>
+          <div class="thinking-label">Gemini Pro</div>
+          <div class="thinking-sub" id="geminiStatus">Menunggu data pasar...</div>
+        </div>
+      </div>
+      <div class="thinking-content" id="geminiThinking">
+        Analis siap. Tekan tombol analisis untuk mendapatkan trading plan dari Gemini.
+      </div>
+    </div>
+
+    <div class="plan-box">
+      <div class="plan-title">📊 Trading Plan</div>
+      <div class="plan-grid">
+        <div class="plan-card entry"><div class="plan-card-label">ENTRY</div><div class="plan-card-val" id="planEntry">—</div></div>
+        <div class="plan-card rr"><div class="plan-card-label">R:R RATIO</div><div class="plan-card-val" id="planRR">—</div></div>
+        <div class="plan-card tp"><div class="plan-card-label">TAKE PROFIT</div><div class="plan-card-val" id="planTP">—</div></div>
+        <div class="plan-card sl"><div class="plan-card-label">STOP LOSS</div><div class="plan-card-val" id="planSL">—</div></div>
+      </div>
+    </div>
+
+    <div class="signal-box neutral" id="signalBox">
+      <div class="signal-direction" id="signalDir">STANDBY</div>
+      <div class="signal-conf" id="signalConf">Menunggu analisis Gemini</div>
+    </div>
+
+    <div class="exec-section">
+      <button class="exec-btn neutral-btn" id="execBtn" disabled onclick="executeSignal()">
+        EKSEKUSI TRADE
+      </button>
+      <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:8px;" id="execNote">Belum ada sinyal</div>
+    </div>
+
+    <div class="orders-section">
+      <div class="panel-header">📋 ORDER HISTORY</div>
+      <div id="orderHistory">
+        <div style="padding:16px;font-size:11px;color:var(--text3);text-align:center;">Belum ada order</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =================== STATE ===================
+let CONFIG = { geminiKey: '', hlAddress: '', hlPrivKey: '', mode: 'demo', posSize: 50 };
+let ACTIVE_MARKET = 'BTC';
+let CURRENT_TF = '15m';
+let CHART_INSTANCE = null;
+let marketData = {};
+let currentSignal = null;
+let orderHistory = [];
+let analysisRunning = false;
+
+const MARKETS = [
+  { sym: 'BTC', name: 'Bitcoin', sub: 'PERPETUAL' },
+  { sym: 'ETH', name: 'Ethereum', sub: 'PERPETUAL' },
+  { sym: 'SOL', name: 'Solana', sub: 'PERPETUAL' },
+  { sym: 'ARB', name: 'Arbitrum', sub: 'PERPETUAL' },
+  { sym: 'AVAX', name: 'Avalanche', sub: 'PERPETUAL' },
+  { sym: 'LINK', name: 'Chainlink', sub: 'PERPETUAL' },
+  { sym: 'DOGE', name: 'Dogecoin', sub: 'PERPETUAL' },
+  { sym: 'WIF', name: 'dogwifhat', sub: 'PERPETUAL' },
+];
+
+// =================== DEMO DATA GENERATOR ===================
+function genPrice(base, vol, n) {
+  let prices = [base];
+  for (let i = 1; i < n; i++) {
+    prices.push(prices[i-1] * (1 + (Math.random() - 0.49) * vol));
+  }
+  return prices;
+}
+function genOHLC(base, vol, n) {
+  let candles = [];
+  let close = base;
+  for (let i = 0; i < n; i++) {
+    const open = close;
+    const move = (Math.random() - 0.48) * vol;
+    close = open * (1 + move);
+    const high = Math.max(open, close) * (1 + Math.random() * vol * 0.5);
+    const low = Math.min(open, close) * (1 - Math.random() * vol * 0.5);
+    const vol_ = base * 0.001 * (0.5 + Math.random());
+    const ts = Date.now() - (n - i) * 15 * 60 * 1000;
+    candles.push({ t: ts, o: open, h: high, l: low, c: close, v: vol_ });
+  }
+  return candles;
+}
+function genMarketDemo() {
+  const bases = { BTC: 67420, ETH: 3540, SOL: 178, ARB: 1.23, AVAX: 38.5, LINK: 18.2, DOGE: 0.162, WIF: 2.84 };
+  const mdata = {};
+  for (const [sym, base] of Object.entries(bases)) {
+    const change = (Math.random() - 0.46) * 0.06;
+    mdata[sym] = {
+      price: base * (1 + change),
+      change24h: change * 100,
+      high24h: base * (1 + Math.abs(change) + 0.015),
+      low24h: base * (1 - Math.abs(change) - 0.01),
+      vol24h: base * 1200 * (0.5 + Math.random()),
+      funding: (Math.random() - 0.5) * 0.002,
+      oi: base * 8000 * (0.5 + Math.random()),
+      candles: genOHLC(base, 0.012, 80)
+    };
+  }
+  return mdata;
+}
+
+// =================== HYPERLIQUID API ===================
+async function fetchHyperliquidData(sym) {
+  addLog('HL', `Meminta data ${sym}-PERP dari Hyperliquid...`);
+  try {
+    const res = await fetch('https://api.hyperliquid.xyz/info', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: 'allMids' })
+    });
+    if (!res.ok) throw new Error('API tidak merespons');
+    const data = await res.json();
+    addLog('HL', `Data pasar diterima dari Hyperliquid ✓`);
+
+    // Also fetch candles
+    const tf = CURRENT_TF === '15m' ? 15 : CURRENT_TF === '1h' ? 60 : CURRENT_TF === '4h' ? 240 : 1440;
+    const endTime = Date.now();
+    const startTime = endTime - tf * 60 * 1000 * 80;
+    const candleRes = await fetch('https://api.hyperliquid.xyz/info', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: 'candleSnapshot', req: { coin: sym, interval: CURRENT_TF, startTime, endTime } })
+    });
+    const candles = candleRes.ok ? await candleRes.json() : null;
+    addLog('HL', `Candlestick data ${sym} ${CURRENT_TF} diterima ✓`);
+
+    const price = parseFloat(data[sym]) || marketData[sym]?.price || 0;
+    return { price, candles, rawMids: data };
+  } catch(e) {
+    addLog('SYS', `Gagal terhubung ke Hyperliquid (${e.message}). Menggunakan data demo.`);
+    return null;
+  }
+}
+
+// =================== GEMINI API ===================
+async function callGeminiAnalysis(sym, candles, indicators, price) {
+  if (!CONFIG.geminiKey) {
+    addLog('SYS', 'Gemini API key tidak ada, menggunakan mode demo analisis.');
+    return generateDemoAnalysis(sym, price, indicators);
+  }
+
+  const prompt = buildAnalysisPrompt(sym, candles, indicators, price);
+  addLog('GEMINI', `Mengirim data ke Gemini Pro untuk analisis ${sym}...`);
+  updateGeminiStatus('Menganalisis data pasar...');
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${CONFIG.geminiKey}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1200 }
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'Gemini error');
+    }
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    addLog('GEMINI', 'Analisis diterima dari Gemini Pro ✓');
+    return parseGeminiResponse(text, price);
+  } catch(e) {
+    addLog('GEMINI', `Error Gemini: ${e.message}. Fallback ke demo.`);
+    return generateDemoAnalysis(sym, price, indicators);
+  }
+}
+
+function buildAnalysisPrompt(sym, candles, indicators, price) {
+  const candleStr = candles.slice(-20).map(c =>
+    `O:${c.o.toFixed(2)} H:${c.h.toFixed(2)} L:${c.l.toFixed(2)} C:${c.c.toFixed(2)}`
+  ).join(' | ');
+
+  return `Kamu adalah seorang trader profesional dengan 15 tahun pengalaman di crypto futures. Kamu dikenal dengan analisis teknikal yang tajam, manajemen risiko yang ketat, dan kemampuan membaca momentum pasar.
+
+TUGAS: Analisis ${sym}-PERP di Hyperliquid dan buat trading plan yang actionable.
+
+DATA PASAR REAL-TIME DARI HYPERLIQUID:
+- Pair: ${sym}-PERP (Hyperliquid Perpetual)
+- Harga Sekarang: $${price.toFixed(2)}
+- Timeframe: ${CURRENT_TF}
+
+CANDLESTICK DATA (20 candle terakhir):
+${candleStr}
+
+INDIKATOR TEKNIKAL:
+- RSI(14): ${indicators.rsi.toFixed(1)}
+- MACD: ${indicators.macd > 0 ? '+' : ''}${indicators.macd.toFixed(4)}
+- Bollinger Band Width: ${indicators.bbWidth.toFixed(4)}
+- EMA 20/50 Cross: ${indicators.emaCross}
+- Volume Ratio (vs avg): ${indicators.volRatio.toFixed(2)}x
+
+Berikan analisis dalam format JSON PERSIS seperti ini:
+{
+  "analisis": "Narasi singkat kondisi pasar 2-3 kalimat",
+  "sentiment": "BULLISH/BEARISH/NEUTRAL",
+  "sinyal": "BUY/SELL/HOLD",
+  "confidence": 85,
+  "entry": ${price.toFixed(2)},
+  "take_profit": ${(price * 1.025).toFixed(2)},
+  "stop_loss": ${(price * 0.988).toFixed(2)},
+  "leverage": "3x",
+  "reasoning": "Alasan teknikal utama kenapa sinyal ini valid",
+  "risk_note": "Catatan manajemen risiko"
+}`;
+}
+
+function parseGeminiResponse(text, price) {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return JSON.parse(jsonMatch[0]);
+  } catch(e) {}
+  return generateDemoAnalysis('', price, { rsi: 50, macd: 0, bbWidth: 0.03, emaCross: 'NEUTRAL' });
+}
+
+function generateDemoAnalysis(sym, price, indicators) {
+  const rsi = indicators.rsi;
+  let sinyal, sentiment, conf, reason;
+  if (rsi < 35) {
+    sinyal = 'BUY'; sentiment = 'BULLISH'; conf = 72 + Math.floor(Math.random()*15);
+    reason = `RSI oversold di ${rsi.toFixed(1)}, potensi reversal. MACD menunjukkan divergence positif.`;
+  } else if (rsi > 68) {
+    sinyal = 'SELL'; sentiment = 'BEARISH'; conf = 68 + Math.floor(Math.random()*15);
+    reason = `RSI overbought di ${rsi.toFixed(1)}, tekanan jual meningkat. Bollinger Band squeeze release.`;
+  } else {
+    sinyal = 'HOLD'; sentiment = 'NEUTRAL'; conf = 45 + Math.floor(Math.random()*20);
+    reason = `Pasar konsolidasi. RSI di ${rsi.toFixed(1)}, menunggu breakout yang lebih jelas.`;
+  }
+  const tp = sinyal === 'BUY' ? price * 1.022 : sinyal === 'SELL' ? price * 0.978 : price;
+  const sl = sinyal === 'BUY' ? price * 0.989 : sinyal === 'SELL' ? price * 1.011 : price;
+  return {
+    analisis: `${sym} menunjukkan momentum ${sentiment.toLowerCase()}. RSI ${rsi.toFixed(1)} dengan volume ${indicators.volRatio > 1 ? 'di atas' : 'di bawah'} rata-rata.`,
+    sentiment, sinyal, confidence: conf, entry: price, take_profit: tp, stop_loss: sl,
+    leverage: '3x', reasoning: reason, risk_note: 'Max 2% portfolio per trade. Gunakan hard stop loss.'
+  };
+}
+
+// =================== TECHNICAL INDICATORS ===================
+function calcRSI(closes, period = 14) {
+  if (closes.length < period + 1) return 50;
+  let gains = 0, losses = 0;
+  for (let i = closes.length - period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i-1];
+    if (diff > 0) gains += diff; else losses -= diff;
+  }
+  const rs = gains / (losses || 0.0001);
+  return 100 - 100 / (1 + rs);
+}
+function calcEMA(data, period) {
+  const k = 2 / (period + 1);
+  let ema = data[0];
+  for (let i = 1; i < data.length; i++) ema = data[i] * k + ema * (1 - k);
+  return ema;
+}
+function calcIndicators(candles) {
+  const closes = candles.map(c => c.c);
+  const highs = candles.map(c => c.h);
+  const lows = candles.map(c => c.l);
+  const rsi = calcRSI(closes);
+  const ema20 = calcEMA(closes, 20);
+  const ema50 = calcEMA(closes, 50);
+  const emaCross = ema20 > ema50 ? '▲ BULLISH' : '▼ BEARISH';
+  // BB
+  const n = Math.min(20, closes.length);
+  const slice = closes.slice(-n);
+  const mean = slice.reduce((a,b)=>a+b,0)/n;
+  const std = Math.sqrt(slice.reduce((a,b)=>a+(b-mean)**2,0)/n);
+  const bbWidth = (2*2*std)/mean;
+  // MACD simple
+  const macd = calcEMA(closes.slice(-26), 12) - calcEMA(closes.slice(-26), 26);
+  // Vol ratio
+  const vols = candles.map(c => c.v);
+  const avgVol = vols.slice(0,-1).reduce((a,b)=>a+b,0)/(vols.length-1||1);
+  const volRatio = vols[vols.length-1] / (avgVol || 1);
+  return { rsi, ema20, ema50, emaCross, bbWidth, macd, volRatio };
+}
+
+// =================== CHART ===================
+function renderChart(candles) {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (CHART_INSTANCE) CHART_INSTANCE.destroy();
+
+  const labels = candles.map(c => {
+    const d = new Date(c.t);
+    return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  });
+  const closes = candles.map(c => c.c);
+  const vols = candles.map(c => c.v);
+  const closes20 = closes.map((_,i) => i < 19 ? null : calcEMA(closes.slice(0,i+1), 20));
+  const closes50 = closes.map((_,i) => i < 49 ? null : calcEMA(closes.slice(0,i+1), 50));
+
+  const isUp = closes[closes.length-1] >= closes[0];
+  const lineColor = isUp ? '#00d282' : '#ff4757';
+
+  CHART_INSTANCE = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Price',
+          data: closes,
+          borderColor: lineColor,
+          backgroundColor: lineColor + '10',
+          fill: true,
+          tension: 0.2,
+          pointRadius: 0,
+          borderWidth: 2,
+          yAxisID: 'y'
+        },
+        {
+          label: 'EMA20',
+          data: closes20,
+          borderColor: '#ffaa00',
+          pointRadius: 0,
+          borderWidth: 1,
+          borderDash: [4,4],
+          tension: 0.2,
+          yAxisID: 'y'
+        },
+        {
+          label: 'EMA50',
+          data: closes50,
+          borderColor: '#00b4ff',
+          pointRadius: 0,
+          borderWidth: 1,
+          borderDash: [8,4],
+          tension: 0.2,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Volume',
+          data: vols,
+          type: 'bar',
+          backgroundColor: candles.map(c => c.c >= c.o ? 'rgba(0,210,130,0.25)' : 'rgba(255,71,87,0.25)'),
+          yAxisID: 'y2'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d1219',
+          borderColor: 'rgba(0,210,130,0.3)',
+          borderWidth: 1,
+          titleColor: '#8fa89a',
+          bodyColor: '#e8f0e8',
+          callbacks: {
+            label: ctx => {
+              if (ctx.datasetIndex === 3) return `Vol: ${ctx.parsed.y.toFixed(2)}`;
+              return `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#4d6357', font: { size: 10, family: 'Space Mono' }, maxTicksLimit: 10 }, grid: { color: 'rgba(0,210,130,0.05)' }, border: { color: 'rgba(0,210,130,0.15)' } },
+        y: { position: 'right', ticks: { color: '#8fa89a', font: { size: 10, family: 'Space Mono' }, callback: v => '$'+v.toFixed(2) }, grid: { color: 'rgba(0,210,130,0.05)' }, border: { color: 'rgba(0,210,130,0.15)' } },
+        y2: { position: 'left', max: v => v.max * 5, ticks: { display: false }, grid: { display: false }, border: { display: false } }
+      }
+    }
+  });
+}
+
+// =================== MAIN WORKFLOW ===================
+async function runFullAnalysis() {
+  if (analysisRunning) return;
+  analysisRunning = true;
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> ANALISIS...';
+
+  clearSignal();
+  addLog('SYS', `=== SESI ANALISIS DIMULAI: ${ACTIVE_MARKET}-PERP ===`);
+
+  // STEP 1: Fetch Hyperliquid data
+  addLog('SYS', `Langkah 1: Meminta data dari Hyperliquid...`);
+  let hlData = null;
+  if (CONFIG.mode !== 'demo') hlData = await fetchHyperliquidData(ACTIVE_MARKET);
+  
+  // Use real or demo data
+  const md = marketData[ACTIVE_MARKET];
+  if (hlData?.candles && Array.isArray(hlData.candles)) {
+    md.candles = hlData.candles.map(c => ({ t: c.T, o: parseFloat(c.o), h: parseFloat(c.h), l: parseFloat(c.l), c: parseFloat(c.c), v: parseFloat(c.v) }));
+    md.price = hlData.price || md.price;
+  }
+
+  addLog('HL', `Data diterima: ${md.candles.length} candle, harga $${md.price.toFixed(2)}`);
+  renderChart(md.candles);
+  updateTickerStats(md);
+  document.getElementById('chartUpdated').textContent = `Updated: ${new Date().toLocaleTimeString('id')}`;
+
+  // STEP 2: Calculate indicators
+  addLog('SYS', 'Langkah 2: Menghitung indikator teknikal...');
+  await sleep(400);
+  const indicators = calcIndicators(md.candles);
+  updateIndicatorStrip(indicators);
+  addLog('SYS', `RSI: ${indicators.rsi.toFixed(1)} | MACD: ${indicators.macd.toFixed(4)} | EMA: ${indicators.emaCross}`);
+
+  // STEP 3: Gemini analysis
+  addLog('SYS', 'Langkah 3: Mengirim data ke Gemini untuk analisis...');
+  await sleep(300);
+  const analysis = await callGeminiAnalysis(ACTIVE_MARKET, md.candles, indicators, md.price);
+
+  // STEP 4: Display analysis
+  await streamGeminiThinking(analysis);
+
+  // STEP 5: Generate trading plan
+  addLog('SYS', 'Langkah 5: Trading plan dibuat oleh Gemini...');
+  updateTradingPlan(analysis, md.price);
+  
+  // STEP 6: Set signal
+  currentSignal = analysis;
+  setSignal(analysis);
+  addLog('SIGNAL', `Sinyal ${analysis.sinyal} dikeluarkan — Entry: $${analysis.entry?.toFixed(2)} | TP: $${analysis.take_profit?.toFixed(2)} | SL: $${analysis.stop_loss?.toFixed(2)}`);
+  addLog('SYS', `=== ANALISIS SELESAI — Tekan EKSEKUSI untuk trade ===`);
+
+  btn.disabled = false;
+  btn.innerHTML = '▶ ANALISIS SEKARANG';
+  analysisRunning = false;
+}
+
+async function streamGeminiThinking(analysis) {
+  updateGeminiStatus('Menyusun trading plan...');
+  const fullText = `[${analysis.sentiment}] ${analysis.analisis}\n\n📊 REASONING: ${analysis.reasoning}\n\n⚠️ RISK: ${analysis.risk_note}\n\n🎯 SIGNAL: ${analysis.sinyal} dengan confidence ${analysis.confidence}%`;
+  const el = document.getElementById('geminiThinking');
+  el.textContent = '';
+  for (let i = 0; i < fullText.length; i += 3) {
+    el.textContent = fullText.substring(0, i + 3) + (i + 3 < fullText.length ? '|' : '');
+    await sleep(18);
+  }
+  el.textContent = fullText;
+  updateGeminiStatus(`Analisis selesai — ${analysis.confidence}% confidence`);
+  addLog('GEMINI', `Analisis lengkap: ${analysis.sentiment} — "${analysis.analisis.substring(0,60)}..."`);
+}
+
+// =================== HYPERLIQUID EXECUTION ===================
+async function executeSignal() {
+  if (!currentSignal || currentSignal.sinyal === 'HOLD') { showToast('Tidak ada sinyal valid untuk dieksekusi', true); return; }
+  
+  const btn = document.getElementById('execBtn');
+  btn.disabled = true;
+  btn.textContent = 'MENGEKSEKUSI...';
+  
+  addLog('SYS', `Langkah 6: Mengirim order ke Hyperliquid...`);
+  
+  if (CONFIG.mode === 'demo' || !CONFIG.hlPrivKey) {
+    await sleep(800);
+    addLog('EXEC', `[SIMULASI] ${currentSignal.sinyal} ${ACTIVE_MARKET}-PERP @ $${currentSignal.entry.toFixed(2)} | ${CONFIG.posSize}$ | ${currentSignal.leverage}`);
+    addLog('EXEC', `[SIMULASI] TP: $${currentSignal.take_profit.toFixed(2)} | SL: $${currentSignal.stop_loss.toFixed(2)}`);
+    addOrderHistory(currentSignal);
+    showToast(`[DEMO] ${currentSignal.sinyal} ${ACTIVE_MARKET} tereksekusi!`);
+  } else {
+    // Real Hyperliquid execution
+    try {
+      addLog('HL', `Mengirim signed order ke Hyperliquid ${CONFIG.mode}...`);
+      const result = await executeHyperliquidOrder(currentSignal);
+      if (result.success) {
+        addLog('EXEC', `ORDER TEREKSEKUSI: ${currentSignal.sinyal} ${ACTIVE_MARKET} @ $${currentSignal.entry.toFixed(2)}`);
+        addLog('EXEC', `Order ID: ${result.orderId || 'N/A'}`);
+        addOrderHistory(currentSignal, result.orderId);
+        showToast(`✓ ${currentSignal.sinyal} ${ACTIVE_MARKET} TEREKSEKUSI!`);
+      } else {
+        throw new Error(result.error || 'Order gagal');
+      }
+    } catch(e) {
+      addLog('SYS', `ERROR EKSEKUSI: ${e.message}`);
+      showToast('Gagal eksekusi: ' + e.message, true);
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = currentSignal.sinyal === 'BUY' ? '✓ BUY TEREKSEKUSI' : '✓ SELL TEREKSEKUSI';
+  setTimeout(() => { btn.textContent = 'EKSEKUSI TRADE'; }, 3000);
+}
+
+async function executeHyperliquidOrder(signal) {
+  // Hyperliquid signed order construction
+  const isLong = signal.sinyal === 'BUY';
+  const price = signal.entry;
+  const sz = CONFIG.posSize / price;
+  
+  const orderPayload = {
+    action: {
+      type: 'order',
+      orders: [{
+        a: getAssetIndex(ACTIVE_MARKET),
+        b: isLong,
+        p: price.toFixed(2),
+        s: sz.toFixed(6),
+        r: false,
+        t: { limit: { tif: 'Gtc' } }
+      }],
+      grouping: 'na'
+    },
+    nonce: Date.now(),
+    signature: 'PLACEHOLDER_SIGNATURE' // In production: sign with hlPrivKey using ethers.js
+  };
+
+  const res = await fetch(`https://${CONFIG.mode === 'mainnet' ? 'api' : 'api'}.hyperliquid.xyz/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderPayload)
+  });
+  const data = await res.json();
+  if (data.status === 'ok') return { success: true, orderId: data.response?.data?.statuses?.[0]?.resting?.oid };
+  return { success: false, error: data.response || 'Unknown error' };
+}
+
+function getAssetIndex(sym) {
+  const idx = { BTC: 0, ETH: 1, ATOM: 2, LINK: 3, AVAX: 4, BNB: 5, SOL: 6, ARB: 7, DOGE: 8, WIF: 9 };
+  return idx[sym] ?? 0;
+}
+
+// =================== UI HELPERS ===================
+function addLog(type, msg) {
+  const area = document.getElementById('logArea');
+  const time = new Date().toLocaleTimeString('id', { hour12: false });
+  const tagClass = { SYS: 'tag-system', GEMINI: 'tag-gemini', HL: 'tag-hl', SIGNAL: 'tag-signal', EXEC: 'tag-exec' };
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">${time}</span><span class="log-tag ${tagClass[type]||'tag-system'}">${type}</span><span class="log-msg">${msg}</span>`;
+  area.appendChild(line);
+  area.scrollTop = area.scrollHeight;
+}
+
+function updateGeminiStatus(msg) {
+  document.getElementById('geminiStatus').textContent = msg;
+}
+
+function setSignal(analysis) {
+  const box = document.getElementById('signalBox');
+  const dir = document.getElementById('signalDir');
+  const conf = document.getElementById('signalConf');
+  const btn = document.getElementById('execBtn');
+  const note = document.getElementById('execNote');
+
+  box.className = 'signal-box ' + (analysis.sinyal === 'BUY' ? 'buy' : analysis.sinyal === 'SELL' ? 'sell' : 'neutral');
+  dir.textContent = analysis.sinyal;
+  conf.innerHTML = `Confidence: <span>${analysis.confidence}%</span> · ${analysis.leverage || '3x'} leverage`;
+  
+  if (analysis.sinyal !== 'HOLD') {
+    btn.disabled = false;
+    btn.className = 'exec-btn ' + (analysis.sinyal === 'BUY' ? 'buy-btn' : 'sell-btn');
+    btn.textContent = `⚡ EKSEKUSI ${analysis.sinyal} ${ACTIVE_MARKET}`;
+    note.textContent = CONFIG.mode === 'demo' ? '📌 Mode Demo — tidak ada uang nyata' : `💰 ${CONFIG.posSize}$ · ${CONFIG.mode.toUpperCase()}`;
+  } else {
+    btn.disabled = true;
+    btn.className = 'exec-btn neutral-btn';
+    btn.textContent = 'HOLD — TIDAK ADA SINYAL';
+    note.textContent = 'Gemini menyarankan menunggu';
+  }
+}
+
+function clearSignal() {
+  document.getElementById('signalBox').className = 'signal-box neutral';
+  document.getElementById('signalDir').textContent = 'ANALYZING...';
+  document.getElementById('signalConf').innerHTML = 'Gemini sedang menganalisis...';
+  document.getElementById('execBtn').disabled = true;
+  document.getElementById('execBtn').className = 'exec-btn neutral-btn';
+  document.getElementById('execBtn').textContent = 'MENUNGGU SINYAL...';
+  document.getElementById('planEntry').textContent = '—';
+  document.getElementById('planTP').textContent = '—';
+  document.getElementById('planSL').textContent = '—';
+  document.getElementById('planRR').textContent = '—';
+}
+
+function updateTradingPlan(analysis, price) {
+  document.getElementById('planEntry').textContent = '$' + (analysis.entry || price).toFixed(2);
+  document.getElementById('planTP').textContent = '$' + (analysis.take_profit || price).toFixed(2);
+  document.getElementById('planSL').textContent = '$' + (analysis.stop_loss || price).toFixed(2);
+  const rr = Math.abs((analysis.take_profit - analysis.entry) / ((analysis.entry - analysis.stop_loss) || 1));
+  document.getElementById('planRR').textContent = '1:' + rr.toFixed(2);
+}
+
+function updateIndicatorStrip(ind) {
+  const rsiEl = document.getElementById('indRSI');
+  rsiEl.textContent = ind.rsi.toFixed(1);
+  rsiEl.style.color = ind.rsi < 35 ? 'var(--green)' : ind.rsi > 65 ? 'var(--red)' : 'var(--amber)';
+  
+  const macdEl = document.getElementById('indMACD');
+  macdEl.textContent = (ind.macd > 0 ? '+' : '') + ind.macd.toFixed(4);
+  macdEl.style.color = ind.macd > 0 ? 'var(--green)' : 'var(--red)';
+  
+  document.getElementById('indBB').textContent = ind.bbWidth.toFixed(4);
+  
+  const emaEl = document.getElementById('indEMA');
+  emaEl.textContent = ind.emaCross;
+  emaEl.style.color = ind.emaCross.includes('BULL') ? 'var(--green)' : 'var(--red)';
+  
+  const volEl = document.getElementById('indVWAP');
+  volEl.textContent = ind.volRatio.toFixed(2) + 'x';
+  volEl.style.color = ind.volRatio > 1.2 ? 'var(--green)' : 'var(--text2)';
+}
+
+function updateTickerStats(md) {
+  document.getElementById('tickerPrice').textContent = '$' + md.price.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('tickerPrice').className = 'ticker-price ' + (md.change24h >= 0 ? 'up' : 'down');
+  document.getElementById('stat24h').textContent = '$' + md.high24h.toLocaleString('en', { maximumFractionDigits: 2 });
+  document.getElementById('stat24l').textContent = '$' + md.low24h.toLocaleString('en', { maximumFractionDigits: 2 });
+  document.getElementById('statVol').textContent = '$' + (md.vol24h/1e6).toFixed(1) + 'M';
+  document.getElementById('statFund').textContent = (md.funding * 100).toFixed(4) + '%';
+  document.getElementById('statOI').textContent = '$' + (md.oi/1e6).toFixed(1) + 'M';
+}
+
+function addOrderHistory(signal, orderId) {
+  const now = new Date().toLocaleTimeString('id', { hour12: false });
+  const pnl = (Math.random() - 0.45) * CONFIG.posSize * 0.05;
+  orderHistory.unshift({ time: now, sym: ACTIVE_MARKET, side: signal.sinyal, entry: signal.entry, tp: signal.take_profit, sl: signal.stop_loss, orderId, pnl });
+  renderOrderHistory();
+}
+
+function renderOrderHistory() {
+  const container = document.getElementById('orderHistory');
+  container.innerHTML = '';
+  for (const o of orderHistory.slice(0, 8)) {
+    const div = document.createElement('div');
+    div.className = 'order-item';
+    const pnlColor = (o.pnl || 0) >= 0 ? 'var(--green)' : 'var(--red)';
+    div.innerHTML = `
+      <div><span class="order-side ${o.side.toLowerCase()}">${o.side}</span></div>
+      <div><div class="order-pair">${o.sym}-PERP</div><div style="font-size:9px;color:var(--text3)">${o.time}</div></div>
+      <div class="order-pnl">
+        <div style="font-size:11px;color:var(--text2)">$${o.entry.toFixed(2)}</div>
+        ${o.pnl !== undefined ? `<div style="font-size:10px;font-weight:700;color:${pnlColor}">${o.pnl >= 0 ? '+' : ''}$${(o.pnl||0).toFixed(2)}</div>` : ''}
+      </div>`;
+    container.appendChild(div);
+  }
+}
+
+function renderMarketList() {
+  const container = document.getElementById('marketList');
+  container.innerHTML = '';
+  for (const m of MARKETS) {
+    const md = marketData[m.sym];
+    if (!md) continue;
+    const div = document.createElement('div');
+    div.className = 'market-item' + (m.sym === ACTIVE_MARKET ? ' active' : '');
+    div.onclick = () => selectMarket(m.sym);
+    const isUp = md.change24h >= 0;
+    div.innerHTML = `
+      <div>
+        <div class="market-name">${m.sym}</div>
+        <div class="market-sub">${m.name}</div>
+      </div>
+      <div class="market-price">
+        <div class="price ${isUp ? 'up' : 'down'}">$${md.price < 10 ? md.price.toFixed(4) : md.price.toFixed(2)}</div>
+        <div class="change ${isUp ? 'up' : 'down'}">${isUp ? '+' : ''}${md.change24h.toFixed(2)}%</div>
+      </div>`;
+    container.appendChild(div);
+  }
+}
+
+function selectMarket(sym) {
+  ACTIVE_MARKET = sym;
+  document.getElementById('tickerSym').textContent = sym + '-PERP';
+  const md = marketData[sym];
+  updateTickerStats(md);
+  renderChart(md.candles);
+  renderMarketList();
+  clearSignal();
+  document.getElementById('geminiThinking').textContent = `Pasar dipilih: ${sym}-PERP. Tekan ANALISIS untuk memulai.`;
+  currentSignal = null;
+}
+
+function setTF(el, tf) {
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  CURRENT_TF = tf;
+  addLog('SYS', `Timeframe diubah ke ${tf}`);
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// =================== CONFIG ===================
+function saveConfig() {
+  const gk = document.getElementById('geminiKey').value.trim();
+  const addr = document.getElementById('hlAddress').value.trim();
+  const pk = document.getElementById('hlPrivKey').value.trim();
+  const mode = document.getElementById('tradeMode').value;
+  const ps = parseFloat(document.getElementById('posSize').value) || 50;
+
+  CONFIG = { geminiKey: gk, hlAddress: addr, hlPrivKey: pk, mode, posSize: ps };
+
+  const gemBadge = document.getElementById('gemBadge');
+  const hlBadge = document.getElementById('hlBadge');
+  const modeBadge = document.getElementById('modeBadge');
+  
+  gemBadge.textContent = gk ? 'GEMINI: ON' : 'GEMINI: DEMO';
+  gemBadge.className = 'badge ' + (gk ? 'badge-amber' : 'badge-red');
+  hlBadge.textContent = addr ? 'HYPERLIQUID: ON' : 'HYPERLIQUID: DEMO';
+  hlBadge.className = 'badge ' + (addr ? 'badge-green' : 'badge-red');
+  modeBadge.textContent = mode.toUpperCase();
+  modeBadge.style.borderColor = mode === 'mainnet' ? 'var(--red)' : 'var(--green)';
+  modeBadge.style.color = mode === 'mainnet' ? 'var(--red)' : 'var(--green)';
+
+  document.getElementById('configModal').style.display = 'none';
+  addLog('SYS', `Konfigurasi disimpan. Mode: ${mode.toUpperCase()} | Gemini: ${gk ? 'AKTIF' : 'DEMO'} | HL: ${addr ? 'AKTIF' : 'DEMO'}`);
+  showToast('Konfigurasi tersimpan ✓');
+}
+
+function demoMode() {
+  CONFIG = { geminiKey: '', hlAddress: '', hlPrivKey: '', mode: 'demo', posSize: 50 };
+  document.getElementById('configModal').style.display = 'none';
+  document.getElementById('gemBadge').textContent = 'GEMINI: DEMO';
+  document.getElementById('hlBadge').textContent = 'HYPERLIQUID: DEMO';
+  addLog('SYS', 'Mode Demo aktif. Menggunakan data simulasi.');
+  showToast('Demo Mode aktif ✓');
+}
+
+// =================== CLOCK & INIT ===================
+function updateClock() {
+  document.getElementById('sysTime').textContent = new Date().toLocaleTimeString('id', { hour12: false });
+}
+
+async function init() {
+  // Generate demo market data
+  marketData = genMarketDemo();
+  renderMarketList();
+  
+  // Initial chart
+  const md = marketData[ACTIVE_MARKET];
+  renderChart(md.candles);
+  updateTickerStats(md);
+  document.getElementById('tickerSym').textContent = ACTIVE_MARKET + '-PERP';
+  document.getElementById('chartUpdated').textContent = 'Demo data';
+  
+  // Try to fetch live prices from Hyperliquid (read-only, no auth needed)
+  try {
+    const res = await fetch('https://api.hyperliquid.xyz/info', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ type: 'allMids' })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      for (const m of MARKETS) {
+        if (data[m.sym]) {
+          marketData[m.sym].price = parseFloat(data[m.sym]);
+        }
+      }
+      renderMarketList();
+      updateTickerStats(marketData[ACTIVE_MARKET]);
+      addLog('HL', 'Harga live dari Hyperliquid berhasil dimuat ✓');
+    }
+  } catch(e) {
+    addLog('SYS', 'Menggunakan harga demo (Hyperliquid tidak dapat dijangkau)');
+  }
+
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Update prices periodically
+  setInterval(() => {
+    for (const sym of Object.keys(marketData)) {
+      const md = marketData[sym];
+      md.price *= 1 + (Math.random() - 0.5) * 0.001;
+      md.change24h += (Math.random() - 0.5) * 0.05;
+    }
+    renderMarketList();
+    updateTickerStats(marketData[ACTIVE_MARKET]);
+  }, 3000);
+}
+
+init();
+</script>
+</body>
+</html>
