@@ -1017,20 +1017,32 @@ async function fetchOrderBook(coin) {
   try {
     const d = await hlPost({ type: 'l2Book', coin });
     if (!d?.levels) return;
-    const asks = d.levels[1].slice(0, 6).reverse();
-    const bids = d.levels[0].slice(0, 6);
-    const mid = (parseFloat(asks[asks.length - 1][0].px) + parseFloat(bids[0][0].px)) / 2;
+
+    // Hyperliquid returns levels as array of arrays [{px,sz,n}]
+    const rawAsks = d.levels[1].slice(0, 6);
+    const rawBids = d.levels[0].slice(0, 6);
+
+    // Normalize: each level is array of {px, sz} or direct {px, sz}
+    const normLevel = l => Array.isArray(l) ? l[0] : l;
+    const asks = rawAsks.map(normLevel).reverse();
+    const bids = rawBids.map(normLevel);
+
+    if (!asks.length || !bids.length) return;
+
+    const midPx = (parseFloat(asks[asks.length-1].px) + parseFloat(bids[0].px)) / 2;
     const fmt = n => n > 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : parseFloat(n).toFixed(4);
-    const maxSz = Math.max(...[...asks, ...bids].map(l => parseFloat(l[0].sz)));
+    const allSz = [...asks, ...bids].map(l => parseFloat(l.sz));
+    const maxSz = Math.max(...allSz) || 1;
+
     let h = '<div class="ob-head"><span>PRICE</span><span>SIZE</span></div>';
     asks.forEach(l => {
-      const px = parseFloat(l[0].px), sz = parseFloat(l[0].sz);
+      const px = parseFloat(l.px), sz = parseFloat(l.sz);
       const pct = (sz / maxSz * 100).toFixed(0);
       h += `<div class="ob-row ask"><div class="ob-bar" style="width:${pct}%"></div><span class="ob-px">${fmt(px)}</span><span class="ob-sz">${sz.toFixed(3)}</span></div>`;
     });
-    h += `<div class="ob-mid">${fmt(mid)}</div>`;
+    h += `<div class="ob-mid">${fmt(midPx)}</div>`;
     bids.forEach(l => {
-      const px = parseFloat(l[0].px), sz = parseFloat(l[0].sz);
+      const px = parseFloat(l.px), sz = parseFloat(l.sz);
       const pct = (sz / maxSz * 100).toFixed(0);
       h += `<div class="ob-row bid"><div class="ob-bar" style="width:${pct}%"></div><span class="ob-px">${fmt(px)}</span><span class="ob-sz">${sz.toFixed(3)}</span></div>`;
     });
