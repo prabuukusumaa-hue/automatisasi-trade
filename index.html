@@ -981,7 +981,7 @@ async function fetchMarket() {
     await fetchCandles(coin);
     await fetchOrderBook(coin);
 
-  } catch (e) { /* silent */ }
+  } catch (e) { feed('sys', '❌ fetchMarket error: ' + e.message); }
 }
 
 async function fetchCandles(coin) {
@@ -1010,7 +1010,7 @@ async function fetchCandles(coin) {
     renderChart(G.candles.slice(-30));
     computeIndicators(G.candles);
 
-  } catch (e) { /* silent */ }
+  } catch (e) { feed('sys', '❌ fetchCandles error: ' + e.message); }
 }
 
 async function fetchOrderBook(coin) {
@@ -1035,7 +1035,7 @@ async function fetchOrderBook(coin) {
       h += `<div class="ob-row bid"><div class="ob-bar" style="width:${pct}%"></div><span class="ob-px">${fmt(px)}</span><span class="ob-sz">${sz.toFixed(3)}</span></div>`;
     });
     document.getElementById('obWrap').innerHTML = h;
-  } catch (e) { /* silent */ }
+  } catch (e) { feed('sys', '❌ fetchOrderBook error: ' + e.message); }
 }
 
 async function fetchTicker() {
@@ -1060,7 +1060,7 @@ async function fetchTicker() {
         cel.className = 'tick-chg ' + (chg >= 0 ? 'pos' : 'neg');
       }
     });
-  } catch (e) { /* silent */ }
+  } catch (e) { feed('sys', '❌ fetchTicker error: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════════════════
