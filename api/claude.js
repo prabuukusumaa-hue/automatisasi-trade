@@ -1,5 +1,5 @@
 // api/claude.js — Vercel Serverless Function
-// Handles Hyperliquid data + Gemini 2.5 Pro analysis (no CORS issues)
+// Hyperliquid proxy + Gemini 2.5 Pro analysis
 
 const HL = 'https://api.hyperliquid.xyz/info';
 
@@ -24,21 +24,20 @@ export default async function handler(req, res) {
 
   try {
 
-    // ── 1. Proxy semua request ke Hyperliquid ─────────────────────────────
+    // ── Proxy ke Hyperliquid ───────────────────────────────────────────────
     if (action === 'hl') {
-      // Ambil semua field kecuali 'action', teruskan ke Hyperliquid
       const { action: _a, ...hlBody } = req.body;
-      console.log('HL request body:', JSON.stringify(hlBody));
       const data = await hlPost(hlBody);
       return res.status(200).json({ success: true, data });
     }
 
-    // ── 4. Gemini analysis ─────────────────────────────────────────────────
+    // ── Gemini 2.5 Pro Analysis ────────────────────────────────────────────
     if (action === 'analyze') {
       const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('GEMINI_API_KEY tidak ditemukan di environment variables Vercel');
+      if (!apiKey) throw new Error('GEMINI_API_KEY tidak ada di Vercel Environment Variables');
 
       const { systemPrompt, userMsg } = req.body;
+      const fullPrompt = systemPrompt + '\n\n' + userMsg;
 
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
@@ -46,19 +45,29 @@ export default async function handler(req, res) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userMsg }] }],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+            contents: [{
+              role: 'user',
+              parts: [{ text: fullPrompt }]
+            }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 2048,
+            },
           }),
         }
       );
 
+      const raw = await r.text();
+
       if (!r.ok) {
-        const e = await r.json();
-        throw new Error('Gemini error: ' + (e.error?.message || r.status));
+        console.error('Gemini error:', raw);
+        throw new Error('Gemini API ' + r.status + ': ' + raw.slice(0, 200));
       }
 
-      const d = await r.json();
+      const d = JSON.parse(raw);
       const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (!text) throw new Error('Gemini response kosong');
+
       return res.status(200).json({ success: true, text });
     }
 
