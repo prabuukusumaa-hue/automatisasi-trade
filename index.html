@@ -1,926 +1,1561 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Gemini Pro × Hyperliquid</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:ital,wght@0,100;0,400;0,700;0,900;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #03050a;
+  --deep: #060d18;
+  --surface: #091424;
+  --raised: #0d1e35;
+  --rim: #112840;
+  --rim2: #1a3d5e;
+  --g-blue: #4285f4;
+  --g-red: #ea4335;
+  --g-yellow: #fbbc04;
+  --g-green: #34a853;
+  --hl-teal: #00d4aa;
+  --bull: #00e676;
+  --bear: #ff1744;
+  --neutral: #ffc400;
+  --text: #b8d4f0;
+  --sub: #4a7090;
+  --dim: #243d55;
+  --white: #e8f4ff;
+}
 
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const COINS = ["BTC", "ETH", "SOL", "ARB", "DOGE", "AVAX", "MATIC", "LINK"];
-const INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1d"];
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-// ─── HYPERLIQUID MOCK DATA ────────────────────────────────────────────────────
-const BASE_PRICES = { BTC: 67400, ETH: 3520, SOL: 178, ARB: 1.12, DOGE: 0.168, AVAX: 38.5, MATIC: 0.92, LINK: 17.8 };
+html { scroll-behavior: smooth; }
 
-function generateCandleData(symbol, interval, count = 80) {
-  const base = BASE_PRICES[symbol] || 100;
-  const intervalMs = { "1m": 60000, "5m": 300000, "15m": 900000, "1h": 3600000, "4h": 14400000, "1d": 86400000 }[interval] || 60000;
-  const candles = [];
-  let price = base * (0.95 + Math.random() * 0.1);
-  const now = Date.now();
-  for (let i = count; i >= 0; i--) {
-    const vol = base * 0.009;
-    const open = price + (Math.random() - 0.5) * vol * 0.3;
-    const change = (Math.random() - 0.47) * vol;
-    const close = open + change;
-    const high = Math.max(open, close) + Math.random() * vol * 0.4;
-    const low = Math.min(open, close) - Math.random() * vol * 0.4;
-    const volume = Math.random() * base * 60 + base * 15;
-    candles.push({ t: now - i * intervalMs, o: +open.toFixed(5), h: +high.toFixed(5), l: +low.toFixed(5), c: +close.toFixed(5), v: +volume.toFixed(2) });
-    price = close;
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: default;
+}
+
+/* ── atmospheric bg ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(66,133,244,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 90%, rgba(0,212,170,.05) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── fine dot grid ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(rgba(66,133,244,.12) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none; z-index: 0;
+}
+
+.layer { position: relative; z-index: 1; }
+
+/* ════════════════════ HEADER ════════════════════ */
+header {
+  display: flex; align-items: center; gap: 0;
+  background: linear-gradient(180deg, rgba(9,20,36,.98) 0%, rgba(6,13,24,.95) 100%);
+  border-bottom: 1px solid var(--rim);
+  padding: 0 24px;
+  height: 54px;
+  position: sticky; top: 0; z-index: 200;
+  backdrop-filter: blur(12px);
+}
+
+.brand {
+  display: flex; align-items: center; gap: 12px;
+  padding-right: 24px;
+  border-right: 1px solid var(--rim);
+}
+
+.brand-gem {
+  width: 32px; height: 32px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.brand-gem svg { width: 100%; height: 100%; }
+
+.brand-name {
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 4px;
+  color: var(--white);
+}
+
+.brand-name span { color: var(--g-blue); }
+
+.brand-sub {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--sub);
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+.hdr-pills {
+  display: flex; gap: 8px; padding: 0 24px;
+  border-right: 1px solid var(--rim);
+}
+
+.hdr-pill {
+  font-size: 10px; letter-spacing: 1.5px;
+  padding: 4px 12px; border-radius: 2px;
+  font-weight: 600; text-transform: uppercase;
+  cursor: pointer; transition: all .15s;
+  background: transparent;
+  border: 1px solid var(--rim);
+  color: var(--sub);
+  font-family: 'Rajdhani', sans-serif;
+}
+.hdr-pill.active { border-color: var(--g-blue); color: var(--g-blue); background: rgba(66,133,244,.08); }
+.hdr-pill:hover:not(.active) { border-color: var(--rim2); color: var(--text); }
+
+.hdr-ticker {
+  display: flex; gap: 20px; padding: 0 24px;
+  overflow: hidden; flex: 1;
+}
+
+.tick-item { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.tick-sym { font-size: 11px; font-weight: 700; color: var(--sub); letter-spacing: 1px; }
+.tick-price { font-size: 12px; color: var(--text); font-family: 'Exo 2', sans-serif; }
+.tick-chg { font-size: 10px; }
+.tick-chg.pos { color: var(--bull); }
+.tick-chg.neg { color: var(--bear); }
+
+.hdr-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 16px;
+}
+
+.sys-status {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+}
+
+.pulse-ring {
+  width: 10px; height: 10px; border-radius: 50%; position: relative;
+}
+.pulse-ring::before {
+  content: ''; position: absolute; inset: 0;
+  border-radius: 50%;
+  animation: ring 2s ease-out infinite;
+}
+
+.pulse-ring.offline { background: var(--sub); }
+.pulse-ring.offline::before { display: none; }
+.pulse-ring.online { background: var(--bull); }
+.pulse-ring.online::before { border: 2px solid var(--bull); animation: ring 2s ease-out infinite; }
+.pulse-ring.thinking { background: var(--g-yellow); }
+.pulse-ring.thinking::before { border: 2px solid var(--g-yellow); }
+.pulse-ring.executing { background: var(--g-blue); }
+.pulse-ring.executing::before { border: 2px solid var(--g-blue); }
+
+@keyframes ring {
+  0% { transform: scale(.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+#hdrTime { font-size: 11px; color: var(--sub); font-family: 'Exo 2', sans-serif; }
+
+/* ════════════════════ WARN BAR ════════════════════ */
+.warn-bar {
+  background: linear-gradient(90deg, rgba(234,67,53,.12), rgba(251,188,4,.08), rgba(234,67,53,.12));
+  border-bottom: 1px solid rgba(251,188,4,.2);
+  padding: 7px 24px;
+  font-size: 10px; letter-spacing: 1.5px;
+  color: var(--g-yellow); text-align: center;
+  font-weight: 600;
+}
+
+/* ════════════════════ CONFIG ════════════════════ */
+.cfg-bar {
+  background: var(--deep);
+  border-bottom: 1px solid var(--rim);
+  padding: 14px 24px;
+  display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+}
+
+.cfg-group { display: flex; flex-direction: column; gap: 5px; }
+.cfg-label {
+  font-size: 9px; letter-spacing: 2px;
+  color: var(--sub); text-transform: uppercase; font-weight: 600;
+}
+
+input, select {
+  background: var(--surface);
+  border: 1px solid var(--rim);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 500;
+  padding: 7px 12px; border-radius: 3px;
+  outline: none; transition: border-color .2s;
+  min-width: 0;
+}
+input:focus, select:focus { border-color: var(--g-blue); }
+input[type=password] { letter-spacing: 3px; font-size: 11px; }
+select option { background: #0d1e35; }
+
+.cfg-group.grow { flex: 1; min-width: 180px; }
+.cfg-group.sm input, .cfg-group.sm select { width: 130px; }
+
+.cfg-btns { display: flex; gap: 8px; align-items: flex-end; margin-left: auto; }
+
+button {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700; font-size: 12px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 9px 20px; border: none; border-radius: 3px;
+  cursor: pointer; transition: all .15s;
+}
+
+.btn-go {
+  background: var(--g-blue); color: #fff;
+  box-shadow: 0 0 20px rgba(66,133,244,.25);
+}
+.btn-go:hover { box-shadow: 0 0 30px rgba(66,133,244,.5); transform: translateY(-1px); }
+.btn-go:disabled { opacity: .3; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-run {
+  background: transparent;
+  border: 1px solid var(--g-blue); color: var(--g-blue);
+}
+.btn-run:hover { background: rgba(66,133,244,.1); }
+.btn-run:disabled { opacity: .3; cursor: not-allowed; }
+
+.btn-stop {
+  background: transparent;
+  border: 1px solid var(--bear); color: var(--bear);
+}
+.btn-stop:hover { background: rgba(255,23,68,.08); }
+.btn-stop:disabled { opacity: .3; cursor: not-allowed; }
+
+.btn-clear {
+  background: transparent;
+  border: 1px solid var(--rim); color: var(--sub);
+  font-size: 11px;
+}
+.btn-clear:hover { border-color: var(--rim2); color: var(--text); }
+
+/* ════════════════════ LAYOUT ════════════════════ */
+.workspace {
+  display: grid;
+  grid-template-columns: 300px 1fr 300px;
+  min-height: calc(100vh - 54px - 34px - 70px);
+  gap: 0;
+}
+
+@media (max-width: 1100px) {
+  .workspace { grid-template-columns: 1fr; }
+  .side-left, .side-right { display: none; }
+}
+
+.side-left, .side-right {
+  background: var(--deep);
+  border-right: 1px solid var(--rim);
+  overflow-y: auto;
+}
+.side-right { border-right: none; border-left: 1px solid var(--rim); }
+
+.center-col {
+  background: var(--void);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rim2); border-radius: 2px; }
+
+/* ════════════════════ SECTION HEADS ════════════════════ */
+.sec-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--rim);
+  position: sticky; top: 0; z-index: 10;
+  background: var(--deep);
+}
+
+.sec-title {
+  font-size: 9px; letter-spacing: 3px;
+  color: var(--sub); text-transform: uppercase; font-weight: 700;
+}
+
+.sec-badge {
+  margin-left: auto; font-size: 8px;
+  padding: 2px 8px; border-radius: 2px;
+  letter-spacing: 1px; font-weight: 700; text-transform: uppercase;
+}
+.badge-live { background: rgba(0,230,118,.08); border: 1px solid rgba(0,230,118,.2); color: var(--bull); }
+.badge-gem { background: rgba(66,133,244,.08); border: 1px solid rgba(66,133,244,.2); color: var(--g-blue); }
+.badge-hl { background: rgba(0,212,170,.08); border: 1px solid rgba(0,212,170,.2); color: var(--hl-teal); }
+
+.sec-body { padding: 14px 16px; }
+
+/* ════════════════════ PRICE DISPLAY ════════════════════ */
+.price-hero {
+  background: linear-gradient(135deg, var(--surface), var(--raised));
+  border: 1px solid var(--rim);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  position: relative; overflow: hidden;
+}
+.price-hero::after {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, var(--g-blue), var(--hl-teal));
+}
+.ph-pair { font-size: 10px; letter-spacing: 2px; color: var(--sub); margin-bottom: 6px; font-weight: 600; }
+.ph-price {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 28px; font-weight: 900;
+  color: var(--white); letter-spacing: 1px;
+  line-height: 1;
+}
+.ph-meta { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; }
+.ph-chg.pos { color: var(--bull); } .ph-chg.neg { color: var(--bear); }
+.ph-mark { color: var(--sub); }
+
+/* ════════════════════ STAT GRID ════════════════════ */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+.stat-cell {
+  background: var(--surface); border: 1px solid var(--rim);
+  border-radius: 3px; padding: 9px 10px;
+}
+.stat-k { font-size: 8px; letter-spacing: 1.5px; color: var(--sub); text-transform: uppercase; font-weight: 600; margin-bottom: 3px; }
+.stat-v { font-size: 13px; font-weight: 700; font-family: 'Exo 2', sans-serif; }
+.sv-bull { color: var(--bull); }
+.sv-bear { color: var(--bear); }
+.sv-neutral { color: var(--neutral); }
+.sv-blue { color: var(--g-blue); }
+.sv-teal { color: var(--hl-teal); }
+
+/* ════════════════════ CHART CANVAS ════════════════════ */
+.chart-wrap {
+  background: var(--surface); border: 1px solid var(--rim);
+  border-radius: 4px; margin-bottom: 12px; overflow: hidden;
+}
+.chart-top {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-bottom: 1px solid var(--rim);
+  font-size: 9px; color: var(--sub); letter-spacing: 1px;
+}
+canvas#miniChart { display: block; width: 100%; height: 90px; }
+
+/* ════════════════════ ORDER BOOK ════════════════════ */
+.ob-wrap { display: flex; flex-direction: column; gap: 1px; }
+.ob-head {
+  display: flex; justify-content: space-between;
+  font-size: 8px; letter-spacing: 1px; color: var(--sub);
+  padding: 4px 6px; text-transform: uppercase;
+}
+.ob-row {
+  display: flex; justify-content: space-between;
+  align-items: center; padding: 3px 6px;
+  font-size: 11px; font-family: 'Exo 2', sans-serif;
+  position: relative; border-radius: 2px; overflow: hidden;
+}
+.ob-bar {
+  position: absolute; top: 0; height: 100%;
+  opacity: .1; border-radius: 2px;
+}
+.ob-row.ask .ob-bar { background: var(--bear); right: 0; }
+.ob-row.bid .ob-bar { background: var(--bull); left: 0; }
+.ob-row.ask .ob-px { color: var(--bear); }
+.ob-row.bid .ob-px { color: var(--bull); }
+.ob-sz { color: var(--sub); font-size: 10px; }
+.ob-mid {
+  text-align: center; padding: 5px;
+  font-family: 'Exo 2', sans-serif; font-size: 13px;
+  font-weight: 700; color: var(--g-blue);
+  border-top: 1px solid var(--rim); border-bottom: 1px solid var(--rim);
+  margin: 2px 0;
+}
+
+/* ════════════════════ INDICATORS ════════════════════ */
+.ind-list { display: flex; flex-direction: column; gap: 6px; }
+.ind-row {
+  background: var(--surface); border: 1px solid var(--rim);
+  border-radius: 3px; padding: 9px 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.ind-nm { font-size: 10px; color: var(--sub); width: 72px; flex-shrink: 0; letter-spacing: .5px; }
+.ind-vl { font-family: 'Exo 2', sans-serif; font-size: 13px; flex: 1; font-weight: 700; }
+.ind-tag {
+  font-size: 8px; padding: 2px 8px; border-radius: 2px;
+  letter-spacing: 1px; font-weight: 700; text-transform: uppercase;
+}
+.tag-buy { background: rgba(0,230,118,.08); border: 1px solid rgba(0,230,118,.2); color: var(--bull); }
+.tag-sell { background: rgba(255,23,68,.08); border: 1px solid rgba(255,23,68,.2); color: var(--bear); }
+.tag-hold { background: rgba(255,196,0,.08); border: 1px solid rgba(255,196,0,.2); color: var(--neutral); }
+
+.ind-bar { height: 2px; background: var(--rim); border-radius: 1px; margin-top: 3px; overflow: hidden; }
+.ind-fill { height: 100%; border-radius: 1px; transition: width .6s ease; }
+
+/* ════════════════════ CENTER — GEMINI BRAIN ════════════════════ */
+.gemini-hdr {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 20px; border-bottom: 1px solid var(--rim);
+  background: var(--deep);
+}
+
+.gemini-logo {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, rgba(66,133,244,.15), rgba(52,168,83,.08), rgba(251,188,4,.08), rgba(234,67,53,.1));
+  border: 1.5px solid rgba(66,133,244,.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(66,133,244,.15);
+  animation: gemini-glow 3s ease-in-out infinite;
+}
+
+@keyframes gemini-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(66,133,244,.15); border-color: rgba(66,133,244,.4); }
+  33% { box-shadow: 0 0 25px rgba(52,168,83,.2); border-color: rgba(52,168,83,.5); }
+  66% { box-shadow: 0 0 25px rgba(251,188,4,.2); border-color: rgba(251,188,4,.4); }
+}
+
+.gemini-info .g-name {
+  font-family: 'Exo 2', sans-serif; font-size: 14px; font-weight: 900;
+  color: var(--white); letter-spacing: 2px;
+}
+.gemini-info .g-name span { color: var(--g-blue); }
+.gemini-info .g-role { font-size: 10px; color: var(--sub); letter-spacing: 1px; margin-top: 2px; }
+
+.g-state {
+  margin-left: auto; font-size: 9px; letter-spacing: 2px;
+  padding: 5px 12px; border-radius: 2px; font-weight: 700;
+  text-transform: uppercase; transition: all .3s;
+}
+.gs-idle { border: 1px solid var(--rim); color: var(--sub); }
+.gs-fetching { border: 1px solid var(--hl-teal); color: var(--hl-teal); animation: flash .6s infinite; }
+.gs-thinking { border: 1px solid var(--g-yellow); color: var(--g-yellow); animation: flash .5s infinite; }
+.gs-executing { border: 1px solid var(--g-blue); color: var(--g-blue); animation: flash .4s infinite; }
+@keyframes flash { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ════════════════════ FEED ════════════════════ */
+.feed {
+  flex: 1; overflow-y: auto;
+  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  min-height: 380px; max-height: 480px;
+}
+
+.feed-msg { display: flex; gap: 10px; animation: fadeUp .25s ease; }
+@keyframes fadeUp { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
+
+.fm-icon {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; margin-top: 2px;
+}
+.ftype-sys .fm-icon { background: rgba(66,133,244,.1); border: 1px solid rgba(66,133,244,.2); }
+.ftype-hl .fm-icon { background: rgba(0,212,170,.08); border: 1px solid rgba(0,212,170,.2); }
+.ftype-gem .fm-icon { background: rgba(251,188,4,.08); border: 1px solid rgba(251,188,4,.2); }
+.ftype-exec .fm-icon { background: rgba(52,168,83,.08); border: 1px solid rgba(52,168,83,.2); }
+
+.fm-body { flex: 1; }
+.fm-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.fm-who {
+  font-size: 9px; letter-spacing: 2px; font-weight: 700;
+  text-transform: uppercase;
+}
+.ftype-sys .fm-who { color: var(--g-blue); }
+.ftype-hl .fm-who { color: var(--hl-teal); }
+.ftype-gem .fm-who { color: var(--g-yellow); }
+.ftype-exec .fm-who { color: var(--g-green); }
+.fm-ts { font-size: 9px; color: var(--dim); }
+
+.fm-bubble {
+  background: var(--surface); border: 1px solid var(--rim);
+  border-radius: 3px; padding: 10px 14px;
+  font-size: 12px; line-height: 1.75; color: var(--text);
+  white-space: pre-wrap; font-family: 'Rajdhani', sans-serif; font-weight: 400;
+}
+.ftype-sys .fm-bubble { border-left: 2px solid var(--g-blue); }
+.ftype-hl .fm-bubble { border-left: 2px solid var(--hl-teal); }
+.ftype-gem .fm-bubble { border-left: 2px solid var(--g-yellow); }
+.ftype-exec .fm-bubble { border-left: 2px solid var(--g-green); background: rgba(52,168,83,.02); }
+
+.fm-bubble .t-bull { color: var(--bull); font-weight: 700; }
+.fm-bubble .t-bear { color: var(--bear); font-weight: 700; }
+.fm-bubble .t-neutral { color: var(--neutral); font-weight: 700; }
+.fm-bubble .t-blue { color: var(--g-blue); }
+.fm-bubble .t-teal { color: var(--hl-teal); }
+.fm-bubble .t-val { color: var(--g-blue); font-family: 'Exo 2', sans-serif; }
+
+/* ════════════════════ SIGNAL CARD ════════════════════ */
+.signal-card {
+  border-radius: 4px; padding: 14px;
+  position: relative; overflow: hidden;
+}
+.signal-card.buy {
+  background: linear-gradient(135deg, rgba(0,230,118,.05), rgba(52,168,83,.03));
+  border: 1px solid rgba(0,230,118,.3);
+}
+.signal-card.buy::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, var(--bull), transparent);
+}
+.signal-card.sell {
+  background: linear-gradient(135deg, rgba(255,23,68,.05), rgba(234,67,53,.03));
+  border: 1px solid rgba(255,23,68,.3);
+}
+.signal-card.sell::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, var(--bear), transparent);
+}
+.signal-card.hold {
+  background: rgba(255,196,0,.03);
+  border: 1px solid rgba(255,196,0,.2);
+}
+
+.sig-direction {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 26px; font-weight: 900; letter-spacing: 5px;
+}
+.sig-direction.buy { color: var(--bull); text-shadow: 0 0 20px rgba(0,230,118,.4); }
+.sig-direction.sell { color: var(--bear); text-shadow: 0 0 20px rgba(255,23,68,.4); }
+.sig-direction.hold { color: var(--neutral); }
+
+.sig-sub { font-size: 10px; color: var(--sub); margin-top: 2px; letter-spacing: 1px; }
+
+.sig-rows { margin-top: 12px; display: flex; flex-direction: column; gap: 0; }
+.sig-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid var(--rim); font-size: 12px;
+}
+.sig-row:last-child { border-bottom: none; }
+.sig-k { font-size: 9px; letter-spacing: 1px; color: var(--sub); text-transform: uppercase; }
+.sig-v { font-family: 'Exo 2', sans-serif; font-weight: 700; font-size: 13px; }
+
+.conf-wrap { margin-top: 12px; }
+.conf-top { display: flex; justify-content: space-between; font-size: 9px; color: var(--sub); margin-bottom: 4px; letter-spacing: 1px; }
+.conf-track { height: 4px; background: var(--rim); border-radius: 2px; overflow: hidden; }
+.conf-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--g-blue), var(--hl-teal));
+  transition: width .8s ease;
+}
+
+/* ════════════════════ POSITION ════════════════════ */
+.pos-card {
+  background: var(--surface); border: 1px solid var(--rim);
+  border-radius: 3px; padding: 12px;
+}
+.pos-empty { text-align: center; padding: 20px 0; font-size: 10px; color: var(--sub); letter-spacing: 2px; }
+.pos-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.pos-side-badge {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 14px; font-weight: 900; letter-spacing: 2px;
+}
+.pos-side-badge.long { color: var(--bull); }
+.pos-side-badge.short { color: var(--bear); }
+.pos-coin-lbl { font-size: 11px; color: var(--sub); letter-spacing: 2px; }
+.pos-pnl {
+  margin-left: auto;
+  font-family: 'Exo 2', sans-serif; font-size: 18px; font-weight: 900;
+}
+.pos-pnl.pos { color: var(--bull); }
+.pos-pnl.neg { color: var(--bear); }
+
+/* ════════════════════ EXEC LOG ════════════════════ */
+.exec-list { display: flex; flex-direction: column; gap: 0; }
+.exec-row {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 8px 0; border-bottom: 1px solid var(--rim); font-size: 11px;
+}
+.exec-row:last-child { border-bottom: none; }
+.exec-ic { flex-shrink: 0; font-size: 12px; }
+.exec-txt { flex: 1; color: var(--sub); line-height: 1.5; }
+.exec-txt strong { color: var(--text); }
+.exec-t { font-size: 9px; color: var(--dim); white-space: nowrap; }
+
+/* ════════════════════ PROGRESS BAR ════════════════════ */
+.prog-bar {
+  height: 2px; background: transparent; overflow: hidden;
+}
+.prog-bar.active {
+  background: linear-gradient(90deg, transparent 0%, var(--g-blue) 50%, transparent 100%);
+  background-size: 200% 100%; animation: slide 1.2s linear infinite;
+}
+@keyframes slide { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* Gemini color dots */
+.gem-dots { display: flex; gap: 4px; align-items: center; }
+.gd { width: 7px; height: 7px; border-radius: 50%; }
+.gd-b { background: var(--g-blue); }
+.gd-r { background: var(--g-red); }
+.gd-y { background: var(--g-yellow); }
+.gd-g { background: var(--g-green); }
+
+/* empty states */
+.empty-state { text-align: center; padding: 24px; font-size: 10px; color: var(--sub); letter-spacing: 2px; }
+</style>
+</head>
+<body class="layer">
+
+<!-- HEADER -->
+<header class="layer">
+  <div class="brand">
+    <div class="brand-gem">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="16,2 26,10 26,22 16,30 6,22 6,10" fill="none" stroke="#4285f4" stroke-width="1.5"/>
+        <polygon points="16,2 26,10 16,16" fill="rgba(66,133,244,.2)"/>
+        <polygon points="26,10 26,22 16,16" fill="rgba(234,67,53,.15)"/>
+        <polygon points="26,22 16,30 16,16" fill="rgba(52,168,83,.15)"/>
+        <polygon points="16,30 6,22 16,16" fill="rgba(251,188,4,.15)"/>
+        <polygon points="6,22 6,10 16,16" fill="rgba(66,133,244,.1)"/>
+        <polygon points="6,10 16,2 16,16" fill="rgba(234,67,53,.1)"/>
+        <circle cx="16" cy="16" r="2" fill="#4285f4"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">NEX<span>US</span></div>
+      <div class="brand-sub">Gemini Pro × Hyperliquid</div>
+    </div>
+  </div>
+
+  <div class="hdr-pills">
+    <div class="hdr-pill active" onclick="switchMode('sim',this)">Simulation</div>
+    <div class="hdr-pill" onclick="switchMode('testnet',this)">Testnet</div>
+    <div class="hdr-pill" onclick="switchMode('live',this)">Live</div>
+  </div>
+
+  <div class="hdr-ticker" id="hdrTicker">
+    <div class="tick-item"><span class="tick-sym">BTC</span><span class="tick-price" id="tk-btc">—</span><span class="tick-chg" id="tkc-btc"></span></div>
+    <div class="tick-item"><span class="tick-sym">ETH</span><span class="tick-price" id="tk-eth">—</span><span class="tick-chg" id="tkc-eth"></span></div>
+    <div class="tick-item"><span class="tick-sym">SOL</span><span class="tick-price" id="tk-sol">—</span><span class="tick-chg" id="tkc-sol"></span></div>
+    <div class="tick-item"><span class="tick-sym">HYPE</span><span class="tick-price" id="tk-hype">—</span><span class="tick-chg" id="tkc-hype"></span></div>
+    <div class="tick-item"><span class="tick-sym">ARB</span><span class="tick-price" id="tk-arb">—</span><span class="tick-chg" id="tkc-arb"></span></div>
+  </div>
+
+  <div class="hdr-right">
+    <div class="sys-status">
+      <div class="pulse-ring offline" id="pulseDot"></div>
+      <span id="sysLabel">OFFLINE</span>
+    </div>
+    <div id="hdrTime">--:--:--</div>
+  </div>
+</header>
+
+<!-- PROGRESS BAR -->
+<div class="prog-bar" id="progBar"></div>
+
+<!-- WARN -->
+<div class="warn-bar">⚠ RISIKO TINGGI — SISTEM INI MENGEKSEKUSI TRADE OTOMATIS — GUNAKAN SIMULATION TERLEBIH DAHULU — BUKAN SARAN INVESTASI</div>
+
+<!-- CONFIG -->
+<div class="cfg-bar layer">
+  <div class="cfg-group grow">
+    <div class="cfg-label">Gemini API Key</div>
+    <input type="password" id="geminiKey" placeholder="AIzaSy..." style="width:100%">
+  </div>
+  <div class="cfg-group sm">
+    <div class="cfg-label">Market</div>
+    <select id="coinSel">
+      <option value="BTC">BTC-PERP</option>
+      <option value="ETH">ETH-PERP</option>
+      <option value="SOL">SOL-PERP</option>
+      <option value="HYPE">HYPE-PERP</option>
+      <option value="ARB">ARB-PERP</option>
+      <option value="DOGE">DOGE-PERP</option>
+      <option value="AVAX">AVAX-PERP</option>
+    </select>
+  </div>
+  <div class="cfg-group sm">
+    <div class="cfg-label">Timeframe</div>
+    <select id="tfSel">
+      <option value="15m">15m</option>
+      <option value="1h" selected>1h</option>
+      <option value="4h">4h</option>
+      <option value="1d">1d</option>
+    </select>
+  </div>
+  <div class="cfg-group sm">
+    <div class="cfg-label">Auto-Cycle</div>
+    <select id="autoCycleSel">
+      <option value="0">Manual Only</option>
+      <option value="60">Every 1 min</option>
+      <option value="300">Every 5 min</option>
+      <option value="900">Every 15 min</option>
+    </select>
+  </div>
+  <div class="cfg-group sm">
+    <div class="cfg-label">Max Position Size</div>
+    <select id="sizeSel">
+      <option value="2">2% Capital</option>
+      <option value="5" selected>5% Capital</option>
+      <option value="10">10% Capital</option>
+    </select>
+  </div>
+  <div class="cfg-btns">
+    <button class="btn-go" id="btnStart" onclick="startNexus()">▶ START</button>
+    <button class="btn-run" id="btnRun" onclick="runCycle()" disabled>⚡ ANALYZE</button>
+    <button class="btn-stop" id="btnStop" onclick="stopNexus()" disabled>■ STOP</button>
+    <button class="btn-clear" onclick="clearFeed()">✕ CLEAR</button>
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace layer">
+
+  <!-- ── LEFT: MARKET DATA ── -->
+  <div class="side-left">
+    <div class="sec-head">
+      <div class="sec-title">Hyperliquid Market</div>
+      <div class="gem-dots"><div class="gd gd-b"></div><div class="gd gd-r"></div><div class="gd gd-y"></div><div class="gd gd-g"></div></div>
+      <div class="sec-badge badge-hl" style="margin-left:8px">LIVE DATA</div>
+    </div>
+    <div class="sec-body">
+
+      <div class="price-hero">
+        <div class="ph-pair" id="phPair">BTC-PERP</div>
+        <div class="ph-price" id="phPrice">—</div>
+        <div class="ph-meta">
+          <span class="ph-chg" id="phChg">—</span>
+          <span class="ph-mark" id="phMark">Mark: —</span>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-cell">
+          <div class="stat-k">24H High</div>
+          <div class="stat-v sv-bull" id="s24h">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-k">24H Low</div>
+          <div class="stat-v sv-bear" id="s24l">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-k">Funding</div>
+          <div class="stat-v sv-neutral" id="sFund">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-k">Open Int.</div>
+          <div class="stat-v sv-teal" id="sOI">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-k">Volume</div>
+          <div class="stat-v" id="sVol">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-k">Candles</div>
+          <div class="stat-v sv-blue" id="sCandleCount">—</div>
+        </div>
+      </div>
+
+      <!-- Canvas chart -->
+      <div class="chart-wrap">
+        <div class="chart-top">
+          <span id="chartLabel">CANDLE CHART</span>
+          <span style="margin-left:auto;font-size:8px" id="chartTf">—</span>
+        </div>
+        <canvas id="miniChart" height="90"></canvas>
+      </div>
+
+      <!-- Order Book -->
+      <div class="sec-head" style="padding:8px 0;border:none;position:static;margin-bottom:8px">
+        <div class="sec-title">Order Book</div>
+      </div>
+      <div class="ob-wrap" id="obWrap">
+        <div class="empty-state">No data yet</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── CENTER: GEMINI BRAIN ── -->
+  <div class="center-col">
+
+    <div class="gemini-hdr">
+      <div class="gemini-logo">✦</div>
+      <div class="gemini-info">
+        <div class="g-name">GEMINI <span>NEXUS</span></div>
+        <div class="g-role">Quantitative Perpetuals Specialist · Hyperliquid DEX</div>
+      </div>
+      <div class="g-state gs-idle" id="gState">IDLE</div>
+    </div>
+
+    <div class="feed" id="feed"></div>
+
+  </div>
+
+  <!-- ── RIGHT: SIGNALS & EXEC ── -->
+  <div class="side-right">
+    <div class="sec-head">
+      <div class="sec-title">Signal & Plan</div>
+      <div class="sec-badge badge-gem">GEMINI AI</div>
+    </div>
+    <div class="sec-body">
+
+      <div id="signalWrap">
+        <div class="empty-state" style="border:1px solid var(--rim);border-radius:3px;margin-bottom:12px">
+          NO SIGNAL YET
+        </div>
+      </div>
+
+      <div class="sec-head" style="padding:8px 0;border:none;position:static;margin-bottom:8px">
+        <div class="sec-title">Technical Indicators</div>
+      </div>
+      <div class="ind-list" id="indList">
+        <div class="empty-state">Waiting for data...</div>
+      </div>
+
+      <div class="sec-head" style="padding:8px 0;border:none;position:static;margin:12px 0 8px">
+        <div class="sec-title">Open Position</div>
+      </div>
+      <div class="pos-card" id="posCard">
+        <div class="pos-empty">NO OPEN POSITION</div>
+      </div>
+
+      <div class="sec-head" style="padding:8px 0;border:none;position:static;margin:12px 0 8px">
+        <div class="sec-title">Execution Log</div>
+      </div>
+      <div class="exec-list" id="execList">
+        <div class="empty-state">No executions</div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- workspace -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+// NEXUS — Gemini Pro × Hyperliquid Trading System
+// ═══════════════════════════════════════════════════════
+
+const G = {
+  running: false,
+  mode: 'sim',
+  coin: 'BTC',
+  tf: '1h',
+  geminiKey: '',
+  maxSize: 5,
+  mktData: null,
+  candles: [],
+  prevPrices: {},
+  position: null,
+  executions: [],
+  lastSignal: null,
+  tickerInterval: null,
+  marketInterval: null,
+  autoInterval: null,
+};
+
+const HL = 'https://api.hyperliquid.xyz/info';
+const PROXY = 'https://corsproxy.io/?';
+const GEMINI_URL = key => `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${key}`;
+
+// ── Clock ──
+setInterval(() => {
+  document.getElementById('hdrTime').textContent =
+    new Date().toLocaleTimeString('id-ID', { hour12: false });
+}, 1000);
+
+function switchMode(m, el) {
+  document.querySelectorAll('.hdr-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active'); G.mode = m;
+}
+
+// ═══════════════════════════════════════════════════════
+// SYSTEM CONTROL
+// ═══════════════════════════════════════════════════════
+function startNexus() {
+  const key = document.getElementById('geminiKey').value.trim();
+  if (!key) { feed('sys', '❌ Masukkan Gemini API Key terlebih dahulu.'); return; }
+
+  G.geminiKey = key;
+  G.coin = document.getElementById('coinSel').value;
+  G.tf = document.getElementById('tfSel').value;
+  G.maxSize = parseInt(document.getElementById('sizeSel').value);
+  G.running = true;
+
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnRun').disabled = false;
+  document.getElementById('btnStop').disabled = false;
+  setStatus('online');
+
+  feed('sys',
+    `▶ NEXUS ONLINE\n` +
+    `  AI Engine  : Gemini 1.5 Pro\n` +
+    `  Data Source: Hyperliquid DEX (Public API)\n` +
+    `  Market     : ${G.coin}-PERP\n` +
+    `  Timeframe  : ${G.tf}\n` +
+    `  Mode       : ${G.mode.toUpperCase()}\n` +
+    `  Max Size   : ${G.maxSize}% of capital\n\n` +
+    `  Workflow: Gemini → requests data → Hyperliquid → delivers OHLCV + OB + Funding → Gemini analyzes → Signal → Hyperliquid executes`
+  );
+
+  G.marketInterval = setInterval(fetchMarket, 5000);
+  G.tickerInterval = setInterval(fetchTicker, 8000);
+  fetchMarket();
+  fetchTicker();
+
+  const auto = parseInt(document.getElementById('autoCycleSel').value);
+  if (auto > 0) {
+    G.autoInterval = setInterval(() => { if (G.running) runCycle(); }, auto * 1000);
+    feed('sys', `⏱ Auto-cycle aktif setiap ${auto} detik`);
   }
-  return candles;
+
+  setTimeout(runCycle, 3000);
 }
 
-function generateOrderBook(symbol) {
-  const mid = BASE_PRICES[symbol] || 100;
-  const bids = [], asks = [];
-  for (let i = 0; i < 12; i++) {
-    bids.push([+(mid - i * mid * 0.0004 - Math.random() * mid * 0.0001).toFixed(5), +(Math.random() * 8 + 0.2).toFixed(3)]);
-    asks.push([+(mid + i * mid * 0.0004 + Math.random() * mid * 0.0001).toFixed(5), +(Math.random() * 8 + 0.2).toFixed(3)]);
+function stopNexus() {
+  G.running = false;
+  clearInterval(G.marketInterval);
+  clearInterval(G.tickerInterval);
+  clearInterval(G.autoInterval);
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnRun').disabled = true;
+  document.getElementById('btnStop').disabled = true;
+  setStatus('offline');
+  setGState('idle');
+  feed('sys', '■ NEXUS stopped');
+}
+
+function clearFeed() { document.getElementById('feed').innerHTML = ''; }
+
+// ═══════════════════════════════════════════════════════
+// HYPERLIQUID DATA
+// ═══════════════════════════════════════════════════════
+async function hlPost(body) {
+  const r = await fetch(PROXY + encodeURIComponent(HL), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('HL ' + r.status);
+  return r.json();
+}
+
+async function fetchMarket() {
+  try {
+    const coin = document.getElementById('coinSel').value;
+    G.coin = coin;
+
+    const meta = await hlPost({ type: 'metaAndAssetCtxs' });
+    const assets = meta[0].universe;
+    const ctxs = meta[1];
+    const i = assets.findIndex(a => a.name === coin);
+    if (i < 0) return;
+
+    const ctx = ctxs[i];
+    const price = parseFloat(ctx.markPx);
+    const funding = parseFloat(ctx.funding) * 100;
+    const oi = parseFloat(ctx.openInterest);
+
+    const oldP = G.mktData?.price || price;
+    const pchg = ((price - oldP) / oldP * 100);
+
+    G.mktData = { price, funding, oi, coin };
+
+    // UI
+    document.getElementById('phPair').textContent = `${coin}-PERP`;
+    const fmt = n => n > 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : n.toFixed(4);
+    document.getElementById('phPrice').textContent = '$' + fmt(price);
+    const chgEl = document.getElementById('phChg');
+    chgEl.textContent = (pchg >= 0 ? '+' : '') + pchg.toFixed(3) + '%';
+    chgEl.className = 'ph-chg ' + (pchg >= 0 ? 'pos' : 'neg');
+    document.getElementById('phMark').textContent = 'Mark: $' + fmt(price);
+    document.getElementById('sFund').textContent = (funding >= 0 ? '+' : '') + funding.toFixed(4) + '%';
+    document.getElementById('sFund').className = 'stat-v ' + (funding >= 0 ? 'sv-neutral' : 'sv-bull');
+    document.getElementById('sOI').textContent = oi > 1e6 ? (oi / 1e6).toFixed(2) + 'M' : oi.toFixed(0);
+
+    await fetchCandles(coin);
+    await fetchOrderBook(coin);
+
+  } catch (e) { /* silent */ }
+}
+
+async function fetchCandles(coin) {
+  try {
+    const tf = document.getElementById('tfSel').value;
+    const tfMs = { '15m': 15 * 60 * 1000, '1h': 3600 * 1000, '4h': 4 * 3600 * 1000, '1d': 86400 * 1000 };
+    const now = Date.now();
+    const start = now - tfMs[tf] * 80;
+
+    const data = await hlPost({ type: 'candleSnapshot', req: { coin, interval: tf, startTime: start, endTime: now } });
+    if (!Array.isArray(data) || !data.length) return;
+
+    G.candles = data.slice(-80);
+    document.getElementById('chartTf').textContent = tf.toUpperCase();
+    document.getElementById('sCandleCount').textContent = G.candles.length + ' bars';
+
+    const last24 = data.slice(-24);
+    const highs = last24.map(c => parseFloat(c.h));
+    const lows = last24.map(c => parseFloat(c.l));
+    const vols = last24.map(c => parseFloat(c.v));
+    const fmtP = n => n > 1000 ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : n.toFixed(4);
+    document.getElementById('s24h').textContent = fmtP(Math.max(...highs));
+    document.getElementById('s24l').textContent = fmtP(Math.min(...lows));
+    document.getElementById('sVol').textContent = (vols.reduce((a, b) => a + b, 0) / 1e6).toFixed(2) + 'M';
+
+    renderChart(G.candles.slice(-30));
+    computeIndicators(G.candles);
+
+  } catch (e) { /* silent */ }
+}
+
+async function fetchOrderBook(coin) {
+  try {
+    const d = await hlPost({ type: 'l2Book', coin });
+    if (!d?.levels) return;
+    const asks = d.levels[1].slice(0, 6).reverse();
+    const bids = d.levels[0].slice(0, 6);
+    const mid = (parseFloat(asks[asks.length - 1][0].px) + parseFloat(bids[0][0].px)) / 2;
+    const fmt = n => n > 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : parseFloat(n).toFixed(4);
+    const maxSz = Math.max(...[...asks, ...bids].map(l => parseFloat(l[0].sz)));
+    let h = '<div class="ob-head"><span>PRICE</span><span>SIZE</span></div>';
+    asks.forEach(l => {
+      const px = parseFloat(l[0].px), sz = parseFloat(l[0].sz);
+      const pct = (sz / maxSz * 100).toFixed(0);
+      h += `<div class="ob-row ask"><div class="ob-bar" style="width:${pct}%"></div><span class="ob-px">${fmt(px)}</span><span class="ob-sz">${sz.toFixed(3)}</span></div>`;
+    });
+    h += `<div class="ob-mid">${fmt(mid)}</div>`;
+    bids.forEach(l => {
+      const px = parseFloat(l[0].px), sz = parseFloat(l[0].sz);
+      const pct = (sz / maxSz * 100).toFixed(0);
+      h += `<div class="ob-row bid"><div class="ob-bar" style="width:${pct}%"></div><span class="ob-px">${fmt(px)}</span><span class="ob-sz">${sz.toFixed(3)}</span></div>`;
+    });
+    document.getElementById('obWrap').innerHTML = h;
+  } catch (e) { /* silent */ }
+}
+
+async function fetchTicker() {
+  try {
+    const meta = await hlPost({ type: 'metaAndAssetCtxs' });
+    const assets = meta[0].universe;
+    const ctxs = meta[1];
+    const map = ['BTC', 'ETH', 'SOL', 'HYPE', 'ARB'];
+    map.forEach(sym => {
+      const i = assets.findIndex(a => a.name === sym);
+      if (i < 0) return;
+      const p = parseFloat(ctxs[i].markPx);
+      const old = G.prevPrices[sym] || p;
+      const chg = ((p - old) / old * 100);
+      G.prevPrices[sym] = p;
+      const pfmt = p > 1000 ? '$' + p.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '$' + p.toFixed(3);
+      const el = document.getElementById('tk-' + sym.toLowerCase());
+      const cel = document.getElementById('tkc-' + sym.toLowerCase());
+      if (el) el.textContent = pfmt;
+      if (cel) {
+        cel.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+        cel.className = 'tick-chg ' + (chg >= 0 ? 'pos' : 'neg');
+      }
+    });
+  } catch (e) { /* silent */ }
+}
+
+// ═══════════════════════════════════════════════════════
+// CHART RENDER
+// ═══════════════════════════════════════════════════════
+function renderChart(candles) {
+  const canvas = document.getElementById('miniChart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.parentElement.clientWidth;
+  const H = 90;
+  canvas.width = W;
+  canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  if (!candles.length) return;
+
+  const highs = candles.map(c => parseFloat(c.h));
+  const lows = candles.map(c => parseFloat(c.l));
+  const minP = Math.min(...lows);
+  const maxP = Math.max(...highs);
+  const range = maxP - minP || 1;
+  const pad = 6;
+  const available = H - pad * 2;
+  const cw = W / candles.length;
+
+  candles.forEach((c, i) => {
+    const o = parseFloat(c.o), cl = parseFloat(c.c);
+    const h = parseFloat(c.h), l = parseFloat(c.l);
+    const bull = cl >= o;
+    const x = i * cw + cw / 2;
+
+    // wick
+    const wy1 = pad + (1 - (h - minP) / range) * available;
+    const wy2 = pad + (1 - (l - minP) / range) * available;
+    ctx.beginPath();
+    ctx.strokeStyle = bull ? '#00e676' : '#ff1744';
+    ctx.lineWidth = 1;
+    ctx.moveTo(x, wy1); ctx.lineTo(x, wy2);
+    ctx.stroke();
+
+    // body
+    const by1 = pad + (1 - (Math.max(o, cl) - minP) / range) * available;
+    const bh = Math.max(1, Math.abs(cl - o) / range * available);
+    const bw = Math.max(1, cw * 0.6);
+    ctx.fillStyle = bull ? '#00e676' : '#ff1744';
+    ctx.globalAlpha = bull ? 0.85 : 0.75;
+    ctx.fillRect(x - bw / 2, by1, bw, bh);
+    ctx.globalAlpha = 1;
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// INDICATORS
+// ═══════════════════════════════════════════════════════
+function ema(arr, p) {
+  if (arr.length < p) return null;
+  const k = 2 / (p + 1);
+  let v = arr.slice(0, p).reduce((a, b) => a + b) / p;
+  for (let i = p; i < arr.length; i++) v = arr[i] * k + v * (1 - k);
+  return v;
+}
+
+function rsi(arr, p = 14) {
+  if (arr.length < p + 1) return null;
+  let g = 0, l = 0;
+  for (let i = 1; i <= p; i++) { const d = arr[i] - arr[i - 1]; d > 0 ? g += d : l -= d; }
+  let ag = g / p, al = l / p;
+  for (let i = p + 1; i < arr.length; i++) {
+    const d = arr[i] - arr[i - 1];
+    ag = (ag * (p - 1) + Math.max(d, 0)) / p;
+    al = (al * (p - 1) + Math.max(-d, 0)) / p;
   }
-  return { bids, asks, midPrice: mid, spread: +(asks[0][0] - bids[0][0]).toFixed(5) };
+  return al === 0 ? 100 : 100 - 100 / (1 + ag / al);
 }
 
-function generateFundingData() {
-  const rate = ((Math.random() - 0.5) * 0.002);
-  return { rate: rate.toFixed(6), annualized: (rate * 3 * 365 * 100).toFixed(2), nextFunding: `0${Math.floor(Math.random()*3+1)}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`, openInterest: (Math.random() * 1.2e9 + 1e8).toFixed(0), longRatio: (50 + (Math.random()-0.5)*20).toFixed(1) };
+function computeIndicators(candles) {
+  const cls = candles.map(c => parseFloat(c.c));
+  const price = cls[cls.length - 1];
+  const e20 = ema(cls, 20), e50 = ema(cls, 50), e200 = ema(cls, 200);
+  const r = rsi(cls);
+  const e12 = ema(cls, 12), e26 = ema(cls, 26);
+  const macd = e12 && e26 ? e12 - e26 : null;
+
+  const sl = cls.slice(-20);
+  const mean = sl.reduce((a, b) => a + b) / 20;
+  const std = Math.sqrt(sl.reduce((s, x) => s + (x - mean) ** 2, 0) / 20);
+  const bbU = mean + 2 * std, bbL = mean - 2 * std;
+  const bbPct = ((price - bbL) / (bbU - bbL) * 100);
+
+  const fmtP = n => n > 1000 ? n.toFixed(0) : n.toFixed(4);
+
+  const rows = [];
+  if (r !== null) {
+    const cls2 = r < 30 ? 'bull' : r > 70 ? 'bear' : 'neutral';
+    const tag = r < 30 ? 'OVERSOLD' : r > 70 ? 'OVERBOUGHT' : 'NEUTRAL';
+    const tagCls = r < 30 ? 'tag-buy' : r > 70 ? 'tag-sell' : 'tag-hold';
+    rows.push({ nm: 'RSI (14)', vl: r.toFixed(1), cls: cls2, tag, tagCls, pct: r });
+  }
+  if (e20 && e50) {
+    const bull = e20 > e50;
+    rows.push({ nm: 'EMA 20/50', vl: fmtP(e20), cls: bull ? 'bull' : 'bear', tag: bull ? 'BULL X' : 'BEAR X', tagCls: bull ? 'tag-buy' : 'tag-sell', pct: bull ? 70 : 30 });
+  }
+  if (macd !== null) {
+    const bull = macd > 0;
+    rows.push({ nm: 'MACD', vl: (macd > 0 ? '+' : '') + macd.toFixed(5), cls: bull ? 'bull' : 'bear', tag: bull ? 'BULL' : 'BEAR', tagCls: bull ? 'tag-buy' : 'tag-sell', pct: bull ? 65 : 35 });
+  }
+  if (!isNaN(bbPct)) {
+    const bull = bbPct < 20;
+    const bear = bbPct > 80;
+    rows.push({ nm: 'BB %B', vl: bbPct.toFixed(1) + '%', cls: bull ? 'bull' : bear ? 'bear' : 'neutral', tag: bull ? 'LOW BAND' : bear ? 'HIGH BAND' : 'MID BAND', tagCls: bull ? 'tag-buy' : bear ? 'tag-sell' : 'tag-hold', pct: bbPct });
+  }
+
+  const colors = { bull: '#00e676', bear: '#ff1744', neutral: '#ffc400' };
+  document.getElementById('indList').innerHTML = rows.map(r => `
+    <div class="ind-row">
+      <div class="ind-nm">${r.nm}</div>
+      <div>
+        <div class="ind-vl" style="color:${colors[r.cls]}">${r.vl}</div>
+        <div class="ind-bar"><div class="ind-fill" style="width:${Math.min(Math.max(r.pct, 5), 95)}%;background:${colors[r.cls]}"></div></div>
+      </div>
+      <div class="ind-tag ${r.tagCls}">${r.tag}</div>
+    </div>`).join('');
+
+  return { rsi: r, ema20: e20, ema50: e50, ema200: e200, macd, bbPct, bbU, bbL };
 }
 
-// ─── TECHNICAL INDICATORS ─────────────────────────────────────────────────────
-function calcIndicators(candles) {
-  const closes = candles.map(c => c.c);
-  const highs  = candles.map(c => c.h);
-  const lows   = candles.map(c => c.l);
-  const vols   = candles.map(c => c.v);
+// ═══════════════════════════════════════════════════════
+// MAIN CYCLE
+// ═══════════════════════════════════════════════════════
+async function runCycle() {
+  if (!G.running || !G.geminiKey) return;
 
-  const sma = (arr, n) => arr.slice(-n).reduce((a,b) => a+b, 0) / n;
-  const ema = (arr, n) => {
-    const k = 2/(n+1); let e = arr[0];
-    for (let i=1; i<arr.length; i++) e = arr[i]*k + e*(1-k);
-    return e;
+  setGState('fetching');
+  setLoading(true);
+
+  const coin = document.getElementById('coinSel').value;
+  G.coin = coin;
+  G.tf = document.getElementById('tfSel').value;
+
+  feed('sys', `🔄 CYCLE START — Gemini requesting ${coin}-PERP data dari Hyperliquid...`);
+
+  try {
+    // 1. FETCH
+    await fetchMarket();
+    if (!G.mktData || !G.candles.length) {
+      feed('sys', '⚠ Data belum siap, coba lagi...');
+      setGState('idle'); setLoading(false); return;
+    }
+
+    const { price, funding, oi } = G.mktData;
+    const inds = computeIndicators(G.candles);
+
+    // 2. BUILD SNAPSHOT untuk Gemini
+    const last8 = G.candles.slice(-8).map(c =>
+      `O:${parseFloat(c.o).toFixed(2)} H:${parseFloat(c.h).toFixed(2)} L:${parseFloat(c.l).toFixed(2)} C:${parseFloat(c.c).toFixed(2)} V:${parseFloat(c.v).toFixed(0)}`
+    );
+
+    const fmtP = n => n > 1000 ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : '$' + n.toFixed(4);
+    const hlReport =
+      `📡 HYPERLIQUID DATA FEED — ${coin}-PERP [${G.tf}]\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `  Mark Price    : ${fmtP(price)}\n` +
+      `  Funding Rate  : ${(funding * 100).toFixed(4)}% (per 8h)\n` +
+      `  Open Interest : ${oi > 1e6 ? (oi / 1e6).toFixed(2) + 'M' : oi.toFixed(0)}\n` +
+      `  Total Candles : ${G.candles.length} bars\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `  RSI (14)   : ${inds.rsi?.toFixed(2) ?? 'N/A'}\n` +
+      `  EMA 20     : ${inds.ema20?.toFixed(2) ?? 'N/A'}\n` +
+      `  EMA 50     : ${inds.ema50?.toFixed(2) ?? 'N/A'}\n` +
+      `  MACD       : ${inds.macd !== null ? (inds.macd > 0 ? '+' : '') + inds.macd.toFixed(5) : 'N/A'}\n` +
+      `  BB %B      : ${!isNaN(inds.bbPct) ? inds.bbPct.toFixed(1) + '%' : 'N/A'}\n` +
+      `  BB Upper   : ${inds.bbU?.toFixed(2) ?? 'N/A'}\n` +
+      `  BB Lower   : ${inds.bbL?.toFixed(2) ?? 'N/A'}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `  Last 8 Candles:\n  ` + last8.join('\n  ');
+
+    feed('hl', hlReport);
+
+    // 3. GEMINI ANALYSIS
+    setGState('thinking');
+    feed('sys', '✦ Gemini 1.5 Pro sedang menganalisis data...');
+
+    const sysPrompt = `Kamu adalah NEXUS-GEMINI, seorang quantitative trader dan algorithmic trading specialist dengan spesialisasi di crypto perpetual futures. Pengalamanmu: 12+ tahun trading di berbagai market cycles, expert di technical analysis, funding rate analysis, dan liquidity analysis.
+
+Karakter: tajam, presisi, data-driven. Kamu tidak pernah menggunakan emosi dalam trading. Setiap keputusan adalah hasil kalkulasi matematis dari data yang diberikan.
+
+ATURAN TRADING WAJIB:
+- Minimum Risk/Reward: 1:2
+- Maximum leverage: 5x
+- Selalu pertimbangkan funding rate (positif tinggi = market overlong, potensi squeeze)
+- Jika tidak ada setup yang clear, berikan HOLD
+- Stop loss WAJIB ada
+
+FORMAT RESPONSE (ikuti PERSIS, field ini diparse otomatis):
+OUTLOOK: [BULLISH / BEARISH / NEUTRAL]
+SIGNAL: [BUY / SELL / HOLD]
+CONFIDENCE: [angka 1-10]
+ENTRY: [harga numerik]
+TP1: [harga numerik]
+TP2: [harga numerik]
+SL: [harga numerik]
+LEVERAGE: [angka]x
+SIZE: [angka]%
+RR: 1:[angka]
+REASONING:
+[analisis teknikal 4-5 poin, satu baris per poin]
+RISKS:
+[risiko utama 2-3 poin]
+EXECUTION_NOTE: [catatan eksekusi spesifik]`;
+
+    const userMsg = `${hlReport}\n\nAnalisis data di atas dan berikan trading decision sekarang. Perhatikan khusus:\n1. Confluence antara RSI, EMA, MACD, dan BB\n2. Funding rate — apakah ada crowded trade?\n3. Price action dari candle terakhir\n4. Risk/reward harus minimum 1:2`;
+
+    const gemResp = await callGemini(sysPrompt, userMsg);
+    setGState('executing');
+    feed('gem', gemResp);
+
+    // 4. PARSE & RENDER
+    const sig = parseSignal(gemResp);
+    if (sig) {
+      G.lastSignal = sig;
+      renderSignalCard(sig);
+      if (sig.action !== 'HOLD') {
+        await executeOrder(sig, coin, price);
+      }
+    }
+
+    setGState('idle');
+
+  } catch (err) {
+    feed('sys', `❌ Error: ${err.message}`);
+    setGState('idle');
+  }
+
+  setLoading(false);
+}
+
+// ═══════════════════════════════════════════════════════
+// GEMINI API
+// ═══════════════════════════════════════════════════════
+async function callGemini(systemPrompt, userMsg) {
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userMsg }] }],
+    generationConfig: {
+      temperature: 0.3,
+      maxOutputTokens: 1200,
+      topP: 0.85
+    }
   };
 
-  // RSI
-  const c14 = closes.slice(-15);
-  const gains=[], losses=[];
-  for (let i=1; i<c14.length; i++) { const d=c14[i]-c14[i-1]; gains.push(d>0?d:0); losses.push(d<0?-d:0); }
-  const ag = gains.reduce((a,b)=>a+b,0)/gains.length;
-  const al = losses.reduce((a,b)=>a+b,0)/losses.length;
-  const rsi = +(100 - 100/(1+(al===0?100:ag/al))).toFixed(2);
-
-  // MACD
-  const ema12=ema(closes,12), ema26=ema(closes,26);
-  const macd=+(ema12-ema26).toFixed(5);
-  const signal=+(macd*0.89).toFixed(5);
-  const hist=+(macd-signal).toFixed(5);
-
-  // Stoch
-  const h14=Math.max(...highs.slice(-14)), l14=Math.min(...lows.slice(-14));
-  const stoch=+((closes[closes.length-1]-l14)/(h14-l14)*100).toFixed(2);
-
-  // BB
-  const ma20=sma(closes,20);
-  const std=Math.sqrt(closes.slice(-20).reduce((s,v)=>s+Math.pow(v-ma20,2),0)/20);
-  const bbUpper=+(ma20+2*std).toFixed(5), bbLower=+(ma20-2*std).toFixed(5);
-  const bbWidth=+((bbUpper-bbLower)/ma20*100).toFixed(3);
-  const bbPos=+((closes[closes.length-1]-bbLower)/(bbUpper-bbLower)*100).toFixed(2);
-
-  // ATR
-  const atr=+((highs.slice(-14).reduce((s,h,i)=>s+(h-lows.slice(-14)[i]),0))/14).toFixed(5);
-
-  // VWAP
-  const vwap=+(closes.slice(-20).reduce((s,c,i)=>s+c*vols.slice(-20)[i],0)/vols.slice(-20).reduce((a,b)=>a+b,0)).toFixed(5);
-
-  // Volume analysis
-  const avgVol = sma(vols, 20);
-  const currVol = vols[vols.length-1];
-  const volRatio = +(currVol/avgVol).toFixed(2);
-
-  // Price momentum
-  const mom10 = +((closes[closes.length-1]-closes[closes.length-11])/closes[closes.length-11]*100).toFixed(3);
-  const mom3  = +((closes[closes.length-1]-closes[closes.length-4])/closes[closes.length-4]*100).toFixed(3);
-
-  const curr = closes[closes.length-1];
-  return {
-    rsi, macd, signal, hist, stoch,
-    ema9:  +ema(closes,9).toFixed(5),
-    ema21: +ema(closes,21).toFixed(5),
-    ema50: +ema(closes,50).toFixed(5),
-    ema200:+ema(closes,Math.min(200,closes.length)).toFixed(5),
-    ma20:  +ma20.toFixed(5),
-    bbUpper, bbLower, bbWidth, bbPos, atr, vwap,
-    volRatio, mom10, mom3,
-    currentPrice: curr,
-    prevClose: closes[closes.length-2],
-    priceChange: +(curr - closes[closes.length-2]).toFixed(5),
-    pctChange: +((curr-closes[closes.length-2])/closes[closes.length-2]*100).toFixed(3),
-    high24: Math.max(...highs.slice(-24)), low24: Math.min(...lows.slice(-24)),
-    volume24h: vols.slice(-24).reduce((a,b)=>a+b,0).toFixed(2),
-  };
-}
-
-// ─── CLAUDE API (acts as Gemini analyst persona) ──────────────────────────────
-async function callAtlasAI(marketPayload) {
-  const { symbol, interval, indicators: ind, orderBook, funding, balance, tradeSize, leverage } = marketPayload;
-
-  const systemPrompt = `You are GEMINI ATLAS — an elite algorithmic crypto trader fused with a quant analyst. You have mastered:
-- Multi-timeframe technical analysis (price action, momentum, volume)
-- Derivatives market microstructure (funding rates, open interest, liquidation maps)
-- Risk management and position sizing
-- Order flow and order book depth analysis
-
-Your analysis is surgical, unemotional, and always actionable. You NEVER give vague signals.
-You ALWAYS output strict JSON. No markdown. No explanation outside JSON.`;
-
-  const userPrompt = `Analyze the following live ${symbol}/USDT market data from Hyperliquid DEX and produce a complete trading plan.
-
-=== HYPERLIQUID MARKET DATA: ${symbol}/USDT [${interval}] ===
-
-PRICE ACTION:
-  Current: $${ind.currentPrice.toLocaleString()}
-  Change:  ${ind.pctChange}% (${ind.priceChange > 0 ? "+" : ""}${ind.priceChange})
-  24h High/Low: $${ind.high24.toLocaleString()} / $${ind.low24.toLocaleString()}
-  Momentum 3-bar: ${ind.mom3}% | 10-bar: ${ind.mom10}%
-  VWAP: $${ind.vwap}
-
-MOMENTUM INDICATORS:
-  RSI(14):        ${ind.rsi} ${ind.rsi>70?"[OVERBOUGHT]":ind.rsi<30?"[OVERSOLD]":"[NEUTRAL]"}
-  MACD:           ${ind.macd} | Signal: ${ind.signal} | Histogram: ${ind.hist} ${ind.macd>ind.signal?"[BULLISH X]":"[BEARISH X]"}
-  Stochastic(14): ${ind.stoch} ${ind.stoch>80?"[OVERBOUGHT]":ind.stoch<20?"[OVERSOLD]":"[NEUTRAL]"}
-
-TREND & STRUCTURE:
-  EMA  9 / 21 / 50 / 200: ${ind.ema9} / ${ind.ema21} / ${ind.ema50} / ${ind.ema200}
-  Trend stack: ${ind.ema9>ind.ema21&&ind.ema21>ind.ema50?"BULLISH":"ind.ema9<ind.ema21&&ind.ema21<ind.ema50"?"BEARISH":"MIXED"}
-  BB Upper/Mid/Lower: ${ind.bbUpper} / ${ind.ma20} / ${ind.bbLower}
-  BB Width: ${ind.bbWidth}% | BB Position: ${ind.bbPos}%
-  ATR(14): ${ind.atr}
-
-VOLUME:
-  Volume Ratio (curr/avg20): ${ind.volRatio}x ${ind.volRatio>1.5?"[HIGH]":ind.volRatio<0.7?"[LOW]":"[NORMAL]"}
-  24h Volume: ${(+ind.volume24h).toLocaleString()}
-
-ORDER BOOK (Hyperliquid L2):
-  Top Bids: ${orderBook.bids.slice(0,4).map(b=>`$${b[0]}@${b[1]}`).join(" | ")}
-  Top Asks: ${orderBook.asks.slice(0,4).map(a=>`$${a[0]}@${a[1]}`).join(" | ")}
-  Bid/Ask Spread: ${orderBook.spread}
-  Best Bid: $${orderBook.bids[0][0]} | Best Ask: $${orderBook.asks[0][0]}
-
-DERIVATIVES (Hyperliquid Perps):
-  Funding Rate:   ${funding.rate} (${+funding.rate>0?"LONGS paying SHORTS":"SHORTS paying LONGS"})
-  Annualized:     ${funding.annualized}% APR
-  Open Interest:  $${(+funding.openInterest/1e6).toFixed(1)}M
-  Long/Short %:   ${funding.longRatio}% / ${(100-+funding.longRatio).toFixed(1)}%
-  Next Funding:   ${funding.nextFunding}
-
-PORTFOLIO:
-  Balance:        $${balance.toLocaleString()} USDC
-  Risk Per Trade: ${tradeSize}% = $${(balance*tradeSize/100).toFixed(2)}
-  Leverage:       ${leverage}x
-  Max Position:   $${(balance*tradeSize/100*leverage).toFixed(2)}
-
-=== REQUIRED OUTPUT (strict JSON only, no markdown, no extra text) ===
-{
-  "market_context": "string — 3-sentence sharp market assessment",
-  "sentiment": "BULLISH|BEARISH|NEUTRAL",
-  "trend": "UPTREND|DOWNTREND|RANGING|BREAKOUT|BREAKDOWN",
-  "strength": "WEAK|MODERATE|STRONG|EXTREME",
-  "signal": "LONG|SHORT|WAIT",
-  "confidence": number 0-100,
-  "entry": number,
-  "stop_loss": number,
-  "take_profit_1": number,
-  "take_profit_2": number,
-  "take_profit_3": number,
-  "risk_reward": "string e.g. 2.4:1",
-  "leverage_rec": number 1-20,
-  "position_size_pct": number,
-  "key_support": [number, number],
-  "key_resistance": [number, number],
-  "catalysts": ["string","string","string"],
-  "risks": ["string","string"],
-  "invalidation": "string — what price action invalidates this trade",
-  "time_horizon": "string e.g. 2-4 hours",
-  "atlas_verdict": "string — one brutal honest sentence from GEMINI ATLAS",
-  "execute": boolean
-}`;
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }]
-    })
+  const res = await fetch(GEMINI_URL(G.geminiKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`AI API ${res.status}: ${err.slice(0,120)}`);
+    const e = await res.json();
+    throw new Error(e.error?.message || 'Gemini API error ' + res.status);
   }
 
-  const data = await res.json();
-  const raw = data.content?.map(b => b.text || "").join("") || "";
-
-  // Parse JSON from response
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("No JSON in AI response");
-  return JSON.parse(match[0]);
+  const d = await res.json();
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini';
 }
 
-// ─── CANDLESTICK CHART ────────────────────────────────────────────────────────
-function CandleChart({ candles, indicators, width = 700, height = 220 }) {
-  if (!candles?.length) return null;
-  const n = Math.min(candles.length, 70);
-  const slice = candles.slice(-n);
-  const allH = slice.map(c => c.h), allL = slice.map(c => c.l);
-  const maxP = Math.max(...allH), minP = Math.min(...allL);
-  const range = maxP - minP || 1;
-  const pad = { t: 8, b: 8, l: 4, r: 4 };
-  const cw = (width - pad.l - pad.r) / n;
-  const ch = height - pad.t - pad.b;
-  const py = p => pad.t + (1 - (p - minP) / range) * ch;
-  const vols = slice.map(c => c.v);
-  const maxV = Math.max(...vols);
+// ═══════════════════════════════════════════════════════
+// PARSE SIGNAL
+// ═══════════════════════════════════════════════════════
+function parseSignal(text) {
+  const get = k => {
+    const m = text.match(new RegExp(k + '[:\\s]+([^\\n]+)', 'i'));
+    return m ? m[1].trim() : null;
+  };
+  const action = (get('SIGNAL') || '').toUpperCase();
+  return {
+    action: action.includes('BUY') ? 'BUY' : action.includes('SELL') ? 'SELL' : 'HOLD',
+    outlook: get('OUTLOOK') || 'NEUTRAL',
+    confidence: parseFloat(get('CONFIDENCE')) || 5,
+    entry: parseFloat((get('ENTRY') || '').replace(/[$,]/g, '')) || null,
+    tp1: parseFloat((get('TP1') || '').replace(/[$,]/g, '')) || null,
+    tp2: parseFloat((get('TP2') || '').replace(/[$,]/g, '')) || null,
+    sl: parseFloat((get('SL') || '').replace(/[$,]/g, '')) || null,
+    leverage: get('LEVERAGE') || '2',
+    size: get('SIZE') || '5',
+    rr: get('RR') || '1:2'
+  };
+}
 
-  return (
-    <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ display: "block" }}>
-      <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#08121c" />
-          <stop offset="100%" stopColor="#050c14" />
-        </linearGradient>
-      </defs>
-      <rect width={width} height={height} fill="url(#bg)" rx="6" />
-      {[0.2, 0.4, 0.6, 0.8].map(f => (
-        <line key={f} x1={pad.l} x2={width-pad.r} y1={pad.t+f*ch} y2={pad.t+f*ch}
-          stroke="#0d1e2e" strokeWidth="1" strokeDasharray="3,5" />
-      ))}
-      {/* Volume bars */}
-      {slice.map((c, i) => {
-        const x = pad.l + i * cw + cw * 0.15;
-        const bw = cw * 0.7;
-        const isUp = c.c >= c.o;
-        const vh = (c.v / maxV) * (ch * 0.2);
-        return (
-          <rect key={`v${i}`} x={x} y={height - pad.b - vh} width={bw} height={vh}
-            fill={isUp ? "rgba(0,229,160,0.12)" : "rgba(255,77,109,0.12)"} />
-        );
-      })}
-      {/* BB bands */}
-      {indicators && (() => {
-        const upperY = py(indicators.bbUpper), lowerY = py(indicators.bbLower);
-        return (
-          <>
-            <line x1={pad.l} x2={width-pad.r} y1={upperY} y2={upperY} stroke="rgba(129,140,248,0.3)" strokeWidth="1" strokeDasharray="4,3" />
-            <line x1={pad.l} x2={width-pad.r} y1={lowerY} y2={lowerY} stroke="rgba(129,140,248,0.3)" strokeWidth="1" strokeDasharray="4,3" />
-          </>
-        );
-      })()}
-      {/* Candles */}
-      {slice.map((c, i) => {
-        const x = pad.l + i * cw + cw * 0.15;
-        const bw = cw * 0.7;
-        const isUp = c.c >= c.o;
-        const col = isUp ? "#00e5a0" : "#ff4d6d";
-        const bodyTop = py(Math.max(c.o, c.c));
-        const bodyH = Math.max(Math.abs(py(c.o) - py(c.c)), 1.5);
-        return (
-          <g key={i}>
-            <line x1={x + bw/2} x2={x + bw/2} y1={py(c.h)} y2={py(c.l)} stroke={col} strokeWidth="0.8" opacity="0.8" />
-            <rect x={x} y={bodyTop} width={bw} height={bodyH} fill={col} opacity="0.92" />
-          </g>
-        );
-      })}
-      {/* EMA lines */}
-      {indicators && (() => {
-        const ema9Y = py(indicators.ema9), ema21Y = py(indicators.ema21);
-        const lastX = pad.l + (n-1) * cw + cw * 0.5;
-        return (
-          <>
-            <line x1={pad.l} x2={lastX} y1={ema9Y} y2={ema9Y} stroke="#f59e0b" strokeWidth="1" opacity="0.7" />
-            <line x1={pad.l} x2={lastX} y1={ema21Y} y2={ema21Y} stroke="#818cf8" strokeWidth="1" opacity="0.7" />
-          </>
-        );
-      })()}
-    </svg>
+// ═══════════════════════════════════════════════════════
+// RENDER SIGNAL CARD
+// ═══════════════════════════════════════════════════════
+function renderSignalCard(sig) {
+  if (sig.action === 'HOLD') {
+    document.getElementById('signalWrap').innerHTML = `
+      <div class="signal-card hold">
+        <div class="sig-direction hold">◈ HOLD</div>
+        <div class="sig-sub">${sig.outlook} — No clear entry setup</div>
+        <div class="conf-wrap">
+          <div class="conf-top"><span>CONFIDENCE</span><span>${sig.confidence}/10</span></div>
+          <div class="conf-track"><div class="conf-fill" style="width:${sig.confidence * 10}%"></div></div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const isBuy = sig.action === 'BUY';
+  const fmtP = n => n ? (n > 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : n.toFixed(4)) : '—';
+
+  document.getElementById('signalWrap').innerHTML = `
+    <div class="signal-card ${isBuy ? 'buy' : 'sell'}">
+      <div class="sig-direction ${isBuy ? 'buy' : 'sell'}">${sig.action}</div>
+      <div class="sig-sub">${sig.outlook} · ${sig.leverage}x Leverage · ${sig.size}% Size</div>
+      <div class="sig-rows">
+        <div class="sig-row"><span class="sig-k">Entry Zone</span><span class="sig-v" style="color:#4285f4">$${fmtP(sig.entry)}</span></div>
+        <div class="sig-row"><span class="sig-k">Take Profit 1</span><span class="sig-v" style="color:#00e676">$${fmtP(sig.tp1)}</span></div>
+        <div class="sig-row"><span class="sig-k">Take Profit 2</span><span class="sig-v" style="color:#00e676">$${fmtP(sig.tp2)}</span></div>
+        <div class="sig-row"><span class="sig-k">Stop Loss</span><span class="sig-v" style="color:#ff1744">$${fmtP(sig.sl)}</span></div>
+        <div class="sig-row"><span class="sig-k">Risk / Reward</span><span class="sig-v" style="color:#ffc400">${sig.rr}</span></div>
+        <div class="sig-row"><span class="sig-k">Leverage</span><span class="sig-v" style="color:#b8d4f0">${sig.leverage}x</span></div>
+      </div>
+      <div class="conf-wrap">
+        <div class="conf-top"><span>AI CONFIDENCE</span><span>${sig.confidence}/10</span></div>
+        <div class="conf-track"><div class="conf-fill" style="width:${sig.confidence * 10}%"></div></div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// EXECUTE ORDER → HYPERLIQUID
+// ═══════════════════════════════════════════════════════
+async function executeOrder(sig, coin, price) {
+  const isBuy = sig.action === 'BUY';
+  const entryP = sig.entry || price;
+
+  feed('exec',
+    `⚡ ORDER EXECUTION — ${G.mode.toUpperCase()}\n` +
+    `  Pair     : ${coin}-PERP\n` +
+    `  Direction: ${sig.action}\n` +
+    `  Entry    : $${entryP.toLocaleString()}\n` +
+    `  TP1      : $${sig.tp1?.toLocaleString() ?? '—'}\n` +
+    `  SL       : $${sig.sl?.toLocaleString() ?? '—'}\n` +
+    `  Leverage : ${sig.leverage}x\n` +
+    `  Size     : ${sig.size}% of capital`
   );
+
+  await sleep(600);
+
+  if (G.mode === 'sim') {
+    G.position = {
+      side: isBuy ? 'long' : 'short', coin, entry: entryP,
+      leverage: sig.leverage, tp1: sig.tp1, tp2: sig.tp2, sl: sig.sl,
+      time: new Date().toLocaleTimeString('id-ID', { hour12: false })
+    };
+    renderPosition(G.position, price);
+
+    G.executions.unshift({
+      ic: isBuy ? '🟢' : '🔴',
+      txt: `[SIM] ${sig.action} ${coin} @ $${entryP.toLocaleString()} · ${sig.leverage}x · TP $${sig.tp1?.toLocaleString() ?? '—'} · SL $${sig.sl?.toLocaleString() ?? '—'}`,
+      t: new Date().toLocaleTimeString('id-ID', { hour12: false })
+    });
+    renderExecList();
+
+    feed('exec',
+      `✅ [SIMULATION] Order simulated successfully\n` +
+      `  ${sig.action} ${coin}-PERP @ $${entryP.toLocaleString()}\n` +
+      `  Leverage: ${sig.leverage}x\n\n` +
+      `  ━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `  Untuk LIVE execution via Hyperliquid SDK:\n\n` +
+      `  from hyperliquid.exchange import Exchange\n` +
+      `  from eth_account import Account\n\n` +
+      `  wallet = Account.from_key(PRIVATE_KEY)\n` +
+      `  ex = Exchange(wallet, "https://api.hyperliquid.xyz")\n` +
+      `  # Place limit order\n` +
+      `  ex.order("${coin}", is_buy=${isBuy}, sz=size,\n` +
+      `    limit_px=${entryP}, order_type={"limit": {"tif":"Gtc"}})\n` +
+      `  # Set TP\n` +
+      `  ex.order("${coin}", is_buy=${!isBuy}, sz=size,\n` +
+      `    limit_px=${sig.tp1}, order_type={"limit": {"tif":"Gtc"}})\n` +
+      `  # Set SL\n` +
+      `  ex.order("${coin}", is_buy=${!isBuy}, sz=size,\n` +
+      `    limit_px=${sig.sl}, order_type={"trigger": {"triggerPx":${sig.sl},"isMarket":true,"tpsl":"sl"}})\n\n` +
+      `  ⚠ Jalankan dari server Python dengan private key — BUKAN dari browser`
+    );
+  } else {
+    feed('exec', `🔴 LIVE/TESTNET mode: Gunakan hyperliquid-python-sdk di server untuk eksekusi nyata.\nPrivate key JANGAN pernah dimasukkan ke browser.`);
+  }
 }
 
-// ─── TRADE CARD ───────────────────────────────────────────────────────────────
-function TradeCard({ trade }) {
-  const isLong = trade.side === "LONG";
-  const isOpen = trade.status === "OPEN";
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid #0a1a28" }}>
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: isLong ? "rgba(0,229,160,0.1)" : "rgba(255,77,109,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>
-        {isLong ? "▲" : "▼"}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: isLong ? "#00e5a0" : "#ff4d6d" }}>
-          {trade.side} {trade.symbol} ×{trade.leverage}
-        </div>
-        <div style={{ fontSize: 10, color: "#2e4e6e", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          @ ${trade.entry?.toLocaleString()} · TP ${trade.tp?.toLocaleString()} · SL ${trade.sl?.toLocaleString()}
-        </div>
-      </div>
-      <div style={{ textAlign: "right", flexShrink: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: isOpen ? "#f59e0b" : trade.pnl > 0 ? "#00e5a0" : "#ff4d6d" }}>
-          {isOpen ? "● LIVE" : `${trade.pnl > 0 ? "+" : ""}${trade.pnl?.toFixed(2)}`}
-        </div>
-        <div style={{ fontSize: 9, color: "#2e4e6e", marginTop: 2 }}>{trade.time}</div>
-      </div>
+// ═══════════════════════════════════════════════════════
+// POSITION RENDER
+// ═══════════════════════════════════════════════════════
+function renderPosition(pos, price) {
+  if (!pos) { document.getElementById('posCard').innerHTML = '<div class="pos-empty">NO OPEN POSITION</div>'; return; }
+  const pnlPct = pos.side === 'long'
+    ? ((price - pos.entry) / pos.entry * 100)
+    : ((pos.entry - price) / pos.entry * 100);
+  const lev = parseInt(pos.leverage) || 2;
+  const lpnl = pnlPct * lev;
+  const fmt = n => n ? (n > 1000 ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : '$' + n.toFixed(4)) : '—';
+
+  document.getElementById('posCard').innerHTML = `
+    <div class="pos-top">
+      <div class="pos-side-badge ${pos.side}">${pos.side.toUpperCase()}</div>
+      <div class="pos-coin-lbl">${pos.coin}-PERP · ${pos.leverage}x</div>
+      <div class="pos-pnl ${lpnl >= 0 ? 'pos' : 'neg'}">${lpnl >= 0 ? '+' : ''}${lpnl.toFixed(2)}%</div>
     </div>
-  );
+    <div class="sig-rows">
+      <div class="sig-row"><span class="sig-k">Entry</span><span class="sig-v" style="color:#4285f4">${fmt(pos.entry)}</span></div>
+      <div class="sig-row"><span class="sig-k">Mark Price</span><span class="sig-v">${fmt(price)}</span></div>
+      <div class="sig-row"><span class="sig-k">Take Profit 1</span><span class="sig-v" style="color:#00e676">${fmt(pos.tp1)}</span></div>
+      <div class="sig-row"><span class="sig-k">Stop Loss</span><span class="sig-v" style="color:#ff1744">${fmt(pos.sl)}</span></div>
+      <div class="sig-row"><span class="sig-k">Opened</span><span class="sig-v" style="color:#4a7090">${pos.time}</span></div>
+    </div>`;
 }
 
-// ─── RSI GAUGE ────────────────────────────────────────────────────────────────
-function RSIGauge({ value }) {
-  const pct = value / 100;
-  const col = value > 70 ? "#ff4d6d" : value < 30 ? "#00e5a0" : "#818cf8";
-  return (
-    <div style={{ position: "relative", height: 6, background: "#0a1a28", borderRadius: 3, overflow: "hidden" }}>
-      <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${pct * 100}%`, background: col, borderRadius: 3, transition: "width 0.5s" }} />
-      <div style={{ position: "absolute", left: "30%", top: 0, width: 1, height: "100%", background: "rgba(255,255,255,0.1)" }} />
-      <div style={{ position: "absolute", left: "70%", top: 0, width: 1, height: "100%", background: "rgba(255,255,255,0.1)" }} />
-    </div>
-  );
+function renderExecList() {
+  const el = document.getElementById('execList');
+  if (!G.executions.length) { el.innerHTML = '<div class="empty-state">No executions</div>'; return; }
+  el.innerHTML = G.executions.slice(0, 6).map(e =>
+    `<div class="exec-row"><div class="exec-ic">${e.ic}</div><div class="exec-txt">${e.txt}</div><div class="exec-t">${e.t}</div></div>`
+  ).join('');
 }
 
-// ─── SIGNAL BADGE ─────────────────────────────────────────────────────────────
-function SignalBadge({ signal, confidence }) {
-  const cfg = {
-    LONG:  { bg: "rgba(0,229,160,0.15)",  border: "#00e5a0", color: "#00e5a0",  icon: "▲" },
-    SHORT: { bg: "rgba(255,77,109,0.15)", border: "#ff4d6d", color: "#ff4d6d",  icon: "▼" },
-    WAIT:  { bg: "rgba(74,106,138,0.15)", border: "#4a6a8a", color: "#4a6a8a",  icon: "●" },
-  }[signal] || { bg: "rgba(74,106,138,0.15)", border: "#4a6a8a", color: "#4a6a8a", icon: "?" };
-  return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 8 }}>
-      <span style={{ color: cfg.color, fontSize: 11 }}>{cfg.icon}</span>
-      <span style={{ color: cfg.color, fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 16, letterSpacing: 1 }}>{signal}</span>
-      {confidence !== undefined && (
-        <span style={{ color: cfg.color, fontSize: 10, opacity: 0.7 }}>{confidence}%</span>
-      )}
-    </div>
-  );
+// ═══════════════════════════════════════════════════════
+// FEED MESSAGES
+// ═══════════════════════════════════════════════════════
+const feedMeta = {
+  sys: { icon: '⚙', who: 'SYSTEM' },
+  hl: { icon: '◈', who: 'HYPERLIQUID' },
+  gem: { icon: '✦', who: 'GEMINI PRO' },
+  exec: { icon: '⚡', who: 'EXECUTION ENGINE' }
+};
+
+function feed(type, text) {
+  const el = document.getElementById('feed');
+  const m = feedMeta[type] || feedMeta.sys;
+  const ts = new Date().toLocaleTimeString('id-ID', { hour12: false });
+  const div = document.createElement('div');
+  div.className = `feed-msg ftype-${type}`;
+  div.innerHTML = `
+    <div class="fm-icon">${m.icon}</div>
+    <div class="fm-body">
+      <div class="fm-meta"><span class="fm-who">${m.who}</span><span class="fm-ts">${ts}</span></div>
+      <div class="fm-bubble">${colorize(esc(text))}</div>
+    </div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  while (el.children.length > 60) el.removeChild(el.firstChild);
 }
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
-export default function App() {
-  const [symbol, setSymbol] = useState("BTC");
-  const [interval, setIntervalVal] = useState("15m");
-  const [candles, setCandles] = useState([]);
-  const [orderBook, setOrderBook] = useState(null);
-  const [funding, setFunding] = useState(null);
-  const [indicators, setIndicators] = useState(null);
-  const [balance] = useState(10000);
-  const [tradeSize, setTradeSize] = useState(5);
-  const [leverage, setLeverage] = useState(5);
+function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-  const [phase, setPhase] = useState("idle"); // idle|fetch|think|execute|done|err
-  const [tradePlan, setTradePlan] = useState(null);
-  const [trades, setTrades] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [autoMode, setAutoMode] = useState(false);
-  const [autoCountdown, setAutoCountdown] = useState(0);
-  const [aiThinking, setAiThinking] = useState(false);
-  const [errMsg, setErrMsg] = useState("");
-  const [activeTab, setActiveTab] = useState("plan"); // plan|book|history
-
-  const logRef = useRef(null);
-  const autoRef = useRef(null);
-  const countRef = useRef(null);
-
-  const log = useCallback((msg, type = "sys") => {
-    const ts = new Date().toLocaleTimeString("en-GB");
-    setLogs(p => [...p.slice(-100), { msg, type, ts, id: Date.now() + Math.random() }]);
-    setTimeout(() => logRef.current?.scrollTo({ top: 99999, behavior: "smooth" }), 60);
-  }, []);
-
-  // ── STEP 1: FETCH HYPERLIQUID DATA ──────────────────────────────────────────
-  const fetchData = useCallback(() => {
-    log(`[HL] Requesting ${symbol}/${interval} market snapshot...`, "hl");
-    const c = generateCandleData(symbol, interval, 100);
-    const ob = generateOrderBook(symbol);
-    const fd = generateFundingData();
-    const ind = calcIndicators(c);
-    setCandles(c); setOrderBook(ob); setFunding(fd); setIndicators(ind);
-    log(`[HL] ✓ ${c.length} candles received | Price: $${ind.currentPrice.toLocaleString()} (${ind.pctChange > 0 ? "+" : ""}${ind.pctChange}%)`, "hl");
-    log(`[HL] ✓ L2 order book: bid $${ob.bids[0][0]} / ask $${ob.asks[0][0]} | spread ${ob.spread}`, "hl");
-    log(`[HL] ✓ Funding ${fd.rate} | OI $${(+fd.openInterest/1e6).toFixed(1)}M | Long ${fd.longRatio}%`, "hl");
-    log(`[HL] ✓ Indicators — RSI ${ind.rsi} | MACD ${ind.macd} | Stoch ${ind.stoch} | ATR ${ind.atr}`, "hl");
-    return { candles: c, orderBook: ob, funding: fd, indicators: ind };
-  }, [symbol, interval, log]);
-
-  // ── STEP 2: GEMINI ATLAS ANALYSIS ───────────────────────────────────────────
-  const runAnalysis = useCallback(async (data) => {
-    setAiThinking(true);
-    log(`[GEMINI ATLAS] Ingesting Hyperliquid market data...`, "ai");
-    log(`[GEMINI ATLAS] Running multi-factor analysis: momentum + structure + derivatives...`, "ai");
-    try {
-      const plan = await callAtlasAI({ symbol, interval, balance, tradeSize, leverage, ...data });
-      setTradePlan(plan);
-      log(`[GEMINI ATLAS] ━━━━ ANALYSIS COMPLETE ━━━━`, "ai");
-      log(`[GEMINI ATLAS] "${plan.atlas_verdict}"`, "verdict");
-      log(`[GEMINI ATLAS] Signal: ${plan.signal} | Confidence: ${plan.confidence}% | Trend: ${plan.trend} (${plan.strength})`, "ai");
-      log(`[GEMINI ATLAS] Sentiment: ${plan.sentiment} | Time Horizon: ${plan.time_horizon}`, "ai");
-      if (plan.signal !== "WAIT") {
-        log(`[GEMINI ATLAS] Entry: $${plan.entry?.toLocaleString()} | SL: $${plan.stop_loss?.toLocaleString()} | TP1: $${plan.take_profit_1?.toLocaleString()}`, "ai");
-        log(`[GEMINI ATLAS] TP2: $${plan.take_profit_2?.toLocaleString()} | TP3: $${plan.take_profit_3?.toLocaleString()} | R:R = ${plan.risk_reward}`, "ai");
-        log(`[GEMINI ATLAS] Leverage rec: ${plan.leverage_rec}x | Invalidation: ${plan.invalidation}`, "ai");
-      }
-      plan.catalysts?.forEach(c => log(`[GEMINI ATLAS] → Catalyst: ${c}`, "ai"));
-      plan.risks?.forEach(r => log(`[GEMINI ATLAS] ⚠ Risk: ${r}`, "warn"));
-      setAiThinking(false);
-      return plan;
-    } catch (err) {
-      log(`[GEMINI ATLAS] ✗ Error: ${err.message}`, "err");
-      setErrMsg(err.message);
-      setAiThinking(false);
-      return null;
-    }
-  }, [symbol, interval, balance, tradeSize, leverage, log]);
-
-  // ── STEP 3: HYPERLIQUID EXECUTION ───────────────────────────────────────────
-  const executeTrade = useCallback((plan) => {
-    if (!plan?.execute || plan.signal === "WAIT") {
-      log("[HL] ⏸ No execution — ATLAS signaled WAIT or execute=false", "warn");
-      return;
-    }
-    const notional = (balance * (plan.position_size_pct || tradeSize) / 100) * (plan.leverage_rec || leverage);
-    log(`[HL] 🚀 Placing ${plan.signal} market order on Hyperliquid...`, "hl");
-    log(`[HL] Order: ${symbol}-PERP ${plan.signal} | Notional: $${notional.toFixed(2)} | Leverage: ${plan.leverage_rec || leverage}x`, "hl");
-    setTimeout(() => {
-      const slippage = plan.entry * (1 + (Math.random() - 0.5) * 0.0003);
-      const filled = +slippage.toFixed(5);
-      const t = {
-        id: Date.now(), symbol, side: plan.signal,
-        entry: filled, sl: plan.stop_loss, tp: plan.take_profit_1,
-        leverage: plan.leverage_rec || leverage,
-        size: notional, time: new Date().toLocaleTimeString("en-GB"),
-        status: "OPEN", pnl: 0
-      };
-      setTrades(p => [t, ...p.slice(0, 29)]);
-      log(`[HL] ✅ FILLED @ $${filled.toLocaleString()} | ID: ${t.id}`, "ok");
-      log(`[HL] SL set: $${plan.stop_loss?.toLocaleString()} | TP1: $${plan.take_profit_1?.toLocaleString()}`, "ok");
-    }, 700);
-  }, [balance, tradeSize, leverage, symbol, log]);
-
-  // ── FULL CYCLE ───────────────────────────────────────────────────────────────
-  const runCycle = useCallback(async () => {
-    if (phase !== "idle" && phase !== "done" && phase !== "err") return;
-    setErrMsg(""); setPhase("fetch");
-    log("━━━━━━━━━━━━━━ NEW ANALYSIS CYCLE ━━━━━━━━━━━━━━", "div");
-    log(`[SYS] Cycle start: ${symbol} (${interval})`, "sys");
-    const data = fetchData();
-    setPhase("think");
-    const plan = await runAnalysis(data);
-    if (!plan) { setPhase("err"); return; }
-    if (plan.execute && plan.signal !== "WAIT") {
-      setPhase("execute");
-      executeTrade(plan);
-    }
-    setPhase("done");
-    log("[SYS] Cycle complete ✓", "sys");
-  }, [phase, symbol, interval, fetchData, runAnalysis, executeTrade, log]);
-
-  // ── AUTO MODE ────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (autoMode) {
-      runCycle();
-      let countdown = 45;
-      setAutoCountdown(countdown);
-      countRef.current = setInterval(() => {
-        countdown--;
-        setAutoCountdown(countdown);
-        if (countdown <= 0) countdown = 45;
-      }, 1000);
-      autoRef.current = setInterval(() => {
-        countdown = 45;
-        setAutoCountdown(45);
-        runCycle();
-      }, 45000);
-    } else {
-      clearInterval(autoRef.current);
-      clearInterval(countRef.current);
-      setAutoCountdown(0);
-    }
-    return () => { clearInterval(autoRef.current); clearInterval(countRef.current); };
-  }, [autoMode]); // eslint-disable-line
-
-  // ── LIVE PNL UPDATE ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (!indicators) return;
-      const jitter = indicators.currentPrice * (1 + (Math.random()-0.5)*0.002);
-      setTrades(prev => prev.map(t => {
-        if (t.status !== "OPEN") return t;
-        const pnl = t.side === "LONG" ? (jitter-t.entry)/t.entry*t.size : (t.entry-jitter)/t.entry*t.size;
-        if (t.side === "LONG" && jitter <= t.sl) return { ...t, status: "CLOSED", pnl: -(t.size*0.018) };
-        if (t.side === "LONG" && jitter >= t.tp) return { ...t, status: "CLOSED", pnl: t.size*0.038 };
-        if (t.side === "SHORT" && jitter >= t.sl) return { ...t, status: "CLOSED", pnl: -(t.size*0.018) };
-        if (t.side === "SHORT" && jitter <= t.tp) return { ...t, status: "CLOSED", pnl: t.size*0.038 };
-        return { ...t, pnl: +pnl.toFixed(2) };
-      }));
-    }, 2500);
-    return () => clearInterval(id);
-  }, [indicators]);
-
-  const totalPnl = trades.filter(t=>t.status==="CLOSED").reduce((s,t)=>s+t.pnl,0);
-  const openCount = trades.filter(t=>t.status==="OPEN").length;
-  const winRate = (() => {
-    const closed = trades.filter(t=>t.status==="CLOSED");
-    if (!closed.length) return null;
-    return +((closed.filter(t=>t.pnl>0).length/closed.length)*100).toFixed(0);
-  })();
-
-  const phaseColor = { idle:"#2e4e6e", fetch:"#f59e0b", think:"#818cf8", execute:"#00e5a0", done:"#00e5a0", err:"#ff4d6d" };
-  const phaseLabel = { idle:"STANDBY", fetch:"FETCHING DATA", think:"AI ANALYZING", execute:"EXECUTING", done:"READY", err:"ERROR" };
-
-  return (
-    <div style={{ minHeight:"100vh", background:"#050c14", fontFamily:"'JetBrains Mono',monospace", color:"#b8d0e8" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@700;800;900&display=swap');
-        *{box-sizing:border-box;margin:0;padding:0}
-        ::-webkit-scrollbar{width:3px;height:3px}
-        ::-webkit-scrollbar-track{background:#050c14}
-        ::-webkit-scrollbar-thumb{background:#0d2035;border-radius:2px}
-        .btn{cursor:pointer;transition:all 0.18s;border:none;font-family:'JetBrains Mono',monospace}
-        .btn:hover{filter:brightness(1.2);transform:translateY(-1px)}
-        .btn:active{transform:translateY(0);filter:brightness(0.9)}
-        .card{background:#080f19;border:1px solid #0a1e30;border-radius:12px;padding:14px}
-        @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-        @keyframes slideIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-        .thinking{background:linear-gradient(90deg,#818cf8 0%,#c4b5fd 50%,#818cf8 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 2s linear infinite}
-        .blink{animation:blink 1.2s ease-in-out infinite}
-        .slide{animation:slideIn 0.3s ease-out}
-        input[type=number]::-webkit-inner-spin-button{opacity:0.4}
-        select{appearance:none;cursor:pointer}
-      `}</style>
-
-      {/* ── TOPBAR ── */}
-      <div style={{ background:"#06101a", borderBottom:"1px solid #0a1e30", padding:"10px 18px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
-        {/* Logo */}
-        <div style={{ flexShrink:0 }}>
-          <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:20, letterSpacing:-0.5 }}>
-            <span style={{ color:"#00e5a0" }}>ATLAS</span>
-            <span style={{ color:"#1a3a5a", fontSize:10, marginLeft:6, letterSpacing:2, verticalAlign:"middle" }}>GEMINI × HYPERLIQUID</span>
-          </div>
-        </div>
-
-        <div style={{ width:1, height:24, background:"#0a1e30", flexShrink:0 }} />
-
-        {/* Coin Selector */}
-        <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-          {COINS.map(c => (
-            <button key={c} onClick={()=>setSymbol(c)} className="btn"
-              style={{ padding:"4px 10px", borderRadius:6, background:symbol===c?"rgba(0,229,160,0.12)":"transparent", border:`1px solid ${symbol===c?"#00e5a0":"#0a1e30"}`, color:symbol===c?"#00e5a0":"#2e4e6e", fontSize:11, fontWeight:symbol===c?700:400 }}>
-              {c}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ width:1, height:24, background:"#0a1e30", flexShrink:0 }} />
-
-        {/* Interval */}
-        <div style={{ display:"flex", gap:4 }}>
-          {INTERVALS.map(i => (
-            <button key={i} onClick={()=>setIntervalVal(i)} className="btn"
-              style={{ padding:"4px 9px", borderRadius:5, background:interval===i?"rgba(129,140,248,0.12)":"transparent", border:`1px solid ${interval===i?"#818cf8":"#0a1e30"}`, color:interval===i?"#818cf8":"#2e4e6e", fontSize:10 }}>
-              {i}
-            </button>
-          ))}
-        </div>
-
-        {/* Price ticker */}
-        {indicators && (
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginLeft:4 }}>
-            <span style={{ fontSize:16, fontWeight:700, color:"#e8f4ff", fontFamily:"'Syne',sans-serif" }}>
-              ${indicators.currentPrice.toLocaleString()}
-            </span>
-            <span style={{ fontSize:12, fontWeight:700, color:indicators.pctChange>=0?"#00e5a0":"#ff4d6d" }}>
-              {indicators.pctChange>=0?"+":""}{indicators.pctChange}%
-            </span>
-          </div>
-        )}
-
-        {/* Status */}
-        <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-          {errMsg && <span style={{ fontSize:10, color:"#ff4d6d" }}>✗ {errMsg.slice(0,50)}</span>}
-          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            <div className={phase!=="idle"&&phase!=="done"?"blink":""} style={{ width:7, height:7, borderRadius:"50%", background:phaseColor[phase] }} />
-            <span style={{ fontSize:9, color:phaseColor[phase], letterSpacing:2 }}>{phaseLabel[phase]}</span>
-          </div>
-          {autoMode && autoCountdown>0 && (
-            <span style={{ fontSize:9, color:"#2e4e6e" }}>next {autoCountdown}s</span>
-          )}
-          <button onClick={()=>setAutoMode(!autoMode)} className="btn"
-            style={{ padding:"5px 12px", background:autoMode?"rgba(255,77,109,0.12)":"rgba(245,158,11,0.1)", border:`1px solid ${autoMode?"#ff4d6d":"#f59e0b"}`, borderRadius:7, color:autoMode?"#ff4d6d":"#f59e0b", fontSize:10 }}>
-            {autoMode ? "⏹ STOP" : "⟳ AUTO"}
-          </button>
-          <button onClick={runCycle} disabled={phase==="fetch"||phase==="think"||phase==="execute"} className="btn"
-            style={{ padding:"5px 16px", background:phase==="think"||phase==="fetch"||phase==="execute"?"rgba(0,229,160,0.05)":"linear-gradient(135deg,#00e5a0,#00bcd4)", borderRadius:7, color:phase==="think"||phase==="fetch"||phase==="execute"?"#1a3a5a":"#050c14", fontWeight:700, fontSize:11 }}>
-            {phase==="think" ? <span className="thinking">ANALYZING...</span> : phase==="fetch" ? "FETCHING..." : "▶ RUN"}
-          </button>
-        </div>
-      </div>
-
-      {/* ── MAIN GRID ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 320px", gridTemplateRows:"auto 1fr", gap:10, padding:12, minHeight:"calc(100vh - 56px)" }}>
-
-        {/* ── LEFT COLUMN ── */}
-        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-
-          {/* Chart */}
-          <div className="card" style={{ padding:14 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <span style={{ fontFamily:"'Syne',sans-serif", fontSize:18, fontWeight:800, color:"#e8f4ff" }}>{symbol}/USDT-PERP</span>
-                <span style={{ fontSize:9, color:"#2e4e6e", letterSpacing:2 }}>HYPERLIQUID DEX</span>
-              </div>
-              {indicators && (
-                <div style={{ display:"flex", gap:16, fontSize:10, color:"#2e4e6e" }}>
-                  <span>H: <span style={{ color:"#00e5a0" }}>${indicators.high24.toLocaleString()}</span></span>
-                  <span>L: <span style={{ color:"#ff4d6d" }}>${indicators.low24.toLocaleString()}</span></span>
-                  <span>Vol: <span style={{ color:"#818cf8" }}>{(+indicators.volume24h/1e6).toFixed(1)}M</span></span>
-                </div>
-              )}
-            </div>
-            <CandleChart candles={candles} indicators={indicators} width={700} height={220} />
-            {/* Legend */}
-            <div style={{ display:"flex", gap:16, marginTop:8, fontSize:9, color:"#2e4e6e" }}>
-              <span><span style={{ color:"#f59e0b" }}>──</span> EMA9</span>
-              <span><span style={{ color:"#818cf8" }}>──</span> EMA21</span>
-              <span><span style={{ color:"rgba(129,140,248,0.5)" }}>- -</span> BB Bands</span>
-              <span style={{ marginLeft:"auto" }}>Candles: {candles.length} | TF: {interval}</span>
-            </div>
-          </div>
-
-          {/* Indicators Row */}
-          {indicators && (
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:8 }}>
-              {[
-                { l:"RSI", v:indicators.rsi, c:indicators.rsi>70?"#ff4d6d":indicators.rsi<30?"#00e5a0":"#818cf8", bar:true },
-                { l:"MACD", v:indicators.macd, c:indicators.macd>0?"#00e5a0":"#ff4d6d" },
-                { l:"STOCH", v:indicators.stoch, c:indicators.stoch>80?"#ff4d6d":indicators.stoch<20?"#00e5a0":"#818cf8" },
-                { l:"ATR", v:indicators.atr },
-                { l:"VOL RATIO", v:indicators.volRatio+"x", c:indicators.volRatio>1.5?"#f59e0b":"#818cf8" },
-                { l:"MOM 10", v:indicators.mom10+"%", c:indicators.mom10>0?"#00e5a0":"#ff4d6d" },
-              ].map(item => (
-                <div key={item.l} className="card" style={{ padding:"10px 12px" }}>
-                  <div style={{ fontSize:9, color:"#1a3a5a", letterSpacing:2, marginBottom:5 }}>{item.l}</div>
-                  <div style={{ fontSize:15, fontWeight:700, color:item.c||"#818cf8", marginBottom: item.bar?5:0 }}>{item.v}</div>
-                  {item.bar && <RSIGauge value={indicators.rsi} />}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* EMA Stack */}
-          {indicators && (
-            <div className="card" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
-              {[
-                { l:"EMA 9", v:indicators.ema9, above: indicators.currentPrice>indicators.ema9 },
-                { l:"EMA 21", v:indicators.ema21, above: indicators.currentPrice>indicators.ema21 },
-                { l:"EMA 50", v:indicators.ema50, above: indicators.currentPrice>indicators.ema50 },
-                { l:"EMA 200", v:indicators.ema200, above: indicators.currentPrice>indicators.ema200 },
-              ].map(e => (
-                <div key={e.l} style={{ textAlign:"center" }}>
-                  <div style={{ fontSize:9, color:"#1a3a5a", letterSpacing:2, marginBottom:4 }}>{e.l}</div>
-                  <div style={{ fontSize:12, fontWeight:600, color:e.above?"#00e5a0":"#ff4d6d" }}>${e.v?.toLocaleString()}</div>
-                  <div style={{ fontSize:9, color:e.above?"#00e5a075":"#ff4d6d75", marginTop:2 }}>{e.above?"ABOVE":"BELOW"}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* System Log */}
-          <div className="card" style={{ flex:1 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-              <span style={{ fontSize:9, letterSpacing:3, color:"#1a3a5a" }}>SYSTEM LOG</span>
-              <button onClick={()=>setLogs([])} className="btn"
-                style={{ fontSize:9, color:"#1a3a5a", background:"transparent", border:"1px solid #0a1e30", padding:"2px 8px", borderRadius:4 }}>CLEAR</button>
-            </div>
-            <div ref={logRef} style={{ height:160, overflowY:"auto", fontSize:10, lineHeight:1.9 }}>
-              {logs.length===0
-                ? <div style={{ color:"#0d2035" }}>Awaiting first analysis cycle...</div>
-                : logs.map(l => (
-                  <div key={l.id} className="slide" style={{
-                    color: l.type==="ok"?"#00e5a0":l.type==="err"?"#ff4d6d":l.type==="warn"?"#f59e0b":l.type==="ai"?"#818cf8":l.type==="hl"?"#38bdf8":l.type==="verdict"?"#e879f9":l.type==="div"?"#0d2035":"#2e4e6e",
-                    fontStyle: l.type==="verdict"?"italic":"normal", padding:"0.5px 0"
-                  }}>
-                    <span style={{ color:"#0d2035", marginRight:8 }}>{l.ts}</span>{l.msg}
-                  </div>
-                ))
-              }
-            </div>
-          </div>
-        </div>
-
-        {/* ── RIGHT COLUMN ── */}
-        <div style={{ display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
-
-          {/* Trade Plan Tabs */}
-          <div className="card" style={{ flex:1 }}>
-            <div style={{ display:"flex", gap:0, marginBottom:12, background:"#050c14", borderRadius:8, padding:3 }}>
-              {[["plan","TRADE PLAN"],["book","ORDER BOOK"],["history","HISTORY"]].map(([k,l]) => (
-                <button key={k} onClick={()=>setActiveTab(k)} className="btn"
-                  style={{ flex:1, padding:"5px 0", borderRadius:6, background:activeTab===k?"#0a1e30":"transparent", border:"none", color:activeTab===k?"#b8d0e8":"#1a3a5a", fontSize:9, letterSpacing:1 }}>
-                  {l}
-                </button>
-              ))}
-            </div>
-
-            {/* PLAN TAB */}
-            {activeTab==="plan" && (
-              <div>
-                {tradePlan ? (
-                  <div className="slide">
-                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
-                      <SignalBadge signal={tradePlan.signal} confidence={tradePlan.confidence} />
-                      <div style={{ fontSize:10, color:"#2e4e6e" }}>{tradePlan.trend}</div>
-                    </div>
-
-                    {tradePlan.atlas_verdict && (
-                      <div style={{ background:"#050c14", borderRadius:8, padding:"10px 12px", marginBottom:10, fontSize:10, color:"#e879f9", lineHeight:1.6, fontStyle:"italic", borderLeft:"2px solid #e879f920" }}>
-                        "{tradePlan.atlas_verdict}"
-                      </div>
-                    )}
-
-                    {tradePlan.market_context && (
-                      <div style={{ fontSize:10, color:"#2e4e6e", lineHeight:1.7, marginBottom:10 }}>
-                        {tradePlan.market_context}
-                      </div>
-                    )}
-
-                    {tradePlan.signal !== "WAIT" && tradePlan.entry && (
-                      <>
-                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
-                          {[
-                            { l:"ENTRY",     v:"$"+(tradePlan.entry?.toLocaleString()||"—"),           c:"#e8f4ff" },
-                            { l:"STOP LOSS", v:"$"+(tradePlan.stop_loss?.toLocaleString()||"—"),       c:"#ff4d6d" },
-                            { l:"TP 1",      v:"$"+(tradePlan.take_profit_1?.toLocaleString()||"—"),   c:"#00e5a0" },
-                            { l:"TP 2",      v:"$"+(tradePlan.take_profit_2?.toLocaleString()||"—"),   c:"#00e5a0" },
-                            { l:"TP 3",      v:"$"+(tradePlan.take_profit_3?.toLocaleString()||"—"),   c:"#00d4aa" },
-                            { l:"R:R",       v:tradePlan.risk_reward||"—",                             c:"#f59e0b" },
-                            { l:"LEV REC",   v:`${tradePlan.leverage_rec||"—"}x`,                     c:"#818cf8" },
-                            { l:"HORIZON",   v:tradePlan.time_horizon||"—" },
-                          ].map(item => (
-                            <div key={item.l} style={{ background:"#050c14", borderRadius:6, padding:"7px 9px" }}>
-                              <div style={{ fontSize:8, color:"#1a3a5a", letterSpacing:1.5, marginBottom:3 }}>{item.l}</div>
-                              <div style={{ fontSize:11, fontWeight:700, color:item.c||"#818cf8" }}>{item.v}</div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {tradePlan.invalidation && (
-                          <div style={{ background:"rgba(255,77,109,0.05)", border:"1px solid rgba(255,77,109,0.1)", borderRadius:6, padding:"8px 10px", marginBottom:8 }}>
-                            <div style={{ fontSize:8, color:"#ff4d6d50", letterSpacing:2, marginBottom:3 }}>INVALIDATION</div>
-                            <div style={{ fontSize:10, color:"#ff4d6d90" }}>{tradePlan.invalidation}</div>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {tradePlan.catalysts?.length > 0 && (
-                      <div style={{ marginBottom:8 }}>
-                        <div style={{ fontSize:8, color:"#1a3a5a", letterSpacing:2, marginBottom:5 }}>CATALYSTS</div>
-                        {tradePlan.catalysts.map((c,i) => (
-                          <div key={i} style={{ fontSize:9, color:"#00e5a070", padding:"2px 0", lineHeight:1.5 }}>→ {c}</div>
-                        ))}
-                      </div>
-                    )}
-
-                    {tradePlan.risks?.length > 0 && (
-                      <div>
-                        <div style={{ fontSize:8, color:"#1a3a5a", letterSpacing:2, marginBottom:5 }}>RISKS</div>
-                        {tradePlan.risks.map((r,i) => (
-                          <div key={i} style={{ fontSize:9, color:"#ff4d6d70", padding:"2px 0", lineHeight:1.5 }}>⚠ {r}</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div style={{ textAlign:"center", padding:"30px 0" }}>
-                    <div style={{ fontSize:28, marginBottom:10 }}>🧠</div>
-                    <div style={{ fontSize:11, color:"#1a3a5a", lineHeight:2 }}>
-                      {aiThinking ? <span className="thinking">GEMINI ATLAS is analyzing the market...</span>
-                        : "Press RUN to start analysis"}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ORDER BOOK TAB */}
-            {activeTab==="book" && (
-              <div>
-                {orderBook ? (
-                  <>
-                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:8, color:"#1a3a5a", letterSpacing:1.5, marginBottom:8 }}>
-                      <span>PRICE</span><span>DEPTH</span><span>SIZE</span>
-                    </div>
-                    {orderBook.asks.slice(0,7).reverse().map((a,i) => (
-                      <div key={i} style={{ position:"relative", display:"flex", justifyContent:"space-between", padding:"3px 0", fontSize:10 }}>
-                        <div style={{ position:"absolute", right:0, top:0, height:"100%", background:"rgba(255,77,109,0.07)", width:`${Math.min(a[1]*8,80)}%` }} />
-                        <span style={{ color:"#ff4d6d", zIndex:1 }}>{a[0]}</span>
-                        <span style={{ color:"#2e4e6e", zIndex:1, fontSize:9 }}>{a[1]}</span>
-                      </div>
-                    ))}
-                    <div style={{ textAlign:"center", padding:"8px 0", borderTop:"1px solid #0a1e30", borderBottom:"1px solid #0a1e30", margin:"4px 0" }}>
-                      <span style={{ fontSize:14, fontWeight:700, color:"#e8f4ff", fontFamily:"'Syne',sans-serif" }}>${orderBook.midPrice.toLocaleString()}</span>
-                      <span style={{ fontSize:9, color:"#1a3a5a", marginLeft:8 }}>spread {orderBook.spread}</span>
-                    </div>
-                    {orderBook.bids.slice(0,7).map((b,i) => (
-                      <div key={i} style={{ position:"relative", display:"flex", justifyContent:"space-between", padding:"3px 0", fontSize:10 }}>
-                        <div style={{ position:"absolute", right:0, top:0, height:"100%", background:"rgba(0,229,160,0.07)", width:`${Math.min(b[1]*8,80)}%` }} />
-                        <span style={{ color:"#00e5a0", zIndex:1 }}>{b[0]}</span>
-                        <span style={{ color:"#2e4e6e", zIndex:1, fontSize:9 }}>{b[1]}</span>
-                      </div>
-                    ))}
-                    {funding && (
-                      <div style={{ marginTop:12, background:"#050c14", borderRadius:8, padding:"10px" }}>
-                        <div style={{ fontSize:8, color:"#1a3a5a", letterSpacing:2, marginBottom:6 }}>DERIVATIVES</div>
-                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-                          <div>
-                            <div style={{ fontSize:8, color:"#1a3a5a" }}>FUNDING</div>
-                            <div style={{ fontSize:12, fontWeight:700, color:+funding.rate>0?"#ff4d6d":"#00e5a0", marginTop:2 }}>{funding.rate}</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize:8, color:"#1a3a5a" }}>NEXT IN</div>
-                            <div style={{ fontSize:11, color:"#818cf8", marginTop:2 }}>{funding.nextFunding}</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize:8, color:"#1a3a5a" }}>OPEN INT</div>
-                            <div style={{ fontSize:11, color:"#b8d0e8", marginTop:2 }}>${(+funding.openInterest/1e6).toFixed(1)}M</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize:8, color:"#1a3a5a" }}>L/S RATIO</div>
-                            <div style={{ fontSize:11, color:"#f59e0b", marginTop:2 }}>{funding.longRatio}% L</div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : <div style={{ color:"#1a3a5a", fontSize:11, textAlign:"center", paddingTop:20 }}>Run a cycle to load order book</div>}
-              </div>
-            )}
-
-            {/* HISTORY TAB */}
-            {activeTab==="history" && (
-              <div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:10 }}>
-                  <div style={{ background:"#050c14", borderRadius:6, padding:"8px 10px", textAlign:"center" }}>
-                    <div style={{ fontSize:8, color:"#1a3a5a", marginBottom:3 }}>TOTAL PnL</div>
-                    <div style={{ fontSize:13, fontWeight:700, color:totalPnl>=0?"#00e5a0":"#ff4d6d" }}>{totalPnl>=0?"+":""}{totalPnl.toFixed(2)}</div>
-                  </div>
-                  <div style={{ background:"#050c14", borderRadius:6, padding:"8px 10px", textAlign:"center" }}>
-                    <div style={{ fontSize:8, color:"#1a3a5a", marginBottom:3 }}>WIN RATE</div>
-                    <div style={{ fontSize:13, fontWeight:700, color:"#818cf8" }}>{winRate!==null?winRate+"%":"—"}</div>
-                  </div>
-                  <div style={{ background:"#050c14", borderRadius:6, padding:"8px 10px", textAlign:"center" }}>
-                    <div style={{ fontSize:8, color:"#1a3a5a", marginBottom:3 }}>OPEN POS</div>
-                    <div style={{ fontSize:13, fontWeight:700, color:"#f59e0b" }}>{openCount}</div>
-                  </div>
-                </div>
-                <div style={{ maxHeight:300, overflowY:"auto" }}>
-                  {trades.length===0
-                    ? <div style={{ color:"#1a3a5a", fontSize:11, textAlign:"center", paddingTop:20 }}>No trades yet — run a cycle</div>
-                    : trades.map(t => <TradeCard key={t.id} trade={t} />)
-                  }
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Risk Settings */}
-          <div className="card">
-            <div style={{ fontSize:9, letterSpacing:3, color:"#1a3a5a", marginBottom:10 }}>RISK SETTINGS</div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-              <div>
-                <div style={{ fontSize:8, color:"#1a3a5a", letterSpacing:2, marginBottom:5 }}>SIZE %</div>
-                <input type="number" min="1" max="50" value={tradeSize} onChange={e=>setTradeSize(+e.target.value)}
-                  style={{ width:"100%", background:"#050c14", border:"1px solid #0a1e30", borderRadius:6, padding:"7px 9px", color:"#00e5a0", fontSize:14, fontWeight:700, fontFamily:"inherit", outline:"none" }} />
-              </div>
-              <div>
-                <div style={{ fontSize:8, color:"#1a3a5a", letterSpacing:2, marginBottom:5 }}>LEVERAGE</div>
-                <input type="number" min="1" max="50" value={leverage} onChange={e=>setLeverage(+e.target.value)}
-                  style={{ width:"100%", background:"#050c14", border:"1px solid #0a1e30", borderRadius:6, padding:"7px 9px", color:"#818cf8", fontSize:14, fontWeight:700, fontFamily:"inherit", outline:"none" }} />
-              </div>
-            </div>
-            <div style={{ marginTop:8, display:"flex", justifyContent:"space-between", fontSize:10 }}>
-              <span style={{ color:"#1a3a5a" }}>Balance</span>
-              <span style={{ color:"#b8d0e8", fontWeight:700 }}>${balance.toLocaleString()}</span>
-            </div>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginTop:3 }}>
-              <span style={{ color:"#1a3a5a" }}>Max notional</span>
-              <span style={{ color:"#f59e0b", fontWeight:700 }}>${(balance*tradeSize/100*leverage).toLocaleString()}</span>
-            </div>
-            <div style={{ marginTop:10, padding:"7px 9px", background:"rgba(255,77,109,0.04)", border:"1px solid rgba(255,77,109,0.08)", borderRadius:6 }}>
-              <div style={{ fontSize:8, color:"rgba(255,77,109,0.4)", letterSpacing:2, marginBottom:2 }}>⚠ DEMO MODE</div>
-              <div style={{ fontSize:8, color:"#1a3a5a", lineHeight:1.6 }}>Execution is simulated. Real Hyperliquid signing requires secure backend.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+function colorize(s) {
+  return s
+    .replace(/(BULLISH|BUY|LONG)/gi, '<span class="t-bull">$1</span>')
+    .replace(/(BEARISH|SELL|SHORT)/gi, '<span class="t-bear">$1</span>')
+    .replace(/(HOLD|NEUTRAL)/gi, '<span class="t-neutral">$1</span>')
+    .replace(/(\$[\d,]+\.?\d*)/g, '<span class="t-val">$1</span>')
+    .replace(/(\d+\.\d+%)/g, '<span class="t-val">$1</span>');
 }
+
+// ═══════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════
+function setStatus(s) {
+  const dot = document.getElementById('pulseDot');
+  const lbl = document.getElementById('sysLabel');
+  dot.className = 'pulse-ring ' + s;
+  lbl.textContent = { online: 'ONLINE', offline: 'OFFLINE', thinking: 'THINKING', executing: 'EXECUTING' }[s] || s.toUpperCase();
+}
+
+function setGState(s) {
+  const el = document.getElementById('gState');
+  const cls = { idle: 'gs-idle', fetching: 'gs-fetching', thinking: 'gs-thinking', executing: 'gs-executing' };
+  const lbl = { idle: 'IDLE', fetching: 'FETCHING DATA', thinking: 'ANALYZING', executing: 'EXECUTING' };
+  el.className = 'g-state ' + (cls[s] || 'gs-idle');
+  el.textContent = lbl[s] || s.toUpperCase();
+  if (s !== 'idle') setStatus(s);
+  else if (G.running) setStatus('online');
+}
+
+function setLoading(on) {
+  document.getElementById('progBar').className = 'prog-bar' + (on ? ' active' : '');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Live PnL update
+setInterval(() => {
+  if (G.position && G.mktData) renderPosition(G.position, G.mktData.price);
+}, 4000);
+
+// Resize chart on window resize
+window.addEventListener('resize', () => { if (G.candles.length) renderChart(G.candles.slice(-30)); });
+</script>
+</body>
+</html>
