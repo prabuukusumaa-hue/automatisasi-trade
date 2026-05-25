@@ -1,5 +1,5 @@
 // api/claude.js — Vercel Serverless Function
-// Hyperliquid proxy + Gemini 2.5 Pro analysis
+// Hyperliquid proxy + Gemini analysis
 
 const HL = 'https://api.hyperliquid.xyz/info';
 
@@ -31,44 +31,66 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, data });
     }
 
-    // ── Gemini 2.5 Pro Analysis ────────────────────────────────────────────
+    // ── Gemini Analysis ────────────────────────────────────────────────────
     if (action === 'analyze') {
       const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('GEMINI_API_KEY tidak ada di Vercel Environment Variables');
+      if (!apiKey) throw new Error('GEMINI_API_KEY tidak ada di Vercel');
 
       const { systemPrompt, userMsg } = req.body;
-      const fullPrompt = systemPrompt + '\n\n' + userMsg;
 
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              role: 'user',
-              parts: [{ text: fullPrompt }]
-            }],
-            generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 2048,
-            },
-          }),
+      // Coba gemini-2.5-pro dulu, fallback ke gemini-1.5-pro
+      const models = [
+        'gemini-2.5-pro',
+        'gemini-1.5-pro',
+        'gemini-2.0-flash',
+      ];
+
+      let lastError = '';
+      for (const model of models) {
+        try {
+          const r = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  role: 'user',
+                  parts: [{ text: systemPrompt + '\n\n' + userMsg }]
+                }],
+                generationConfig: {
+                  temperature: 0.2,
+                  maxOutputTokens: 2048,
+                },
+              }),
+            }
+          );
+
+          const raw = await r.text();
+
+          if (!r.ok) {
+            lastError = `${model}: ${r.status} - ${raw.slice(0, 150)}`;
+            console.error('Model failed:', lastError);
+            continue; // try next model
+          }
+
+          const d = JSON.parse(raw);
+          const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (!text) {
+            lastError = `${model}: empty response`;
+            continue;
+          }
+
+          console.log('Success with model:', model);
+          return res.status(200).json({ success: true, text, model });
+
+        } catch (e) {
+          lastError = `${model}: ${e.message}`;
+          continue;
         }
-      );
-
-      const raw = await r.text();
-
-      if (!r.ok) {
-        console.error('Gemini error:', raw);
-        throw new Error('Gemini API ' + r.status + ': ' + raw.slice(0, 200));
       }
 
-      const d = JSON.parse(raw);
-      const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      if (!text) throw new Error('Gemini response kosong');
-
-      return res.status(200).json({ success: true, text });
+      throw new Error('Semua model gagal. Last error: ' + lastError);
     }
 
     return res.status(400).json({ error: 'Unknown action: ' + action });
