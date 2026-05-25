@@ -1,5 +1,5 @@
 // api/claude.js — Vercel Serverless Function
-// Hyperliquid proxy + Gemini analysis
+// Hyperliquid proxy + Gemini analysis (Free Tier compatible)
 
 const HL = 'https://api.hyperliquid.xyz/info';
 
@@ -38,11 +38,11 @@ export default async function handler(req, res) {
 
       const { systemPrompt, userMsg } = req.body;
 
-      // Coba gemini-2.5-pro dulu, fallback ke gemini-1.5-pro
+      // Free tier models — coba satu per satu
       const models = [
-        'gemini-2.5-pro',
-        'gemini-1.5-pro',
         'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
       ];
 
       let lastError = '';
@@ -69,15 +69,15 @@ export default async function handler(req, res) {
           const raw = await r.text();
 
           if (!r.ok) {
-            lastError = `${model}: ${r.status} - ${raw.slice(0, 150)}`;
+            lastError = `${model}: HTTP ${r.status} — ${raw.slice(0, 200)}`;
             console.error('Model failed:', lastError);
-            continue; // try next model
+            continue;
           }
 
           const d = JSON.parse(raw);
           const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '';
           if (!text) {
-            lastError = `${model}: empty response`;
+            lastError = `${model}: response kosong`;
             continue;
           }
 
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
         }
       }
 
-      throw new Error('Semua model gagal. Last error: ' + lastError);
+      throw new Error('Semua model gagal. ' + lastError);
     }
 
     return res.status(400).json({ error: 'Unknown action: ' + action });
