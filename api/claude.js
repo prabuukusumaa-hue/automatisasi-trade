@@ -41,7 +41,8 @@ export default async function handler(req, res) {
     }
 
     if (action === 'analyze') {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyBHApgLlROWJxYvBbnZcvtQLPSRSqtN684';
+
       if (!apiKey) throw new Error('GEMINI_API_KEY tidak ada di environment Vercel');
 
       const { systemPrompt, userMsg } = req.body;
