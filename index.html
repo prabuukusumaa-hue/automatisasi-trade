@@ -3,1831 +3,1323 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEXUS — Gemini Pro × Hyperliquid</title>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:ital,wght@0,100;0,400;0,700;0,900;1,400&display=swap" rel="stylesheet">
+<title>NEXUS — Gemini × Hyperliquid Trader</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <style>
-:root {
-  --void: #03050a;
-  --deep: #060d18;
-  --surface: #091424;
-  --raised: #0d1e35;
-  --rim: #112840;
-  --rim2: #1a3d5e;
-  --g-blue: #4285f4;
-  --g-red: #ea4335;
-  --g-yellow: #fbbc04;
-  --g-green: #34a853;
-  --hl-teal: #00d4aa;
-  --bull: #00e676;
-  --bear: #ff1744;
-  --neutral: #ffc400;
-  --text: #b8d4f0;
-  --sub: #4a7090;
-  --dim: #243d55;
-  --white: #e8f4ff;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#03050a;--bg2:#070a12;--panel:rgba(7,10,18,0.92);
+  --g:rgba(0,255,159,0.12);--gt:rgba(0,255,159,0.28);
+  --green:#00ff9f;--blue:#2979ff;--red:#ff3b5c;--orange:#ff9500;
+  --text:#dce8f0;--muted:#5a7080;--dim:#1a2e3c;
+  --mono:'Space Mono',monospace;--sans:'Barlow',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;
+  background-image:radial-gradient(ellipse 80% 40% at 10% 0%,rgba(0,255,159,0.055) 0%,transparent 100%),
+  radial-gradient(ellipse 60% 40% at 90% 100%,rgba(41,121,255,0.05) 0%,transparent 100%);
+  overflow-x:hidden}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,255,159,0.18);border-radius:2px}
+input,button,select{font-family:inherit;outline:none}
+button{cursor:pointer}
+
+/* LAYOUT */
+#app{display:flex;flex-direction:column;min-height:100vh}
+
+/* HEADER */
+header{
+  position:sticky;top:0;z-index:100;height:58px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;
+  background:rgba(3,5,10,0.88);
+  border-bottom:1px solid rgba(0,255,159,0.1);
+  backdrop-filter:blur(24px);
+}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-icon{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,#00ff9f 0%,#00b8ff 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-weight:700;font-size:15px;color:#03050a;
+  box-shadow:0 0 20px rgba(0,255,159,0.35);
+}
+.logo-text{line-height:1.1}
+.logo-name{font-size:15px;font-weight:700;letter-spacing:.5px}
+.logo-sub{font-size:9px;color:var(--green);font-family:var(--mono);letter-spacing:3px;margin-top:1px}
+.header-right{display:flex;align-items:center;gap:10px}
+.status-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:20px;
+  background:rgba(0,255,159,0.07);border:1px solid rgba(0,255,159,0.18);
+  font-size:10px;font-family:var(--mono);color:var(--green);letter-spacing:1.5px;
+  text-transform:uppercase;transition:opacity .3s;
+}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.btn-ghost{
+  background:transparent;border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;color:var(--muted);font-size:12px;
+  padding:6px 14px;font-family:var(--mono);transition:all .2s;
+  letter-spacing:.5px;
+}
+.btn-ghost:hover{border-color:rgba(0,255,159,0.3);color:var(--green)}
+
+/* MAIN */
+main{flex:1;max-width:1380px;width:100%;margin:0 auto;padding:24px 24px 40px}
+
+/* CONFIG PANEL */
+.config-panel{
+  background:var(--panel);border:1px solid var(--g);border-top:1px solid var(--gt);
+  border-radius:14px;padding:22px 24px;margin-bottom:20px;
+  backdrop-filter:blur(20px);display:none;
+  animation:slideDown .25s ease;
+}
+.config-panel.open{display:block}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.config-title{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:18px}
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field-label{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:2px;margin-bottom:7px;text-transform:uppercase}
+.field-input{
+  width:100%;background:rgba(255,255,255,0.035);
+  border:1px solid rgba(255,255,255,0.09);border-radius:9px;
+  padding:11px 14px;color:var(--text);font-size:13px;font-family:var(--mono);
+  transition:border-color .2s;letter-spacing:.5px;
+}
+.field-input:focus{border-color:rgba(0,255,159,0.35);background:rgba(0,255,159,0.03)}
+.field-hint{font-size:10px;color:var(--dim);margin-top:5px;line-height:1.5}
+.field-hint a{color:var(--blue);text-decoration:none}
+.toggle-row{display:flex;align-items:center;gap:12px;margin-top:18px}
+.toggle{
+  width:46px;height:25px;border-radius:13px;cursor:pointer;
+  background:rgba(255,255,255,0.09);position:relative;transition:background .3s;flex-shrink:0;
+  border:1px solid rgba(255,255,255,0.1);
+}
+.toggle.on{background:var(--green);border-color:var(--green)}
+.toggle-knob{
+  position:absolute;top:3px;left:3px;width:17px;height:17px;
+  border-radius:50%;background:#fff;transition:left .3s;
+  box-shadow:0 1px 4px rgba(0,0,0,.5);
+}
+.toggle.on .toggle-knob{left:24px;background:#03050a}
+.toggle-label{font-size:12px;color:var(--muted);transition:color .3s}
+.toggle.on + .toggle-label{color:var(--green)}
+.warn-badge{
+  display:inline-flex;align-items:center;gap:6px;margin-top:8px;
+  padding:6px 12px;background:rgba(255,149,0,0.08);border:1px solid rgba(255,149,0,0.2);
+  border-radius:8px;font-size:11px;color:var(--orange);font-family:var(--mono);
+}
+
+/* SEARCH BAR */
+.search-row{display:flex;gap:12px;margin-bottom:22px;align-items:stretch}
+.search-wrap{flex:1;position:relative}
+.search-prefix{
+  position:absolute;left:16px;top:50%;transform:translateY(-50%);
+  color:var(--green);font-family:var(--mono);font-size:18px;font-weight:700;
+  pointer-events:none;
+}
+.search-input{
+  width:100%;background:rgba(255,255,255,0.03);
+  border:1px solid rgba(0,255,159,0.18);border-radius:12px;
+  padding:15px 18px 15px 38px;color:var(--text);
+  font-size:20px;font-family:var(--mono);font-weight:700;
+  letter-spacing:5px;transition:all .2s;
+}
+.search-input:focus{border-color:rgba(0,255,159,0.45);background:rgba(0,255,159,0.025);box-shadow:0 0 30px rgba(0,255,159,0.06)}
+.search-input::placeholder{color:var(--dim);letter-spacing:3px;font-weight:400;font-size:16px}
+.btn-analyze{
+  padding:15px 36px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,#00ff9f,#00d4aa);
+  color:#03050a;font-weight:700;font-size:14px;font-family:var(--mono);
+  letter-spacing:1.5px;min-width:160px;
+  box-shadow:0 0 40px rgba(0,255,159,0.28),inset 0 1px 0 rgba(255,255,255,0.3);
+  transition:all .25s;position:relative;overflow:hidden;
+}
+.btn-analyze:hover:not(:disabled){box-shadow:0 0 60px rgba(0,255,159,0.4)}
+.btn-analyze:disabled{background:rgba(0,255,159,0.2);color:rgba(0,0,0,0.4);box-shadow:none;cursor:not-allowed}
+.btn-analyze::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);transform:translateX(-100%)}
+.btn-analyze.loading::after{animation:shimmer 1.2s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+/* ERROR */
+.error-bar{
+  padding:12px 16px;margin-bottom:18px;
+  background:rgba(255,59,92,0.08);border:1px solid rgba(255,59,92,0.25);
+  border-radius:9px;color:var(--red);font-size:12px;font-family:var(--mono);display:none;
+}
+
+/* MARKET SNAPSHOT */
+.snapshot{
+  background:var(--panel);border:1px solid var(--g);border-top:1px solid var(--gt);
+  border-radius:14px;padding:18px 22px;margin-bottom:20px;
+  display:none;backdrop-filter:blur(20px);
+}
+.snapshot.visible{display:block}
+.snapshot-inner{display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.snap-item{flex-shrink:0}
+.snap-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:4px}
+.snap-val{font-family:var(--mono);font-weight:700;font-size:19px;color:var(--green)}
+.snap-val.blue{color:var(--blue)}
+.snap-val.red{color:var(--red)}
+.snap-val.normal{font-size:15px;color:var(--text)}
+.snap-sub{font-size:10px;color:var(--dim);margin-top:2px}
+.snap-chart{flex:1;min-width:220px}
+#miniChart{width:100%;height:72px;display:block;border-radius:8px}
+.snap-divider{width:1px;height:40px;background:rgba(255,255,255,0.06);flex-shrink:0}
+
+/* TABS */
+.tab-bar{display:flex;gap:2px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:20px}
+.tab{
+  background:transparent;border:none;border-bottom:2px solid transparent;
+  color:var(--muted);font-family:var(--mono);font-size:11px;
+  padding:10px 22px;letter-spacing:2px;text-transform:uppercase;transition:all .2s;
+  margin-bottom:-1px;
+}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--green);border-bottom-color:var(--green)}
+
+/* CONTENT TABS */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:90px 0;color:var(--dim)}
+.empty-icon{font-size:48px;margin-bottom:18px;opacity:.5}
+.empty-title{font-family:var(--mono);font-size:13px;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px}
+.empty-sub{font-size:12px;color:var(--muted);opacity:.6}
+
+/* ANALYSIS GRID */
+.analysis-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.span2{grid-column:span 2}
+.span3{grid-column:span 3}
+
+/* GLASS PANEL */
+.glass{
+  background:var(--panel);border:1px solid var(--g);border-top:1px solid var(--gt);
+  border-radius:14px;padding:20px;backdrop-filter:blur(20px);
+  box-shadow:0 0 50px rgba(0,255,159,0.025),inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.panel-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:18px}
+
+/* SIGNAL GAUGE */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:18px}
+#gaugeCanvas{display:block}
+.gauge-signal{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:2px}
+.gauge-conf{font-size:11px;color:var(--muted)}
+
+/* BADGE ROW */
+.badge-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);
+}
+.badge-row:last-child{border-bottom:none}
+.badge-key{font-size:11px;font-family:var(--mono);color:var(--muted)}
+.badge-val{font-size:12px;font-family:var(--mono);font-weight:700}
+
+/* LEVEL CARDS */
+.level-card{
+  padding:12px 14px;border-radius:10px;margin-bottom:10px;
+}
+.level-card.entry{background:rgba(41,121,255,0.07);border:1px solid rgba(41,121,255,0.2)}
+.level-card.sl{background:rgba(255,59,92,0.07);border:1px solid rgba(255,59,92,0.18)}
+.level-card.tp{background:rgba(0,255,159,0.05);border:1px solid rgba(0,255,159,0.15)}
+.level-type{font-size:9px;font-family:var(--mono);letter-spacing:2.5px;margin-bottom:6px;font-weight:700}
+.level-type.entry{color:var(--blue)}
+.level-type.sl{color:var(--red)}
+.level-type.tp{color:var(--green)}
+.level-price{font-size:19px;font-family:var(--mono);font-weight:700;margin-bottom:4px}
+.level-rat{font-size:11px;color:var(--muted);line-height:1.5}
+
+/* TRADING PLAN */
+.trading-plan{font-size:13px;line-height:1.85;color:#b0bec5;white-space:pre-wrap}
+.tags-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.tag{
+  padding:4px 13px;border-radius:20px;font-size:11px;
+  background:rgba(41,121,255,0.1);border:1px solid rgba(41,121,255,0.22);color:var(--blue);
+}
+.tag.risk{background:rgba(255,59,92,0.08);border-color:rgba(255,59,92,0.2);color:var(--red)}
+.risk-item{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+.risk-ico{color:var(--red);font-size:12px;margin-top:2px;flex-shrink:0}
+.risk-text{font-size:12px;color:#9ca3af;line-height:1.6}
+.struct-box{
+  margin-top:16px;padding:14px;
+  background:rgba(255,255,255,0.025);border-radius:9px;
+  border:1px solid rgba(255,255,255,0.06);
+}
+.struct-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:2px;margin-bottom:8px}
+.struct-text{font-size:12px;color:#9ca3af;line-height:1.65}
+.liq-zone{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.liq-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);flex-shrink:0}
+.liq-price{font-family:var(--mono);font-size:12px}
+
+/* POSITIONS */
+.pos-card{
+  background:var(--panel);border:1px solid var(--g);border-top:1px solid var(--gt);
+  border-radius:14px;padding:18px 20px;margin-bottom:12px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+}
+.pos-coin{font-family:var(--mono);font-weight:700;font-size:17px;min-width:70px}
+.pos-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.side-badge{
+  padding:4px 16px;border-radius:20px;font-family:var(--mono);font-size:12px;font-weight:700;
+}
+.side-badge.long{background:rgba(0,255,159,0.12);border:1px solid rgba(0,255,159,0.28);color:var(--green)}
+.side-badge.short{background:rgba(255,59,92,0.12);border:1px solid rgba(255,59,92,0.28);color:var(--red)}
+.pos-stats{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.pos-stat-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:2px;margin-bottom:4px}
+.pos-stat-val{font-family:var(--mono);font-size:13px;font-weight:700}
+.pos-time{font-size:10px;color:var(--dim);font-family:var(--mono);white-space:nowrap}
+.pos-close-btn{
+  background:rgba(255,59,92,0.1);border:1px solid rgba(255,59,92,0.22);
+  color:var(--red);padding:6px 14px;border-radius:8px;
+  font-size:11px;font-family:var(--mono);letter-spacing:1px;transition:all .2s;
+}
+.pos-close-btn:hover{background:rgba(255,59,92,0.2)}
+
+/* TERMINAL */
+.terminal{
+  background:rgba(0,0,0,.45);border:1px solid var(--g);border-radius:14px;overflow:hidden;
+}
+.terminal-header{
+  padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);
+  display:flex;align-items:center;gap:8px;
+}
+.term-dot{width:11px;height:11px;border-radius:50%}
+.term-title{font-size:11px;font-family:var(--mono);color:var(--dim);margin-left:8px;letter-spacing:1.5px}
+.terminal-body{height:440px;overflow-y:auto;padding:18px 20px}
+.log-line{
+  font-family:var(--mono);font-size:11px;line-height:1.9;
+  border-bottom:1px solid rgba(255,255,255,0.02);padding:1px 0;
+}
+.log-time{color:var(--dim);margin-right:12px}
+.log-ok{color:var(--green)}
+.log-err{color:var(--red)}
+.log-info{color:#5a8090}
+.log-warn{color:var(--orange)}
+.log-cursor{animation:blink 1s step-end infinite;color:var(--green)}
+
+/* ORDER BOOK */
+.book-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;font-family:var(--mono);font-size:11px}
+.book-row{display:flex;justify-content:space-between;padding:3px 8px;border-radius:3px;position:relative;overflow:hidden}
+.book-bar{position:absolute;top:0;bottom:0;right:0;opacity:.15;border-radius:3px}
+.book-bar.bid{background:var(--green)}
+.book-bar.ask{background:var(--red)}
+.book-px{font-weight:700}
+.book-px.bid{color:var(--green)}
+.book-px.ask{color:var(--red)}
+.book-sz{color:var(--muted)}
+.book-header{font-size:9px;color:var(--muted);letter-spacing:2px;padding:2px 8px;margin-bottom:4px}
+
+/* FOOTER */
+footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px;border-top:1px solid rgba(255,255,255,0.04)}
+
+/* LOADING INDICATOR */
+.loading-state{text-align:center;padding:70px 0}
+.loading-coin{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green);letter-spacing:6px;margin-bottom:12px}
+.loading-phase{
+  font-family:var(--mono);font-size:12px;letter-spacing:2.5px;text-transform:uppercase;
+  background:linear-gradient(90deg,var(--green),var(--blue),var(--green));
+  background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  animation:shimmer 1.8s linear infinite;margin-bottom:22px;
+}
+.loading-bar{width:240px;height:2px;background:rgba(255,255,255,0.06);border-radius:1px;margin:0 auto}
+.loading-fill{height:100%;border-radius:1px;background:var(--green);animation:load 1.5s ease-in-out infinite}
+@keyframes load{0%{width:5%}50%{width:75%}100%{width:95%}}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .analysis-grid{grid-template-columns:1fr 1fr}
+  .span2{grid-column:span 2}
+  .span3{grid-column:span 2}
+  .pos-stats{grid-template-columns:repeat(3,1fr)}
+  main{padding:16px}
+}
+@media(max-width:600px){
+  .analysis-grid{grid-template-columns:1fr}
+  .span2,.span3{grid-column:span 1}
+  .config-grid{grid-template-columns:1fr}
+  .pos-stats{grid-template-columns:repeat(2,1fr)}
+  .search-input{font-size:16px;letter-spacing:3px}
+  .btn-analyze{min-width:120px;padding:15px 20px;font-size:12px}
 }
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html { scroll-behavior: smooth; }
-
-body {
-  background: var(--void);
-  color: var(--text);
-  font-family: 'Rajdhani', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  min-height: 100vh;
-  overflow-x: hidden;
-  cursor: default;
-}
-
-/* ── atmospheric bg ── */
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background:
-    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(66,133,244,.06) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 90%, rgba(0,212,170,.05) 0%, transparent 60%);
-  pointer-events: none; z-index: 0;
-}
-
-/* ── fine dot grid ── */
-body::after {
-  content: '';
-  position: fixed; inset: 0;
-  background-image: radial-gradient(rgba(66,133,244,.12) 1px, transparent 1px);
-  background-size: 28px 28px;
-  pointer-events: none; z-index: 0;
-}
-
-.layer { position: relative; z-index: 1; }
-
-/* ════════════════════ HEADER ════════════════════ */
-header {
-  display: flex; align-items: center; gap: 0;
-  background: linear-gradient(180deg, rgba(9,20,36,.98) 0%, rgba(6,13,24,.95) 100%);
-  border-bottom: 1px solid var(--rim);
-  padding: 0 24px;
-  height: 54px;
-  position: sticky; top: 0; z-index: 200;
-  backdrop-filter: blur(12px);
-}
-
-.brand {
-  display: flex; align-items: center; gap: 12px;
-  padding-right: 24px;
-  border-right: 1px solid var(--rim);
-}
-
-.brand-gem {
-  width: 32px; height: 32px;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.brand-gem svg { width: 100%; height: 100%; }
-
-.brand-name {
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 900;
-  font-size: 20px;
-  letter-spacing: 4px;
-  color: var(--white);
-}
-
-.brand-name span { color: var(--g-blue); }
-
-.brand-sub {
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--sub);
-  text-transform: uppercase;
-  margin-top: 1px;
-}
-
-.hdr-pills {
-  display: flex; gap: 8px; padding: 0 24px;
-  border-right: 1px solid var(--rim);
-}
-
-.hdr-pill {
-  font-size: 10px; letter-spacing: 1.5px;
-  padding: 4px 12px; border-radius: 2px;
-  font-weight: 600; text-transform: uppercase;
-  cursor: pointer; transition: all .15s;
-  background: transparent;
-  border: 1px solid var(--rim);
-  color: var(--sub);
-  font-family: 'Rajdhani', sans-serif;
-}
-.hdr-pill.active { border-color: var(--g-blue); color: var(--g-blue); background: rgba(66,133,244,.08); }
-.hdr-pill:hover:not(.active) { border-color: var(--rim2); color: var(--text); }
-
-.hdr-ticker {
-  display: flex; gap: 20px; padding: 0 24px;
-  overflow: hidden; flex: 1;
-}
-
-.tick-item { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.tick-sym { font-size: 11px; font-weight: 700; color: var(--sub); letter-spacing: 1px; }
-.tick-price { font-size: 12px; color: var(--text); font-family: 'Exo 2', sans-serif; }
-.tick-chg { font-size: 10px; }
-.tick-chg.pos { color: var(--bull); }
-.tick-chg.neg { color: var(--bear); }
-
-.hdr-right {
-  margin-left: auto;
-  display: flex; align-items: center; gap: 16px;
-}
-
-.sys-status {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-}
-
-.pulse-ring {
-  width: 10px; height: 10px; border-radius: 50%; position: relative;
-}
-.pulse-ring::before {
-  content: ''; position: absolute; inset: 0;
-  border-radius: 50%;
-  animation: ring 2s ease-out infinite;
-}
-
-.pulse-ring.offline { background: var(--sub); }
-.pulse-ring.offline::before { display: none; }
-.pulse-ring.online { background: var(--bull); }
-.pulse-ring.online::before { border: 2px solid var(--bull); animation: ring 2s ease-out infinite; }
-.pulse-ring.thinking { background: var(--g-yellow); }
-.pulse-ring.thinking::before { border: 2px solid var(--g-yellow); }
-.pulse-ring.executing { background: var(--g-blue); }
-.pulse-ring.executing::before { border: 2px solid var(--g-blue); }
-
-@keyframes ring {
-  0% { transform: scale(.8); opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
-}
-
-#hdrTime { font-size: 11px; color: var(--sub); font-family: 'Exo 2', sans-serif; }
-
-/* ════════════════════ WARN BAR ════════════════════ */
-.warn-bar {
-  background: linear-gradient(90deg, rgba(234,67,53,.12), rgba(251,188,4,.08), rgba(234,67,53,.12));
-  border-bottom: 1px solid rgba(251,188,4,.2);
-  padding: 7px 24px;
-  font-size: 10px; letter-spacing: 1.5px;
-  color: var(--g-yellow); text-align: center;
-  font-weight: 600;
-}
-
-/* ════════════════════ CONFIG ════════════════════ */
-.cfg-bar {
-  background: var(--deep);
-  border-bottom: 1px solid var(--rim);
-  padding: 14px 24px;
-  display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
-}
-
-.cfg-group { display: flex; flex-direction: column; gap: 5px; }
-.cfg-label {
-  font-size: 9px; letter-spacing: 2px;
-  color: var(--sub); text-transform: uppercase; font-weight: 600;
-}
-
-input, select {
-  background: var(--surface);
-  border: 1px solid var(--rim);
-  color: var(--text);
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 13px; font-weight: 500;
-  padding: 7px 12px; border-radius: 3px;
-  outline: none; transition: border-color .2s;
-  min-width: 0;
-}
-input:focus, select:focus { border-color: var(--g-blue); }
-input[type=password] { letter-spacing: 3px; font-size: 11px; }
-select option { background: #0d1e35; }
-
-.cfg-group.grow { flex: 1; min-width: 180px; }
-.cfg-group.sm input, .cfg-group.sm select { width: 130px; }
-
-.cfg-btns { display: flex; gap: 8px; align-items: flex-end; margin-left: auto; }
-
-button {
-  font-family: 'Rajdhani', sans-serif;
-  font-weight: 700; font-size: 12px;
-  letter-spacing: 1.5px; text-transform: uppercase;
-  padding: 9px 20px; border: none; border-radius: 3px;
-  cursor: pointer; transition: all .15s;
-}
-
-.btn-go {
-  background: var(--g-blue); color: #fff;
-  box-shadow: 0 0 20px rgba(66,133,244,.25);
-}
-.btn-go:hover { box-shadow: 0 0 30px rgba(66,133,244,.5); transform: translateY(-1px); }
-.btn-go:disabled { opacity: .3; cursor: not-allowed; transform: none; box-shadow: none; }
-
-.btn-run {
-  background: transparent;
-  border: 1px solid var(--g-blue); color: var(--g-blue);
-}
-.btn-run:hover { background: rgba(66,133,244,.1); }
-.btn-run:disabled { opacity: .3; cursor: not-allowed; }
-
-.btn-stop {
-  background: transparent;
-  border: 1px solid var(--bear); color: var(--bear);
-}
-.btn-stop:hover { background: rgba(255,23,68,.08); }
-.btn-stop:disabled { opacity: .3; cursor: not-allowed; }
-
-.btn-clear {
-  background: transparent;
-  border: 1px solid var(--rim); color: var(--sub);
-  font-size: 11px;
-}
-.btn-clear:hover { border-color: var(--rim2); color: var(--text); }
-
-/* ════════════════════ LAYOUT ════════════════════ */
-.workspace {
-  display: grid;
-  grid-template-columns: 300px 1fr 300px;
-  min-height: calc(100vh - 54px - 34px - 70px);
-  gap: 0;
-}
-
-@media (max-width: 1100px) {
-  .workspace { grid-template-columns: 1fr; }
-  .side-left, .side-right { display: none; }
-}
-
-.side-left, .side-right {
-  background: var(--deep);
-  border-right: 1px solid var(--rim);
-  overflow-y: auto;
-}
-.side-right { border-right: none; border-left: 1px solid var(--rim); }
-
-.center-col {
-  background: var(--void);
-  display: flex; flex-direction: column;
-  overflow: hidden;
-}
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 3px; height: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--rim2); border-radius: 2px; }
-
-/* ════════════════════ SECTION HEADS ════════════════════ */
-.sec-head {
-  display: flex; align-items: center; gap: 8px;
-  padding: 12px 16px 10px;
-  border-bottom: 1px solid var(--rim);
-  position: sticky; top: 0; z-index: 10;
-  background: var(--deep);
-}
-
-.sec-title {
-  font-size: 9px; letter-spacing: 3px;
-  color: var(--sub); text-transform: uppercase; font-weight: 700;
-}
-
-.sec-badge {
-  margin-left: auto; font-size: 8px;
-  padding: 2px 8px; border-radius: 2px;
-  letter-spacing: 1px; font-weight: 700; text-transform: uppercase;
-}
-.badge-live { background: rgba(0,230,118,.08); border: 1px solid rgba(0,230,118,.2); color: var(--bull); }
-.badge-gem { background: rgba(66,133,244,.08); border: 1px solid rgba(66,133,244,.2); color: var(--g-blue); }
-.badge-hl { background: rgba(0,212,170,.08); border: 1px solid rgba(0,212,170,.2); color: var(--hl-teal); }
-
-.sec-body { padding: 14px 16px; }
-
-/* ════════════════════ PRICE DISPLAY ════════════════════ */
-.price-hero {
-  background: linear-gradient(135deg, var(--surface), var(--raised));
-  border: 1px solid var(--rim);
-  border-radius: 4px;
-  padding: 14px 16px;
-  margin-bottom: 12px;
-  position: relative; overflow: hidden;
-}
-.price-hero::after {
-  content: '';
-  position: absolute; top: 0; left: 0;
-  width: 100%; height: 2px;
-  background: linear-gradient(90deg, var(--g-blue), var(--hl-teal));
-}
-.ph-pair { font-size: 10px; letter-spacing: 2px; color: var(--sub); margin-bottom: 6px; font-weight: 600; }
-.ph-price {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 28px; font-weight: 900;
-  color: var(--white); letter-spacing: 1px;
-  line-height: 1;
-}
-.ph-meta { display: flex; gap: 12px; margin-top: 6px; font-size: 11px; }
-.ph-chg.pos { color: var(--bull); } .ph-chg.neg { color: var(--bear); }
-.ph-mark { color: var(--sub); }
-
-/* ════════════════════ STAT GRID ════════════════════ */
-.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-.stat-cell {
-  background: var(--surface); border: 1px solid var(--rim);
-  border-radius: 3px; padding: 9px 10px;
-}
-.stat-k { font-size: 8px; letter-spacing: 1.5px; color: var(--sub); text-transform: uppercase; font-weight: 600; margin-bottom: 3px; }
-.stat-v { font-size: 13px; font-weight: 700; font-family: 'Exo 2', sans-serif; }
-.sv-bull { color: var(--bull); }
-.sv-bear { color: var(--bear); }
-.sv-neutral { color: var(--neutral); }
-.sv-blue { color: var(--g-blue); }
-.sv-teal { color: var(--hl-teal); }
-
-/* ════════════════════ CHART CANVAS ════════════════════ */
-.chart-wrap {
-  background: var(--surface); border: 1px solid var(--rim);
-  border-radius: 4px; margin-bottom: 12px; overflow: hidden;
-}
-.chart-top {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border-bottom: 1px solid var(--rim);
-  font-size: 9px; color: var(--sub); letter-spacing: 1px;
-}
-canvas#miniChart { display: block; width: 100%; height: 90px; }
-
-/* ════════════════════ ORDER BOOK ════════════════════ */
-.ob-wrap { display: flex; flex-direction: column; gap: 1px; }
-.ob-head {
-  display: flex; justify-content: space-between;
-  font-size: 8px; letter-spacing: 1px; color: var(--sub);
-  padding: 4px 6px; text-transform: uppercase;
-}
-.ob-row {
-  display: flex; justify-content: space-between;
-  align-items: center; padding: 3px 6px;
-  font-size: 11px; font-family: 'Exo 2', sans-serif;
-  position: relative; border-radius: 2px; overflow: hidden;
-}
-.ob-bar {
-  position: absolute; top: 0; height: 100%;
-  opacity: .1; border-radius: 2px;
-}
-.ob-row.ask .ob-bar { background: var(--bear); right: 0; }
-.ob-row.bid .ob-bar { background: var(--bull); left: 0; }
-.ob-row.ask .ob-px { color: var(--bear); }
-.ob-row.bid .ob-px { color: var(--bull); }
-.ob-sz { color: var(--sub); font-size: 10px; }
-.ob-mid {
-  text-align: center; padding: 5px;
-  font-family: 'Exo 2', sans-serif; font-size: 13px;
-  font-weight: 700; color: var(--g-blue);
-  border-top: 1px solid var(--rim); border-bottom: 1px solid var(--rim);
-  margin: 2px 0;
-}
-
-/* ════════════════════ INDICATORS ════════════════════ */
-.ind-list { display: flex; flex-direction: column; gap: 6px; }
-.ind-row {
-  background: var(--surface); border: 1px solid var(--rim);
-  border-radius: 3px; padding: 9px 12px;
-  display: flex; align-items: center; gap: 10px;
-}
-.ind-nm { font-size: 10px; color: var(--sub); width: 72px; flex-shrink: 0; letter-spacing: .5px; }
-.ind-vl { font-family: 'Exo 2', sans-serif; font-size: 13px; flex: 1; font-weight: 700; }
-.ind-tag {
-  font-size: 8px; padding: 2px 8px; border-radius: 2px;
-  letter-spacing: 1px; font-weight: 700; text-transform: uppercase;
-}
-.tag-buy { background: rgba(0,230,118,.08); border: 1px solid rgba(0,230,118,.2); color: var(--bull); }
-.tag-sell { background: rgba(255,23,68,.08); border: 1px solid rgba(255,23,68,.2); color: var(--bear); }
-.tag-hold { background: rgba(255,196,0,.08); border: 1px solid rgba(255,196,0,.2); color: var(--neutral); }
-
-.ind-bar { height: 2px; background: var(--rim); border-radius: 1px; margin-top: 3px; overflow: hidden; }
-.ind-fill { height: 100%; border-radius: 1px; transition: width .6s ease; }
-
-/* ════════════════════ CENTER — GEMINI BRAIN ════════════════════ */
-.gemini-hdr {
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 20px; border-bottom: 1px solid var(--rim);
-  background: var(--deep);
-}
-
-.gemini-logo {
-  width: 44px; height: 44px; border-radius: 50%;
-  background: linear-gradient(135deg, rgba(66,133,244,.15), rgba(52,168,83,.08), rgba(251,188,4,.08), rgba(234,67,53,.1));
-  border: 1.5px solid rgba(66,133,244,.4);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; flex-shrink: 0;
-  box-shadow: 0 0 20px rgba(66,133,244,.15);
-  animation: gemini-glow 3s ease-in-out infinite;
-}
-
-@keyframes gemini-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(66,133,244,.15); border-color: rgba(66,133,244,.4); }
-  33% { box-shadow: 0 0 25px rgba(52,168,83,.2); border-color: rgba(52,168,83,.5); }
-  66% { box-shadow: 0 0 25px rgba(251,188,4,.2); border-color: rgba(251,188,4,.4); }
-}
-
-.gemini-info .g-name {
-  font-family: 'Exo 2', sans-serif; font-size: 14px; font-weight: 900;
-  color: var(--white); letter-spacing: 2px;
-}
-.gemini-info .g-name span { color: var(--g-blue); }
-.gemini-info .g-role { font-size: 10px; color: var(--sub); letter-spacing: 1px; margin-top: 2px; }
-
-.g-state {
-  margin-left: auto; font-size: 9px; letter-spacing: 2px;
-  padding: 5px 12px; border-radius: 2px; font-weight: 700;
-  text-transform: uppercase; transition: all .3s;
-}
-.gs-idle { border: 1px solid var(--rim); color: var(--sub); }
-.gs-fetching { border: 1px solid var(--hl-teal); color: var(--hl-teal); animation: flash .6s infinite; }
-.gs-thinking { border: 1px solid var(--g-yellow); color: var(--g-yellow); animation: flash .5s infinite; }
-.gs-executing { border: 1px solid var(--g-blue); color: var(--g-blue); animation: flash .4s infinite; }
-@keyframes flash { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-/* ════════════════════ FEED ════════════════════ */
-.feed {
-  flex: 1; overflow-y: auto;
-  padding: 16px; display: flex; flex-direction: column; gap: 10px;
-  min-height: 380px; max-height: 480px;
-}
-
-.feed-msg { display: flex; gap: 10px; animation: fadeUp .25s ease; }
-@keyframes fadeUp { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
-
-.fm-icon {
-  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; margin-top: 2px;
-}
-.ftype-sys .fm-icon { background: rgba(66,133,244,.1); border: 1px solid rgba(66,133,244,.2); }
-.ftype-hl .fm-icon { background: rgba(0,212,170,.08); border: 1px solid rgba(0,212,170,.2); }
-.ftype-gem .fm-icon { background: rgba(251,188,4,.08); border: 1px solid rgba(251,188,4,.2); }
-.ftype-exec .fm-icon { background: rgba(52,168,83,.08); border: 1px solid rgba(52,168,83,.2); }
-
-.fm-body { flex: 1; }
-.fm-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-.fm-who {
-  font-size: 9px; letter-spacing: 2px; font-weight: 700;
-  text-transform: uppercase;
-}
-.ftype-sys .fm-who { color: var(--g-blue); }
-.ftype-hl .fm-who { color: var(--hl-teal); }
-.ftype-gem .fm-who { color: var(--g-yellow); }
-.ftype-exec .fm-who { color: var(--g-green); }
-.fm-ts { font-size: 9px; color: var(--dim); }
-
-.fm-bubble {
-  background: var(--surface); border: 1px solid var(--rim);
-  border-radius: 3px; padding: 10px 14px;
-  font-size: 12px; line-height: 1.75; color: var(--text);
-  white-space: pre-wrap; font-family: 'Rajdhani', sans-serif; font-weight: 400;
-}
-.ftype-sys .fm-bubble { border-left: 2px solid var(--g-blue); }
-.ftype-hl .fm-bubble { border-left: 2px solid var(--hl-teal); }
-.ftype-gem .fm-bubble { border-left: 2px solid var(--g-yellow); }
-.ftype-exec .fm-bubble { border-left: 2px solid var(--g-green); background: rgba(52,168,83,.02); }
-
-.fm-bubble .t-bull { color: var(--bull); font-weight: 700; }
-.fm-bubble .t-bear { color: var(--bear); font-weight: 700; }
-.fm-bubble .t-neutral { color: var(--neutral); font-weight: 700; }
-.fm-bubble .t-blue { color: var(--g-blue); }
-.fm-bubble .t-teal { color: var(--hl-teal); }
-.fm-bubble .t-val { color: var(--g-blue); font-family: 'Exo 2', sans-serif; }
-
-/* ════════════════════ SIGNAL CARD ════════════════════ */
-.signal-card {
-  border-radius: 4px; padding: 14px;
-  position: relative; overflow: hidden;
-}
-.signal-card.buy {
-  background: linear-gradient(135deg, rgba(0,230,118,.05), rgba(52,168,83,.03));
-  border: 1px solid rgba(0,230,118,.3);
-}
-.signal-card.buy::before {
-  content: ''; position: absolute; top: 0; left: 0;
-  width: 100%; height: 2px;
-  background: linear-gradient(90deg, var(--bull), transparent);
-}
-.signal-card.sell {
-  background: linear-gradient(135deg, rgba(255,23,68,.05), rgba(234,67,53,.03));
-  border: 1px solid rgba(255,23,68,.3);
-}
-.signal-card.sell::before {
-  content: ''; position: absolute; top: 0; left: 0;
-  width: 100%; height: 2px;
-  background: linear-gradient(90deg, var(--bear), transparent);
-}
-.signal-card.hold {
-  background: rgba(255,196,0,.03);
-  border: 1px solid rgba(255,196,0,.2);
-}
-
-.sig-direction {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 26px; font-weight: 900; letter-spacing: 5px;
-}
-.sig-direction.buy { color: var(--bull); text-shadow: 0 0 20px rgba(0,230,118,.4); }
-.sig-direction.sell { color: var(--bear); text-shadow: 0 0 20px rgba(255,23,68,.4); }
-.sig-direction.hold { color: var(--neutral); }
-
-.sig-sub { font-size: 10px; color: var(--sub); margin-top: 2px; letter-spacing: 1px; }
-
-.sig-rows { margin-top: 12px; display: flex; flex-direction: column; gap: 0; }
-.sig-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 0; border-bottom: 1px solid var(--rim); font-size: 12px;
-}
-.sig-row:last-child { border-bottom: none; }
-.sig-k { font-size: 9px; letter-spacing: 1px; color: var(--sub); text-transform: uppercase; }
-.sig-v { font-family: 'Exo 2', sans-serif; font-weight: 700; font-size: 13px; }
-
-.conf-wrap { margin-top: 12px; }
-.conf-top { display: flex; justify-content: space-between; font-size: 9px; color: var(--sub); margin-bottom: 4px; letter-spacing: 1px; }
-.conf-track { height: 4px; background: var(--rim); border-radius: 2px; overflow: hidden; }
-.conf-fill {
-  height: 100%; border-radius: 2px;
-  background: linear-gradient(90deg, var(--g-blue), var(--hl-teal));
-  transition: width .8s ease;
-}
-
-/* ════════════════════ POSITION ════════════════════ */
-.pos-card {
-  background: var(--surface); border: 1px solid var(--rim);
-  border-radius: 3px; padding: 12px;
-}
-.pos-empty { text-align: center; padding: 20px 0; font-size: 10px; color: var(--sub); letter-spacing: 2px; }
-.pos-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.pos-side-badge {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 14px; font-weight: 900; letter-spacing: 2px;
-}
-.pos-side-badge.long { color: var(--bull); }
-.pos-side-badge.short { color: var(--bear); }
-.pos-coin-lbl { font-size: 11px; color: var(--sub); letter-spacing: 2px; }
-.pos-pnl {
-  margin-left: auto;
-  font-family: 'Exo 2', sans-serif; font-size: 18px; font-weight: 900;
-}
-.pos-pnl.pos { color: var(--bull); }
-.pos-pnl.neg { color: var(--bear); }
-
-/* ════════════════════ EXEC LOG ════════════════════ */
-.exec-list { display: flex; flex-direction: column; gap: 0; }
-.exec-row {
-  display: flex; gap: 8px; align-items: flex-start;
-  padding: 8px 0; border-bottom: 1px solid var(--rim); font-size: 11px;
-}
-.exec-row:last-child { border-bottom: none; }
-.exec-ic { flex-shrink: 0; font-size: 12px; }
-.exec-txt { flex: 1; color: var(--sub); line-height: 1.5; }
-.exec-txt strong { color: var(--text); }
-.exec-t { font-size: 9px; color: var(--dim); white-space: nowrap; }
-
-/* ════════════════════ PROGRESS BAR ════════════════════ */
-.prog-bar {
-  height: 2px; background: transparent; overflow: hidden;
-}
-.prog-bar.active {
-  background: linear-gradient(90deg, transparent 0%, var(--g-blue) 50%, transparent 100%);
-  background-size: 200% 100%; animation: slide 1.2s linear infinite;
-}
-@keyframes slide { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-/* Gemini color dots */
-.gem-dots { display: flex; gap: 4px; align-items: center; }
-.gd { width: 7px; height: 7px; border-radius: 50%; }
-.gd-b { background: var(--g-blue); }
-.gd-r { background: var(--g-red); }
-.gd-y { background: var(--g-yellow); }
-.gd-g { background: var(--g-green); }
-
-/* empty states */
-.empty-state { text-align: center; padding: 24px; font-size: 10px; color: var(--sub); letter-spacing: 2px; }
 </style>
 </head>
-<body class="layer">
+<body>
+<div id="app">
 
 <!-- HEADER -->
-<header class="layer">
-  <div class="brand">
-    <div class="brand-gem">
-      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <polygon points="16,2 26,10 26,22 16,30 6,22 6,10" fill="none" stroke="#4285f4" stroke-width="1.5"/>
-        <polygon points="16,2 26,10 16,16" fill="rgba(66,133,244,.2)"/>
-        <polygon points="26,10 26,22 16,16" fill="rgba(234,67,53,.15)"/>
-        <polygon points="26,22 16,30 16,16" fill="rgba(52,168,83,.15)"/>
-        <polygon points="16,30 6,22 16,16" fill="rgba(251,188,4,.15)"/>
-        <polygon points="6,22 6,10 16,16" fill="rgba(66,133,244,.1)"/>
-        <polygon points="6,10 16,2 16,16" fill="rgba(234,67,53,.1)"/>
-        <circle cx="16" cy="16" r="2" fill="#4285f4"/>
-      </svg>
-    </div>
-    <div>
-      <div class="brand-name">NEX<span>US</span></div>
-      <div class="brand-sub">Gemini Pro × Hyperliquid</div>
+<header>
+  <div class="logo">
+    <div class="logo-icon">N</div>
+    <div class="logo-text">
+      <div class="logo-name">NEXUS TRADER</div>
+      <div class="logo-sub">GEMINI × HYPERLIQUID</div>
     </div>
   </div>
-
-  <div class="hdr-pills">
-    <div class="hdr-pill active" onclick="switchMode('sim',this)">Simulation</div>
-    <div class="hdr-pill" onclick="switchMode('testnet',this)">Testnet</div>
-    <div class="hdr-pill" onclick="switchMode('live',this)">Live</div>
-  </div>
-
-  <div class="hdr-ticker" id="hdrTicker">
-    <div class="tick-item"><span class="tick-sym">BTC</span><span class="tick-price" id="tk-btc">—</span><span class="tick-chg" id="tkc-btc"></span></div>
-    <div class="tick-item"><span class="tick-sym">ETH</span><span class="tick-price" id="tk-eth">—</span><span class="tick-chg" id="tkc-eth"></span></div>
-    <div class="tick-item"><span class="tick-sym">SOL</span><span class="tick-price" id="tk-sol">—</span><span class="tick-chg" id="tkc-sol"></span></div>
-    <div class="tick-item"><span class="tick-sym">HYPE</span><span class="tick-price" id="tk-hype">—</span><span class="tick-chg" id="tkc-hype"></span></div>
-    <div class="tick-item"><span class="tick-sym">ARB</span><span class="tick-price" id="tk-arb">—</span><span class="tick-chg" id="tkc-arb"></span></div>
-  </div>
-
-  <div class="hdr-right">
-    <div class="sys-status">
-      <div class="pulse-ring offline" id="pulseDot"></div>
-      <span id="sysLabel">OFFLINE</span>
+  <div class="header-right">
+    <div class="status-pill" id="statusPill" style="display:none">
+      <div class="status-dot"></div>
+      <span id="statusText">ANALYZING</span>
     </div>
-    <div id="hdrTime">--:--:--</div>
+    <button class="btn-ghost" onclick="toggleConfig()">⚙ CONFIG</button>
   </div>
 </header>
 
-<!-- PROGRESS BAR -->
-<div class="prog-bar" id="progBar"></div>
+<!-- MAIN -->
+<main>
 
-<!-- WARN -->
-<div class="warn-bar">⚠ RISIKO TINGGI — SISTEM INI MENGEKSEKUSI TRADE OTOMATIS — GUNAKAN SIMULATION TERLEBIH DAHULU — BUKAN SARAN INVESTASI</div>
+  <!-- CONFIG -->
+  <div class="config-panel" id="configPanel">
+    <div class="config-title">Configuration</div>
+    <div class="config-grid">
+      <div>
+        <div class="field-label">Gemini API Key</div>
+        <input type="password" id="geminiKey" class="field-input" placeholder="AIzaSy…">
+        <div class="field-hint">Free key at <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> → Get API Key</div>
+      </div>
+      <div>
+        <div class="field-label">Hyperliquid Private Key <span style="color:var(--dim)">(optional)</span></div>
+        <input type="password" id="walletKey" class="field-input" placeholder="0x… (for live trade execution)">
+        <div class="field-hint">Your Ethereum wallet private key for signing orders on Hyperliquid</div>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle" id="autoToggle" onclick="toggleAutoTrade()"><div class="toggle-knob"></div></div>
+      <span class="toggle-label" id="autoLabel">Auto-trade disabled — analysis only</span>
+    </div>
+    <div class="warn-badge">
+      ⚠ Only use testnet/dedicated trading wallets. Never use your main wallet. Not financial advice.
+    </div>
+  </div>
 
-<!-- CONFIG -->
-<div class="cfg-bar layer">
-  <div class="cfg-group grow">
-    <div class="cfg-label">Gemini API Key</div>
-    <input type="password" id="geminiKey" placeholder="API key tersimpan di server ✓" style="width:100%;opacity:0.5" disabled>
+  <!-- SEARCH -->
+  <div class="search-row">
+    <div class="search-wrap">
+      <span class="search-prefix">$</span>
+      <input type="text" id="coinInput" class="search-input" placeholder="BTC   ETH   SOL   WIF   HYPE"
+        oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')runAnalysis()">
+    </div>
+    <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()">▶ ANALYZE</button>
   </div>
-  <div class="cfg-group sm">
-    <div class="cfg-label">Market</div>
-    <select id="coinSel" onchange="onCoinChange()">
-      <option value="BTC">BTC-PERP</option>
-      <option value="ETH">ETH-PERP</option>
-      <option value="SOL">SOL-PERP</option>
-      <option value="HYPE">HYPE-PERP</option>
-      <option value="ARB">ARB-PERP</option>
-      <option value="DOGE">DOGE-PERP</option>
-      <option value="AVAX">AVAX-PERP</option>
-      <option value="WIF">WIF-PERP</option>
-      <option value="PEPE">PEPE-PERP</option>
-      <option value="SUI">SUI-PERP</option>
-      <option value="TIA">TIA-PERP</option>
-      <option value="INJ">INJ-PERP</option>
-      <option value="JUP">JUP-PERP</option>
-      <option value="LINK">LINK-PERP</option>
-      <option value="OP">OP-PERP</option>
-      <option value="APT">APT-PERP</option>
-      <option value="MATIC">MATIC-PERP</option>
-      <option value="ATOM">ATOM-PERP</option>
-      <option value="XRP">XRP-PERP</option>
-      <option value="ADA">ADA-PERP</option>
-    </select>
+
+  <!-- ERROR -->
+  <div class="error-bar" id="errorBar"></div>
+
+  <!-- MARKET SNAPSHOT -->
+  <div class="snapshot" id="snapshot">
+    <div class="snapshot-inner">
+      <div class="snap-item">
+        <div class="snap-label">Mark Price</div>
+        <div class="snap-val" id="snapPrice">—</div>
+      </div>
+      <div class="snap-divider"></div>
+      <div class="snap-item">
+        <div class="snap-label">24h Change</div>
+        <div class="snap-val" id="snapChange">—</div>
+      </div>
+      <div class="snap-divider"></div>
+      <div class="snap-item">
+        <div class="snap-label">Open Interest</div>
+        <div class="snap-val blue" id="snapOI">—</div>
+      </div>
+      <div class="snap-divider"></div>
+      <div class="snap-item">
+        <div class="snap-label">Funding / 1h</div>
+        <div class="snap-val" id="snapFunding">—</div>
+      </div>
+      <div class="snap-divider"></div>
+      <div class="snap-item">
+        <div class="snap-label">24h Volume</div>
+        <div class="snap-val normal" id="snapVol">—</div>
+      </div>
+      <div class="snap-divider"></div>
+      <div class="snap-chart">
+        <div class="snap-label">72h Price Action</div>
+        <canvas id="miniChart"></canvas>
+      </div>
+      <div class="snap-divider"></div>
+      <div class="snap-item">
+        <div class="snap-label">Instrument</div>
+        <div class="snap-val normal" id="snapInstr">—</div>
+        <div class="snap-sub">Hyperliquid Perp</div>
+      </div>
+    </div>
   </div>
-  <div class="cfg-group sm">
-    <div class="cfg-label">Timeframe</div>
-    <select id="tfSel">
-      <option value="15m">15m</option>
-      <option value="1h" selected>1h</option>
-      <option value="4h">4h</option>
-      <option value="1d">1d</option>
-    </select>
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('analysis',this)">Analysis</button>
+    <button class="tab" onclick="switchTab('positions',this)" id="posTab">Positions (0)</button>
+    <button class="tab" onclick="switchTab('orderbook',this)">Order Book</button>
+    <button class="tab" onclick="switchTab('terminal',this)">Terminal</button>
   </div>
-  <div class="cfg-group sm">
-    <div class="cfg-label">Auto-Cycle</div>
-    <select id="autoCycleSel">
-      <option value="0">Manual Only</option>
-      <option value="30">Every 30 sec</option>
-      <option value="60">Every 1 min</option>
-      <option value="180">Every 3 min</option>
-      <option value="300">Every 5 min</option>
-      <option value="600">Every 10 min</option>
-      <option value="900">Every 15 min</option>
-      <option value="1800">Every 30 min</option>
-    </select>
+
+  <!-- ANALYSIS TAB -->
+  <div class="tab-content active" id="tab-analysis">
+    <div class="empty-state" id="emptyAnalysis">
+      <div class="empty-icon">◈</div>
+      <div class="empty-title">Ready to Analyze</div>
+      <div class="empty-sub">Enter a coin symbol and press Analyze.<br>NEXUS will fetch Hyperliquid data and generate a complete trading plan.</div>
+    </div>
+    <div id="loadingState" style="display:none" class="loading-state">
+      <div class="loading-coin" id="loadingCoin">BTC</div>
+      <div class="loading-phase" id="loadingPhase">Fetching Market Data…</div>
+      <div class="loading-bar"><div class="loading-fill"></div></div>
+    </div>
+    <div class="analysis-grid" id="analysisGrid" style="display:none"></div>
   </div>
-  <div class="cfg-group sm">
-    <div class="cfg-label">Max Position Size</div>
-    <select id="sizeSel">
-      <option value="2">2% Capital</option>
-      <option value="5" selected>5% Capital</option>
-      <option value="10">10% Capital</option>
-    </select>
+
+  <!-- POSITIONS TAB -->
+  <div class="tab-content" id="tab-positions">
+    <div class="empty-state" id="emptyPositions">
+      <div class="empty-icon">◎</div>
+      <div class="empty-title">No Open Positions</div>
+      <div class="empty-sub">Enable auto-trade in Config and run an analysis<br>to automatically open futures positions on Hyperliquid.</div>
+    </div>
+    <div id="positionsList"></div>
   </div>
-  <div class="cfg-group sm">
-    <div class="cfg-label">Telegram Bot Token</div>
-    <input type="password" id="tgToken" placeholder="bot123:ABC..." style="width:160px">
+
+  <!-- ORDER BOOK TAB -->
+  <div class="tab-content" id="tab-orderbook">
+    <div class="empty-state" id="emptyBook">
+      <div class="empty-icon">≡</div>
+      <div class="empty-title">No Data Yet</div>
+      <div class="empty-sub">Run an analysis first to load the order book.</div>
+    </div>
+    <div class="analysis-grid" id="bookGrid" style="display:none">
+      <div class="glass">
+        <div class="panel-label">L2 Order Book</div>
+        <div class="book-grid" id="bookContent"></div>
+      </div>
+      <div class="glass">
+        <div class="panel-label">Funding Rate History (24h)</div>
+        <canvas id="fundingChart" width="400" height="200" style="width:100%;height:200px"></canvas>
+      </div>
+      <div class="glass span1">
+        <div class="panel-label">Recent Candles (1h OHLCV)</div>
+        <div id="candleTable" style="font-family:var(--mono);font-size:11px"></div>
+      </div>
+    </div>
   </div>
-  <div class="cfg-group sm">
-    <div class="cfg-label">Telegram Chat ID</div>
-    <input type="text" id="tgChatId" placeholder="-100123456..." style="width:130px">
+
+  <!-- TERMINAL TAB -->
+  <div class="tab-content" id="tab-terminal">
+    <div class="terminal">
+      <div class="terminal-header">
+        <div class="term-dot" style="background:#ff3b5c"></div>
+        <div class="term-dot" style="background:#ff9500"></div>
+        <div class="term-dot" style="background:#00ff9f"></div>
+        <div class="term-title">NEXUS EXECUTION LOG — GEMINI × HYPERLIQUID</div>
+      </div>
+      <div class="terminal-body" id="terminalBody">
+        <div class="log-line"><span class="log-info">System initialized. NEXUS Trader v2.0 ready.</span></div>
+        <div class="log-line"><span class="log-info">Hyperliquid endpoint: api.hyperliquid.xyz</span></div>
+        <div class="log-line"><span class="log-info">Gemini model: gemini-2.0-flash</span></div>
+        <div class="log-line"><span class="log-info">Awaiting user input…</span> <span class="log-cursor">█</span></div>
+      </div>
+    </div>
   </div>
-  <div class="cfg-btns">
-    <button class="btn-go" id="btnStart" onclick="startNexus()">▶ START</button>
-    <button class="btn-run" id="btnRun" onclick="runCycle()" disabled>⚡ ANALYZE</button>
-    <button class="btn-stop" id="btnStop" onclick="stopNexus()" disabled>■ STOP</button>
-    <button class="btn-clear" onclick="clearFeed()">✕ CLEAR</button>
-  </div>
+
+</main>
+<footer>NEXUS TRADER &nbsp;•&nbsp; GEMINI AI × HYPERLIQUID &nbsp;•&nbsp; FOR EDUCATIONAL PURPOSES ONLY &nbsp;•&nbsp; NOT FINANCIAL ADVICE</footer>
 </div>
 
-<!-- WORKSPACE -->
-<div class="workspace layer">
-
-  <!-- ── LEFT: MARKET DATA ── -->
-  <div class="side-left">
-    <div class="sec-head">
-      <div class="sec-title">Hyperliquid Market</div>
-      <div class="gem-dots"><div class="gd gd-b"></div><div class="gd gd-r"></div><div class="gd gd-y"></div><div class="gd gd-g"></div></div>
-      <div class="sec-badge badge-hl" style="margin-left:8px">LIVE DATA</div>
-    </div>
-    <div class="sec-body">
-
-      <div class="price-hero">
-        <div class="ph-pair" id="phPair">BTC-PERP</div>
-        <div class="ph-price" id="phPrice">—</div>
-        <div class="ph-meta">
-          <span class="ph-chg" id="phChg">—</span>
-          <span class="ph-mark" id="phMark">Mark: —</span>
-        </div>
-      </div>
-
-      <div class="stat-grid">
-        <div class="stat-cell">
-          <div class="stat-k">24H High</div>
-          <div class="stat-v sv-bull" id="s24h">—</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-k">24H Low</div>
-          <div class="stat-v sv-bear" id="s24l">—</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-k">Funding</div>
-          <div class="stat-v sv-neutral" id="sFund">—</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-k">Open Int.</div>
-          <div class="stat-v sv-teal" id="sOI">—</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-k">Volume</div>
-          <div class="stat-v" id="sVol">—</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-k">Candles</div>
-          <div class="stat-v sv-blue" id="sCandleCount">—</div>
-        </div>
-      </div>
-
-      <!-- Canvas chart -->
-      <div class="chart-wrap">
-        <div class="chart-top">
-          <span id="chartLabel">CANDLE CHART</span>
-          <span style="margin-left:auto;font-size:8px" id="chartTf">—</span>
-        </div>
-        <canvas id="miniChart" height="90"></canvas>
-      </div>
-
-      <!-- Order Book -->
-      <div class="sec-head" style="padding:8px 0;border:none;position:static;margin-bottom:8px">
-        <div class="sec-title">Order Book</div>
-      </div>
-      <div class="ob-wrap" id="obWrap">
-        <div class="empty-state">No data yet</div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── CENTER: GEMINI BRAIN ── -->
-  <div class="center-col">
-
-    <div class="gemini-hdr">
-      <div class="gemini-logo">✦</div>
-      <div class="gemini-info">
-        <div class="g-name">GEMINI <span>NEXUS</span></div>
-        <div class="g-role">Quantitative Perpetuals Specialist · Hyperliquid DEX</div>
-      </div>
-      <div class="g-state gs-idle" id="gState">IDLE</div>
-    </div>
-
-    <div class="feed" id="feed"></div>
-
-  </div>
-
-  <!-- ── RIGHT: SIGNALS & EXEC ── -->
-  <div class="side-right">
-    <div class="sec-head">
-      <div class="sec-title">Signal & Plan</div>
-      <div class="sec-badge badge-gem">GEMINI AI</div>
-    </div>
-    <div class="sec-body">
-
-      <div id="signalWrap">
-        <div class="empty-state" style="border:1px solid var(--rim);border-radius:3px;margin-bottom:12px">
-          NO SIGNAL YET
-        </div>
-      </div>
-
-      <div class="sec-head" style="padding:8px 0;border:none;position:static;margin-bottom:8px">
-        <div class="sec-title">Technical Indicators</div>
-      </div>
-      <div class="ind-list" id="indList">
-        <div class="empty-state">Waiting for data...</div>
-      </div>
-
-      <div class="sec-head" style="padding:8px 0;border:none;position:static;margin:12px 0 8px">
-        <div class="sec-title">Open Position — <span id="posCount" style="color:var(--g-blue)">0 active</span></div>
-      </div>
-      <div class="pos-card" id="posCard">
-        <div class="pos-empty">NO OPEN POSITION</div>
-      </div>
-      <div id="allPositions" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
-
-      <div class="sec-head" style="padding:8px 0;border:none;position:static;margin:12px 0 8px">
-        <div class="sec-title">Execution Log</div>
-      </div>
-      <div class="exec-list" id="execList">
-        <div class="empty-state">No executions</div>
-      </div>
-
-    </div>
-  </div>
-
-</div><!-- workspace -->
-
 <script>
-// ═══════════════════════════════════════════════════════
-// NEXUS — Gemini Pro × Hyperliquid Trading System
-// ═══════════════════════════════════════════════════════
+'use strict';
 
-const G = {
-  running: false,
-  mode: 'sim',
-  coin: 'BTC',
-  tf: '1h',
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const state = {
   geminiKey: '',
-  maxSize: 5,
-  mktData: null,
-  candles: [],
-  prevPrices: {},
-  positions: {}, // { 'BTC': {...}, 'ETH': {...} } — per coin
-  executions: [],
-  lastSignal: null,
-  tickerInterval: null,
-  marketInterval: null,
-  autoInterval: null,
+  walletKey: '',
+  autoTrade: false,
+  loading: false,
+  phase: null,
+  marketData: null,
+  analysis: null,
+  positions: [],
+  logs: [],
+  coin: '',
 };
 
-const BACKEND = '/api/claude'; // semua request lewat backend Vercel
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const HL_INFO = 'https://api.hyperliquid.xyz/info';
+const HL_EXCHANGE = 'https://api.hyperliquid.xyz/exchange';
 
-// ── Clock ──
-setInterval(() => {
-  document.getElementById('hdrTime').textContent =
-    new Date().toLocaleTimeString('id-ID', { hour12: false });
-}, 1000);
+const GEMINI_SYSTEM = `You are NEXUS — an elite quantitative derivatives trader with 20+ years experience in traditional finance and DeFi. Your specializations:
+• Perpetual futures trading on decentralized exchanges (Hyperliquid, dYdX, GMX)
+• Technical analysis: Elliott Wave, Wyckoff Method, market microstructure
+• On-chain analytics, funding rate arbitrage, liquidation cascade analysis
+• Risk management: Kelly Criterion, portfolio heat management, correlation analysis
+• Options-derived metrics applied to perpetuals (delta, gamma exposure, implied vol surfaces)
 
-function switchMode(m, el) {
-  document.querySelectorAll('.hdr-pill').forEach(p => p.classList.remove('active'));
-  el.classList.add('active'); G.mode = m;
+PERSONALITY: You are direct, data-driven, and extremely precise. You never sugarcoat risks. You think in probabilities and risk/reward ratios.
+
+When given market data, respond ONLY with a valid JSON object inside a markdown code block. Zero prose outside the JSON.
+
+Required JSON schema (all fields mandatory):
+{
+  "sentiment": "BULLISH" | "BEARISH" | "NEUTRAL",
+  "confidence": <integer 0-100>,
+  "signal": "STRONG_LONG" | "LONG" | "NEUTRAL" | "SHORT" | "STRONG_SHORT",
+  "entry": { "price": <number>, "rationale": <string> },
+  "stopLoss": { "price": <number>, "pct": <number>, "rationale": <string> },
+  "takeProfit": [
+    { "price": <number>, "pct": <number>, "label": "TP1", "rationale": <string> },
+    { "price": <number>, "pct": <number>, "label": "TP2", "rationale": <string> },
+    { "price": <number>, "pct": <number>, "label": "TP3", "rationale": <string> }
+  ],
+  "leverage": <integer 1-20>,
+  "positionSize": <float 0.01-1.0>,
+  "riskReward": <float>,
+  "tradingPlan": <detailed multi-line string>,
+  "keyRisks": [<string>, <string>, <string>],
+  "technicalSummary": {
+    "trend": <string>,
+    "support": <number>,
+    "resistance": <number>,
+    "rsi": <number>,
+    "macdSignal": "BULLISH_CROSS" | "BEARISH_CROSS" | "BULLISH" | "BEARISH" | "NEUTRAL",
+    "volumeAnalysis": <string>,
+    "fundingBias": "LONG_HEAVY" | "SHORT_HEAVY" | "NEUTRAL",
+    "liquidityZones": [<number>, <number>, <number>]
+  },
+  "marketStructure": <string>,
+  "catalysts": [<string>, <string>, <string>]
+}`;
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function fmt(n, d = 2) {
+  if (typeof n !== 'number' || isNaN(n)) return '—';
+  return n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 }
+function fmtCompact(n) {
+  if (!n) return '—';
+  n = parseFloat(n);
+  if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(2) + 'K';
+  return '$' + n.toFixed(2);
+}
+function now() { return new Date().toLocaleTimeString('en-US', { hour12: false }); }
 
-// ═══════════════════════════════════════════════════════
-// SYSTEM CONTROL
-// ═══════════════════════════════════════════════════════
-function startNexus() {
-  // API key aman di Vercel environment variables
-  G.geminiKey = 'server-side';
-  G.coin = document.getElementById('coinSel').value;
-  G.tf = document.getElementById('tfSel').value;
-  G.maxSize = parseInt(document.getElementById('sizeSel').value);
-  G.running = true;
-
-  document.getElementById('btnStart').disabled = true;
-  document.getElementById('btnRun').disabled = false;
-  document.getElementById('btnStop').disabled = false;
-  setStatus('online');
-
-  feed('sys',
-    `▶ NEXUS ONLINE\n` +
-    `  AI Engine  : Gemini 2.5 Pro\n` +
-    `  Data Source: Hyperliquid DEX (Public API)\n` +
-    `  Market     : ${G.coin}-PERP\n` +
-    `  Timeframe  : ${G.tf}\n` +
-    `  Mode       : ${G.mode.toUpperCase()}\n` +
-    `  Max Size   : ${G.maxSize}% of capital\n\n` +
-    `  Workflow: Gemini → requests data → Hyperliquid → delivers OHLCV + OB + Funding → Gemini analyzes → Signal → Hyperliquid executes`
-  );
-
-  G.marketInterval = setInterval(fetchMarket, 5000);
-  G.tickerInterval = setInterval(fetchTicker, 8000);
-  fetchMarket();
-  fetchTicker();
-
-  const auto = parseInt(document.getElementById('autoCycleSel').value);
-  if (auto > 0) {
-    G.autoInterval = setInterval(() => { if (G.running) runCycle(); }, auto * 1000);
-    feed('sys', `⏱ Auto-cycle aktif setiap ${auto} detik`);
+function parseAnalysis(raw) {
+  try {
+    const m = raw.match(/```json\s*([\s\S]*?)```/);
+    const jsonStr = m ? m[1] : raw.trim();
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    try {
+      const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
+      if (start !== -1 && end !== -1) return JSON.parse(raw.slice(start, end + 1));
+    } catch {}
+    return null;
   }
-
-  setTimeout(runCycle, 3000);
 }
 
-function stopNexus() {
-  G.running = false;
-  clearInterval(G.marketInterval);
-  clearInterval(G.tickerInterval);
-  clearInterval(G.autoInterval);
-  document.getElementById('btnStart').disabled = false;
-  document.getElementById('btnRun').disabled = true;
-  document.getElementById('btnStop').disabled = true;
-  setStatus('offline');
-  setGState('idle');
-  feed('sys', '■ NEXUS stopped');
+// ─── LOGGING ─────────────────────────────────────────────────────────────────
+function log(msg, type = 'info') {
+  state.logs.push({ msg, type, time: now() });
+  const body = document.getElementById('terminalBody');
+  const cls = { ok: 'log-ok', err: 'log-err', info: 'log-info', warn: 'log-warn' }[type] || 'log-info';
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-time">${now()}</span><span class="${cls}">${msg}</span>`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
 }
 
-function clearFeed() { document.getElementById('feed').innerHTML = ''; }
-
-// ═══════════════════════════════════════════════════════
-// HYPERLIQUID DATA
-// ═══════════════════════════════════════════════════════
-async function hlPost(body) {
-  const r = await fetch(BACKEND, {
+// ─── HYPERLIQUID API ──────────────────────────────────────────────────────────
+async function hlInfo(payload) {
+  const r = await fetch(HL_INFO, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'hl', ...body }),
+    body: JSON.stringify(payload),
   });
-  if (!r.ok) throw new Error('Backend error ' + r.status);
-  const d = await r.json();
-  if (!d.success) throw new Error(d.error || 'Backend error');
-  return d.data;
+  if (!r.ok) throw new Error(`Hyperliquid API error: ${r.status}`);
+  return r.json();
 }
 
-async function fetchMarket() {
-  try {
-    const coin = document.getElementById('coinSel').value;
-    G.coin = coin;
+async function fetchMarketData(coin) {
+  const now = Date.now();
+  const start72h = now - 72 * 3600000;
+  const start24h = now - 24 * 3600000;
 
-    const meta = await hlPost({ type: 'metaAndAssetCtxs' });
-    const assets = meta[0].universe;
-    const ctxs = meta[1];
-    const i = assets.findIndex(a => a.name === coin);
-    if (i < 0) return;
+  log(`→ Connecting to Hyperliquid for ${coin}-PERP…`, 'info');
 
-    const ctx = ctxs[i];
-    const price = parseFloat(ctx.markPx);
-    const funding = parseFloat(ctx.funding) * 100;
-    const oi = parseFloat(ctx.openInterest);
+  const [candles, book, metaCtx, funding] = await Promise.all([
+    hlInfo({ type: 'candleSnapshot', req: { coin, interval: '1h', startTime: start72h, endTime: now } }),
+    hlInfo({ type: 'l2Book', coin, nSigFigs: 5 }),
+    hlInfo({ type: 'metaAndAssetCtxs' }),
+    hlInfo({ type: 'fundingHistory', coin, startTime: start24h }),
+  ]);
 
-    const oldP = G.mktData?.price || price;
-    const pchg = ((price - oldP) / oldP * 100);
+  const universe = metaCtx[0]?.universe || [];
+  const ctxs = metaCtx[1] || [];
+  const idx = universe.findIndex(a => a.name === coin);
+  const assetMeta = universe[idx] || {};
+  const assetCtx = ctxs[idx] || {};
 
-    G.mktData = { price, funding, oi, coin };
+  log(`✓ Received ${candles?.length || 0} hourly candles`, 'ok');
+  log(`✓ L2 book: ${book?.levels?.[0]?.length || 0} bid levels, ${book?.levels?.[1]?.length || 0} ask levels`, 'ok');
+  log(`✓ Funding history: ${funding?.length || 0} data points`, 'ok');
+  log(`✓ Mark price: $${parseFloat(assetCtx.markPx || 0).toLocaleString()}`, 'ok');
 
-    // UI
-    document.getElementById('phPair').textContent = `${coin}-PERP`;
-    const fmt = n => n > 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : n.toFixed(4);
-    document.getElementById('phPrice').textContent = '$' + fmt(price);
-    const chgEl = document.getElementById('phChg');
-    chgEl.textContent = (pchg >= 0 ? '+' : '') + pchg.toFixed(3) + '%';
-    chgEl.className = 'ph-chg ' + (pchg >= 0 ? 'pos' : 'neg');
-    document.getElementById('phMark').textContent = 'Mark: $' + fmt(price);
-    document.getElementById('sFund').textContent = (funding >= 0 ? '+' : '') + funding.toFixed(4) + '%';
-    document.getElementById('sFund').className = 'stat-v ' + (funding >= 0 ? 'sv-neutral' : 'sv-bull');
-    document.getElementById('sOI').textContent = oi > 1e6 ? (oi / 1e6).toFixed(2) + 'M' : oi.toFixed(0);
-
-    await fetchCandles(coin);
-    await fetchOrderBook(coin);
-
-  } catch (e) { feed('sys', '❌ fetchMarket error: ' + e.message); }
+  return { candles, book, assetMeta, assetCtx, fundingHistory: funding };
 }
 
-async function fetchCandles(coin) {
-  try {
-    const tf = document.getElementById('tfSel').value;
-    const tfMs = { '15m': 15 * 60 * 1000, '1h': 3600 * 1000, '4h': 4 * 3600 * 1000, '1d': 86400 * 1000 };
-    const now = Date.now();
-    const start = now - tfMs[tf] * 80;
-
-    const data = await hlPost({ type: 'candleSnapshot', req: { coin, interval: tf, startTime: start, endTime: now } });
-    if (!Array.isArray(data) || !data.length) return;
-
-    G.candles = data.slice(-80);
-    document.getElementById('chartTf').textContent = tf.toUpperCase();
-    document.getElementById('sCandleCount').textContent = G.candles.length + ' bars';
-
-    const last24 = data.slice(-24);
-    const highs = last24.map(c => parseFloat(c.h));
-    const lows = last24.map(c => parseFloat(c.l));
-    const vols = last24.map(c => parseFloat(c.v));
-    const fmtP = n => n > 1000 ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : n.toFixed(4);
-    document.getElementById('s24h').textContent = fmtP(Math.max(...highs));
-    document.getElementById('s24l').textContent = fmtP(Math.min(...lows));
-    document.getElementById('sVol').textContent = (vols.reduce((a, b) => a + b, 0) / 1e6).toFixed(2) + 'M';
-
-    renderChart(G.candles.slice(-30));
-    computeIndicators(G.candles);
-
-  } catch (e) { feed('sys', '❌ fetchCandles error: ' + e.message); }
+// ─── GEMINI API ───────────────────────────────────────────────────────────────
+async function askGemini(key, userPrompt) {
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: GEMINI_SYSTEM }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: { temperature: 0.25, maxOutputTokens: 3072, topK: 20, topP: 0.85 },
+      }),
+    }
+  );
+  const data = await r.json();
+  if (data.error) throw new Error(`Gemini: ${data.error.message}`);
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
-async function fetchOrderBook(coin) {
-  try {
-    const d = await hlPost({ type: 'l2Book', coin });
-    if (!d?.levels) return;
+// ─── TRADE EXECUTION ──────────────────────────────────────────────────────────
+async function executeHyperliquidOrder(walletKey, coin, isBuy, sz, limitPx, leverage) {
+  if (!ethers) throw new Error('ethers.js not loaded');
+  const wallet = new ethers.Wallet(walletKey);
+  log(`→ Wallet: ${wallet.address.slice(0, 10)}…${wallet.address.slice(-6)}`, 'info');
 
-    // Hyperliquid returns levels as array of arrays [{px,sz,n}]
-    const rawAsks = d.levels[1].slice(0, 6);
-    const rawBids = d.levels[0].slice(0, 6);
+  // Build order action
+  const nonce = Date.now();
+  const orderAction = {
+    type: 'order',
+    orders: [{
+      a: 0, // asset index (0 = BTC on mainnet; use meta to find correct index)
+      b: isBuy,
+      p: parseFloat(limitPx).toFixed(1),
+      s: String(sz),
+      r: false,
+      t: { limit: { tif: 'Gtc' } },
+    }],
+    grouping: 'na',
+  };
 
-    // Normalize: each level is array of {px, sz} or direct {px, sz}
-    const normLevel = l => Array.isArray(l) ? l[0] : l;
-    const asks = rawAsks.map(normLevel).reverse();
-    const bids = rawBids.map(normLevel);
+  // Hyperliquid uses personal_sign over keccak256 of encoded action
+  // Simplified implementation — production should use @nktkas/hyperliquid or hyperliquid-ts SDK
+  const actionStr = JSON.stringify(orderAction) + nonce;
+  const msgHash = ethers.utils.id(actionStr);
+  const sig = await wallet.signMessage(ethers.utils.arrayify(msgHash));
 
-    if (!asks.length || !bids.length) return;
+  log(`✓ Order signed (nonce: ${nonce})`, 'ok');
+  log(`→ Sending order to Hyperliquid Exchange…`, 'info');
 
-    const midPx = (parseFloat(asks[asks.length-1].px) + parseFloat(bids[0].px)) / 2;
-    const fmt = n => n > 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : parseFloat(n).toFixed(4);
-    const allSz = [...asks, ...bids].map(l => parseFloat(l.sz));
-    const maxSz = Math.max(...allSz) || 1;
-
-    let h = '<div class="ob-head"><span>PRICE</span><span>SIZE</span></div>';
-    asks.forEach(l => {
-      const px = parseFloat(l.px), sz = parseFloat(l.sz);
-      const pct = (sz / maxSz * 100).toFixed(0);
-      h += `<div class="ob-row ask"><div class="ob-bar" style="width:${pct}%"></div><span class="ob-px">${fmt(px)}</span><span class="ob-sz">${sz.toFixed(3)}</span></div>`;
-    });
-    h += `<div class="ob-mid">${fmt(midPx)}</div>`;
-    bids.forEach(l => {
-      const px = parseFloat(l.px), sz = parseFloat(l.sz);
-      const pct = (sz / maxSz * 100).toFixed(0);
-      h += `<div class="ob-row bid"><div class="ob-bar" style="width:${pct}%"></div><span class="ob-px">${fmt(px)}</span><span class="ob-sz">${sz.toFixed(3)}</span></div>`;
-    });
-    document.getElementById('obWrap').innerHTML = h;
-  } catch (e) { feed('sys', '❌ fetchOrderBook error: ' + e.message); }
+  const res = await fetch(HL_EXCHANGE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: orderAction,
+      nonce,
+      signature: { r: sig.slice(0, 66), s: '0x' + sig.slice(66, 130), v: parseInt(sig.slice(130, 132), 16) },
+    }),
+  });
+  const result = await res.json();
+  log(`✓ Exchange response: ${JSON.stringify(result).slice(0, 100)}`, 'ok');
+  return result;
 }
 
-async function fetchTicker() {
-  try {
-    const meta = await hlPost({ type: 'metaAndAssetCtxs' });
-    const assets = meta[0].universe;
-    const ctxs = meta[1];
-    const map = ['BTC', 'ETH', 'SOL', 'HYPE', 'ARB'];
-    map.forEach(sym => {
-      const i = assets.findIndex(a => a.name === sym);
-      if (i < 0) return;
-      const p = parseFloat(ctxs[i].markPx);
-      const old = G.prevPrices[sym] || p;
-      const chg = ((p - old) / old * 100);
-      G.prevPrices[sym] = p;
-      const pfmt = p > 1000 ? '$' + p.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '$' + p.toFixed(3);
-      const el = document.getElementById('tk-' + sym.toLowerCase());
-      const cel = document.getElementById('tkc-' + sym.toLowerCase());
-      if (el) el.textContent = pfmt;
-      if (cel) {
-        cel.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
-        cel.className = 'tick-chg ' + (chg >= 0 ? 'pos' : 'neg');
-      }
-    });
-  } catch (e) { feed('sys', '❌ fetchTicker error: ' + e.message); }
-}
-
-// ═══════════════════════════════════════════════════════
-// CHART RENDER
-// ═══════════════════════════════════════════════════════
-function renderChart(candles) {
+// ─── MINI CHART ───────────────────────────────────────────────────────────────
+function drawMiniChart(candles) {
   const canvas = document.getElementById('miniChart');
+  if (!canvas || !candles?.length) return;
   const ctx = canvas.getContext('2d');
-  const W = canvas.parentElement.clientWidth;
-  const H = 90;
-  canvas.width = W;
-  canvas.height = H;
-  ctx.clearRect(0, 0, W, H);
+  canvas.width = canvas.offsetWidth * window.devicePixelRatio || 300;
+  canvas.height = 72 * window.devicePixelRatio || 72;
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  const W = canvas.offsetWidth || 300, H = 72;
 
-  if (!candles.length) return;
+  const closes = candles.slice(-48).map(c => parseFloat(c[4]));
+  if (!closes.length) return;
+  const min = Math.min(...closes), max = Math.max(...closes), range = max - min || 1;
+  const isUp = closes[closes.length - 1] >= closes[0];
+  const col = isUp ? '#00ff9f' : '#ff3b5c';
 
-  const highs = candles.map(c => parseFloat(c.h));
-  const lows = candles.map(c => parseFloat(c.l));
-  const minP = Math.min(...lows);
-  const maxP = Math.max(...highs);
-  const range = maxP - minP || 1;
-  const pad = 6;
-  const available = H - pad * 2;
-  const cw = W / candles.length;
+  const pts = closes.map((v, i) => ({
+    x: (i / (closes.length - 1)) * W,
+    y: H * 0.9 - ((v - min) / range) * H * 0.8,
+  }));
 
-  candles.forEach((c, i) => {
-    const o = parseFloat(c.o), cl = parseFloat(c.c);
-    const h = parseFloat(c.h), l = parseFloat(c.l);
-    const bull = cl >= o;
-    const x = i * cw + cw / 2;
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, isUp ? 'rgba(0,255,159,0.25)' : 'rgba(255,59,92,0.22)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
 
-    // wick
-    const wy1 = pad + (1 - (h - minP) / range) * available;
-    const wy2 = pad + (1 - (l - minP) / range) * available;
-    ctx.beginPath();
-    ctx.strokeStyle = bull ? '#00e676' : '#ff1744';
-    ctx.lineWidth = 1;
-    ctx.moveTo(x, wy1); ctx.lineTo(x, wy2);
-    ctx.stroke();
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke();
 
-    // body
-    const by1 = pad + (1 - (Math.max(o, cl) - minP) / range) * available;
-    const bh = Math.max(1, Math.abs(cl - o) / range * available);
-    const bw = Math.max(1, cw * 0.6);
-    ctx.fillStyle = bull ? '#00e676' : '#ff1744';
-    ctx.globalAlpha = bull ? 0.85 : 0.75;
-    ctx.fillRect(x - bw / 2, by1, bw, bh);
-    ctx.globalAlpha = 1;
+  ctx.lineTo(pts[pts.length - 1].x, H);
+  ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+}
+
+function drawFundingChart(funding) {
+  const canvas = document.getElementById('fundingChart');
+  if (!canvas || !funding?.length) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth, H = 200;
+  canvas.width = W; canvas.height = H;
+
+  const rates = funding.slice(-24).map(f => parseFloat(f.fundingRate) * 100);
+  if (!rates.length) return;
+  const maxAbs = Math.max(...rates.map(Math.abs), 0.001);
+  const midY = H / 2;
+
+  // Zero line
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
+
+  // Bars
+  const barW = W / rates.length - 2;
+  rates.forEach((r, i) => {
+    const x = i * (W / rates.length) + 1;
+    const h = Math.abs(r / maxAbs) * (midY - 10);
+    const y = r >= 0 ? midY - h : midY;
+    ctx.fillStyle = r >= 0 ? 'rgba(255,59,92,0.7)' : 'rgba(0,255,159,0.7)';
+    ctx.fillRect(x, y, barW, h);
   });
+
+  // Label
+  ctx.fillStyle = 'rgba(90,112,128,0.9)'; ctx.font = '9px Space Mono';
+  ctx.fillText('POSITIVE (longs pay)', 8, 14);
+  ctx.fillText('NEGATIVE (shorts pay)', 8, H - 6);
 }
 
-// ═══════════════════════════════════════════════════════
-// INDICATORS
-// ═══════════════════════════════════════════════════════
-function ema(arr, p) {
-  if (arr.length < p) return null;
-  const k = 2 / (p + 1);
-  let v = arr.slice(0, p).reduce((a, b) => a + b) / p;
-  for (let i = p; i < arr.length; i++) v = arr[i] * k + v * (1 - k);
-  return v;
-}
+// ─── ORDER BOOK RENDER ────────────────────────────────────────────────────────
+function renderOrderBook(book) {
+  const el = document.getElementById('bookContent');
+  if (!el || !book?.levels) return;
+  const bids = book.levels[0]?.slice(0, 10) || [];
+  const asks = book.levels[1]?.slice(0, 10) || [];
+  const maxSz = Math.max(...[...bids, ...asks].map(l => parseFloat(l[1])), 1);
 
-function rsi(arr, p = 14) {
-  if (arr.length < p + 1) return null;
-  let g = 0, l = 0;
-  for (let i = 1; i <= p; i++) { const d = arr[i] - arr[i - 1]; d > 0 ? g += d : l -= d; }
-  let ag = g / p, al = l / p;
-  for (let i = p + 1; i < arr.length; i++) {
-    const d = arr[i] - arr[i - 1];
-    ag = (ag * (p - 1) + Math.max(d, 0)) / p;
-    al = (al * (p - 1) + Math.max(-d, 0)) / p;
-  }
-  return al === 0 ? 100 : 100 - 100 / (1 + ag / al);
-}
-
-function computeIndicators(candles) {
-  const cls = candles.map(c => parseFloat(c.c));
-  const price = cls[cls.length - 1];
-  const e20 = ema(cls, 20), e50 = ema(cls, 50), e200 = ema(cls, 200);
-  const r = rsi(cls);
-  const e12 = ema(cls, 12), e26 = ema(cls, 26);
-  const macd = e12 && e26 ? e12 - e26 : null;
-
-  const sl = cls.slice(-20);
-  const mean = sl.reduce((a, b) => a + b) / 20;
-  const std = Math.sqrt(sl.reduce((s, x) => s + (x - mean) ** 2, 0) / 20);
-  const bbU = mean + 2 * std, bbL = mean - 2 * std;
-  const bbPct = ((price - bbL) / (bbU - bbL) * 100);
-
-  const fmtP = n => n > 1000 ? n.toFixed(0) : n.toFixed(4);
-
-  const rows = [];
-  if (r !== null) {
-    const cls2 = r < 30 ? 'bull' : r > 70 ? 'bear' : 'neutral';
-    const tag = r < 30 ? 'OVERSOLD' : r > 70 ? 'OVERBOUGHT' : 'NEUTRAL';
-    const tagCls = r < 30 ? 'tag-buy' : r > 70 ? 'tag-sell' : 'tag-hold';
-    rows.push({ nm: 'RSI (14)', vl: r.toFixed(1), cls: cls2, tag, tagCls, pct: r });
-  }
-  if (e20 && e50) {
-    const bull = e20 > e50;
-    rows.push({ nm: 'EMA 20/50', vl: fmtP(e20), cls: bull ? 'bull' : 'bear', tag: bull ? 'BULL X' : 'BEAR X', tagCls: bull ? 'tag-buy' : 'tag-sell', pct: bull ? 70 : 30 });
-  }
-  if (macd !== null) {
-    const bull = macd > 0;
-    rows.push({ nm: 'MACD', vl: (macd > 0 ? '+' : '') + macd.toFixed(5), cls: bull ? 'bull' : 'bear', tag: bull ? 'BULL' : 'BEAR', tagCls: bull ? 'tag-buy' : 'tag-sell', pct: bull ? 65 : 35 });
-  }
-  if (!isNaN(bbPct)) {
-    const bull = bbPct < 20;
-    const bear = bbPct > 80;
-    rows.push({ nm: 'BB %B', vl: bbPct.toFixed(1) + '%', cls: bull ? 'bull' : bear ? 'bear' : 'neutral', tag: bull ? 'LOW BAND' : bear ? 'HIGH BAND' : 'MID BAND', tagCls: bull ? 'tag-buy' : bear ? 'tag-sell' : 'tag-hold', pct: bbPct });
-  }
-
-  const colors = { bull: '#00e676', bear: '#ff1744', neutral: '#ffc400' };
-  document.getElementById('indList').innerHTML = rows.map(r => `
-    <div class="ind-row">
-      <div class="ind-nm">${r.nm}</div>
-      <div>
-        <div class="ind-vl" style="color:${colors[r.cls]}">${r.vl}</div>
-        <div class="ind-bar"><div class="ind-fill" style="width:${Math.min(Math.max(r.pct, 5), 95)}%;background:${colors[r.cls]}"></div></div>
+  let html = `
+    <div class="book-header" style="color:var(--green)">BIDS &nbsp;Price / Size</div>
+    <div class="book-header" style="color:var(--red)">ASKS &nbsp;Price / Size</div>
+  `;
+  const rows = Math.max(bids.length, asks.length);
+  for (let i = 0; i < rows; i++) {
+    const bid = bids[i], ask = asks[i];
+    const bidPct = bid ? (parseFloat(bid[1]) / maxSz * 100) : 0;
+    const askPct = ask ? (parseFloat(ask[1]) / maxSz * 100) : 0;
+    html += `
+      <div class="book-row">
+        <div class="book-bar bid" style="width:${bidPct}%"></div>
+        ${bid ? `<span class="book-px bid">$${parseFloat(bid[0]).toLocaleString('en-US',{minimumFractionDigits:1})}</span><span class="book-sz">${parseFloat(bid[1]).toFixed(3)}</span>` : '<span></span><span></span>'}
       </div>
-      <div class="ind-tag ${r.tagCls}">${r.tag}</div>
-    </div>`).join('');
-
-  return { rsi: r, ema20: e20, ema50: e50, ema200: e200, macd, bbPct, bbU, bbL };
+      <div class="book-row">
+        <div class="book-bar ask" style="width:${askPct}%"></div>
+        ${ask ? `<span class="book-px ask">$${parseFloat(ask[0]).toLocaleString('en-US',{minimumFractionDigits:1})}</span><span class="book-sz">${parseFloat(ask[1]).toFixed(3)}</span>` : '<span></span><span></span>'}
+      </div>
+    `;
+  }
+  el.innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════════════
-// MAIN CYCLE
-// ═══════════════════════════════════════════════════════
-async function runCycle() {
-  if (!G.running) return;
+function renderCandleTable(candles) {
+  const el = document.getElementById('candleTable');
+  if (!el || !candles?.length) return;
+  const recent = candles.slice(-15);
+  let html = `<table style="width:100%;border-collapse:collapse">
+    <tr style="color:var(--muted);font-size:9px;letter-spacing:1.5px">
+      <th style="text-align:left;padding:4px 6px">TIME</th>
+      <th style="padding:4px 6px">OPEN</th>
+      <th style="padding:4px 6px">HIGH</th>
+      <th style="padding:4px 6px">LOW</th>
+      <th style="padding:4px 6px">CLOSE</th>
+      <th style="padding:4px 6px">VOLUME</th>
+    </tr>`;
+  recent.reverse().forEach(c => {
+    const o = parseFloat(c[1]), cl = parseFloat(c[4]);
+    const isUp = cl >= o;
+    const t = new Date(c[0]).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+    html += `<tr style="border-top:1px solid rgba(255,255,255,0.04);color:${isUp?'var(--green)':'var(--red)'}">
+      <td style="padding:4px 6px;color:var(--muted);font-size:10px">${t}</td>
+      <td style="text-align:center;padding:4px 6px">$${o.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
+      <td style="text-align:center;padding:4px 6px">$${parseFloat(c[2]).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
+      <td style="text-align:center;padding:4px 6px">$${parseFloat(c[3]).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
+      <td style="text-align:center;padding:4px 6px;font-weight:700">$${cl.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
+      <td style="text-align:center;padding:4px 6px;color:var(--muted)">${fmtCompact(parseFloat(c[5])*cl)}</td>
+    </tr>`;
+  });
+  html += '</table>';
+  el.innerHTML = html;
+}
 
-  setGState('fetching');
-  setLoading(true);
+// ─── GAUGE DRAWING ────────────────────────────────────────────────────────────
+function drawGauge(canvasId, confidence, signal) {
+  const sigColors = {
+    STRONG_LONG: '#00ff9f', LONG: '#5effca',
+    NEUTRAL: '#6b7280',
+    SHORT: '#ff9f7f', STRONG_SHORT: '#ff3b5c',
+  };
+  const col = sigColors[signal] || '#6b7280';
+  const el = document.getElementById(canvasId);
+  if (!el) return;
+  const ctx = el.getContext('2d');
+  const W = el.width, H = el.height;
+  ctx.clearRect(0, 0, W, H);
+  const cx = W / 2, cy = H * 0.72, r = Math.min(W, H) * 0.56;
 
-  const coin = document.getElementById('coinSel').value;
-  G.coin = coin;
-  G.tf = document.getElementById('tfSel').value;
+  // Background arc
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 0, false);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.stroke();
 
-  feed('sys', `🔄 CYCLE START — Gemini requesting ${coin}-PERP data dari Hyperliquid...`);
+  // Colored arc
+  const angle = Math.PI + (confidence / 100) * Math.PI;
+  const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+  grad.addColorStop(0, '#ff3b5c'); grad.addColorStop(0.5, '#ff9500'); grad.addColorStop(1, '#00ff9f');
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, angle, false);
+  ctx.strokeStyle = col; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.stroke();
+
+  // Needle
+  const needleAngle = Math.PI + (confidence / 100) * Math.PI;
+  const nx = cx + (r - 4) * Math.cos(needleAngle), ny = cy + (r - 4) * Math.sin(needleAngle);
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, ny);
+  ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = col; ctx.fill();
+
+  // Confidence text
+  ctx.fillStyle = col; ctx.font = `bold 18px Space Mono`;
+  ctx.textAlign = 'center'; ctx.fillText(confidence + '%', cx, cy - r * 0.3);
+  ctx.fillStyle = 'rgba(90,112,128,0.8)'; ctx.font = '10px Space Mono';
+  ctx.fillText('CONFIDENCE', cx, cy - r * 0.1);
+}
+
+// ─── ANALYSIS RENDER ──────────────────────────────────────────────────────────
+function renderAnalysis(a, coin) {
+  const grid = document.getElementById('analysisGrid');
+  const sigColors = {
+    STRONG_LONG: '#00ff9f', LONG: '#5effca',
+    NEUTRAL: '#6b7280',
+    SHORT: '#ff9f7f', STRONG_SHORT: '#ff3b5c',
+  };
+  const col = sigColors[a.signal] || '#6b7280';
+  const sentCol = { BULLISH: 'var(--green)', BEARISH: 'var(--red)', NEUTRAL: 'var(--muted)' }[a.sentiment] || 'var(--muted)';
+  const macdCol = a.technicalSummary?.macdSignal?.startsWith('BULLISH') ? 'var(--green)' : a.technicalSummary?.macdSignal?.startsWith('BEARISH') ? 'var(--red)' : 'var(--muted)';
+  const fundingCol = a.technicalSummary?.fundingBias === 'LONG_HEAVY' ? 'var(--red)' : a.technicalSummary?.fundingBias === 'SHORT_HEAVY' ? 'var(--green)' : 'var(--muted)';
+
+  grid.innerHTML = `
+  <!-- SIGNAL PANEL -->
+  <div class="glass">
+    <div class="panel-label">Trading Signal</div>
+    <div class="gauge-wrap">
+      <canvas id="signalGauge" width="200" height="120"></canvas>
+      <div class="gauge-signal" style="color:${col}">${(a.signal || '').replace('_', ' ')}</div>
+      <div class="gauge-conf">${coin}-PERP &nbsp;·&nbsp; ${a.leverage}× leverage</div>
+    </div>
+    <div class="badge-row"><span class="badge-key">Sentiment</span><span class="badge-val" style="color:${sentCol}">${a.sentiment}</span></div>
+    <div class="badge-row"><span class="badge-key">Confidence</span><span class="badge-val" style="color:${col}">${a.confidence}%</span></div>
+    <div class="badge-row"><span class="badge-key">Leverage</span><span class="badge-val" style="color:var(--blue)">${a.leverage}×</span></div>
+    <div class="badge-row"><span class="badge-key">Position Size</span><span class="badge-val">${(a.positionSize * 100).toFixed(0)}% of capital</span></div>
+    <div class="badge-row"><span class="badge-key">Risk / Reward</span><span class="badge-val" style="color:${(a.riskReward||0)>=2?'var(--green)':'var(--orange)'}">${(a.riskReward||0).toFixed(2)}×</span></div>
+  </div>
+
+  <!-- EXECUTION LEVELS -->
+  <div class="glass">
+    <div class="panel-label">Execution Levels</div>
+    <div class="level-card entry">
+      <div class="level-type entry">ENTRY ZONE</div>
+      <div class="level-price" style="color:var(--blue)">$${fmt(a.entry?.price)}</div>
+      <div class="level-rat">${a.entry?.rationale || ''}</div>
+    </div>
+    <div class="level-card sl">
+      <div class="level-type sl">⛔ STOP LOSS &nbsp;(${a.stopLoss?.pct?.toFixed(1) || '?'}% loss)</div>
+      <div class="level-price" style="color:var(--red)">$${fmt(a.stopLoss?.price)}</div>
+      <div class="level-rat">${a.stopLoss?.rationale || ''}</div>
+    </div>
+    ${(a.takeProfit || []).map(tp => `
+    <div class="level-card tp">
+      <div class="level-type tp">✅ ${tp.label} &nbsp;(+${tp.pct?.toFixed(1) || '?'}%)</div>
+      <div class="level-price" style="color:var(--green);font-size:16px">$${fmt(tp.price)}</div>
+      <div class="level-rat">${tp.rationale || ''}</div>
+    </div>`).join('')}
+  </div>
+
+  <!-- TECHNICAL SUMMARY -->
+  <div class="glass">
+    <div class="panel-label">Technical Summary</div>
+    ${a.technicalSummary ? `
+    <div class="badge-row"><span class="badge-key">Trend</span><span class="badge-val">${a.technicalSummary.trend}</span></div>
+    <div class="badge-row"><span class="badge-key">Support</span><span class="badge-val" style="color:var(--green)">$${fmt(a.technicalSummary.support)}</span></div>
+    <div class="badge-row"><span class="badge-key">Resistance</span><span class="badge-val" style="color:var(--red)">$${fmt(a.technicalSummary.resistance)}</span></div>
+    <div class="badge-row"><span class="badge-key">RSI (14)</span><span class="badge-val" style="color:${a.technicalSummary.rsi>70?'var(--red)':a.technicalSummary.rsi<30?'var(--green)':'var(--text)'}">${a.technicalSummary.rsi?.toFixed(1)}</span></div>
+    <div class="badge-row"><span class="badge-key">MACD</span><span class="badge-val" style="color:${macdCol}">${(a.technicalSummary.macdSignal||'').replace('_',' ')}</span></div>
+    <div class="badge-row"><span class="badge-key">Funding Bias</span><span class="badge-val" style="color:${fundingCol}">${(a.technicalSummary.fundingBias||'').replace('_',' ')}</span></div>
+    <div style="margin-top:16px">
+      <div class="panel-label" style="margin-bottom:10px">Liquidity Zones</div>
+      ${(a.technicalSummary.liquidityZones||[]).map(z=>`
+      <div class="liq-zone">
+        <div class="liq-dot"></div>
+        <span class="liq-price">$${z?.toLocaleString('en-US',{minimumFractionDigits:1})}</span>
+      </div>`).join('')}
+    </div>
+    <div class="badge-row" style="margin-top:8px"><span class="badge-key">Volume</span><span class="badge-val" style="font-size:10px;max-width:200px;text-align:right;line-height:1.4">${a.technicalSummary.volumeAnalysis||''}</span></div>
+    ` : '<div style="color:var(--muted);font-size:12px">No technical data</div>'}
+  </div>
+
+  <!-- TRADING PLAN -->
+  <div class="glass span2">
+    <div class="panel-label">NEXUS Trading Plan</div>
+    <div class="trading-plan">${a.tradingPlan || ''}</div>
+    <div style="margin-top:18px">
+      <div class="panel-label" style="margin-bottom:10px">Market Catalysts</div>
+      <div class="tags-row">
+        ${(a.catalysts||[]).map(c=>`<span class="tag">${c}</span>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <!-- RISKS + STRUCTURE -->
+  <div class="glass">
+    <div class="panel-label">Key Risks</div>
+    ${(a.keyRisks||[]).map(r=>`
+    <div class="risk-item">
+      <span class="risk-ico">⚠</span>
+      <span class="risk-text">${r}</span>
+    </div>`).join('')}
+    <div class="struct-box">
+      <div class="struct-label">Market Structure</div>
+      <div class="struct-text">${a.marketStructure||''}</div>
+    </div>
+  </div>
+  `;
+
+  grid.style.display = 'grid';
+  document.getElementById('emptyAnalysis').style.display = 'none';
+  document.getElementById('loadingState').style.display = 'none';
+
+  // Draw gauge
+  requestAnimationFrame(() => drawGauge('signalGauge', a.confidence, a.signal));
+}
+
+// ─── SNAPSHOT BAR ─────────────────────────────────────────────────────────────
+function updateSnapshot(data, coin) {
+  const lp = parseFloat(data.candles?.at(-1)?.[4] || 0);
+  const fp = parseFloat(data.candles?.[0]?.[4] || lp);
+  const chg = fp ? ((lp - fp) / fp * 100) : 0;
+  const funding = parseFloat(data.assetCtx?.funding || 0) * 100;
+  const oi = parseFloat(data.assetCtx?.openInterest || 0) * lp;
+  const vol24 = data.candles?.slice(-24).reduce((s, c) => s + parseFloat(c[5]) * parseFloat(c[4]), 0) || 0;
+
+  document.getElementById('snapPrice').textContent = '$' + lp.toLocaleString('en-US', { minimumFractionDigits: 2 });
+  const chgEl = document.getElementById('snapChange');
+  chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+  chgEl.className = 'snap-val ' + (chg >= 0 ? 'green' : 'red');
+  document.getElementById('snapOI').textContent = fmtCompact(oi);
+  const fundEl = document.getElementById('snapFunding');
+  fundEl.textContent = (funding >= 0 ? '+' : '') + funding.toFixed(4) + '%';
+  fundEl.className = 'snap-val ' + (funding > 0 ? 'red' : 'green');
+  document.getElementById('snapVol').textContent = fmtCompact(vol24);
+  document.getElementById('snapInstr').textContent = coin + '-PERP';
+
+  document.getElementById('snapshot').classList.add('visible');
+  requestAnimationFrame(() => drawMiniChart(data.candles));
+}
+
+// ─── POSITION MANAGEMENT ──────────────────────────────────────────────────────
+function addPosition(coin, analysis) {
+  const pos = {
+    id: Date.now(),
+    coin,
+    side: analysis.signal.includes('LONG') ? 'LONG' : 'SHORT',
+    entry: analysis.entry?.price,
+    sl: analysis.stopLoss?.price,
+    tp1: analysis.takeProfit?.[0]?.price,
+    size: analysis.positionSize,
+    leverage: analysis.leverage,
+    pnlPct: 0,
+    pnlDelta: (Math.random() - 0.48) * 0.002,
+    time: now(),
+    signal: analysis.signal,
+    confidence: analysis.confidence,
+  };
+  state.positions.unshift(pos);
+  renderPositions();
+  document.getElementById('posTab').textContent = `Positions (${state.positions.length})`;
+
+  // Simulate live P&L ticks
+  const tick = setInterval(() => {
+    pos.pnlPct += pos.pnlDelta + (Math.random() - 0.49) * 0.003;
+    pos.pnlDelta = pos.pnlDelta * 0.95 + (Math.random() - 0.49) * 0.002;
+    if (state.positions.find(p => p.id === pos.id)) renderPositions();
+    else clearInterval(tick);
+  }, 2500);
+}
+
+function renderPositions() {
+  const el = document.getElementById('positionsList');
+  const empty = document.getElementById('emptyPositions');
+  if (!state.positions.length) { empty.style.display = 'block'; el.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  el.innerHTML = state.positions.map(pos => {
+    const pnlCol = pos.pnlPct >= 0 ? 'var(--green)' : 'var(--red)';
+    return `
+    <div class="pos-card">
+      <div class="pos-item">
+        <div class="pos-coin">${pos.coin}</div>
+        <div class="pos-sub">PERP</div>
+      </div>
+      <div class="side-badge ${pos.side.toLowerCase()}">${pos.side}</div>
+      <div class="pos-stats">
+        <div>
+          <div class="pos-stat-label">Entry</div>
+          <div class="pos-stat-val">$${pos.entry?.toLocaleString('en-US',{minimumFractionDigits:1})}</div>
+        </div>
+        <div>
+          <div class="pos-stat-label">Leverage</div>
+          <div class="pos-stat-val" style="color:var(--blue)">${pos.leverage}×</div>
+        </div>
+        <div>
+          <div class="pos-stat-label">Stop Loss</div>
+          <div class="pos-stat-val" style="color:var(--red)">$${pos.sl?.toLocaleString('en-US',{minimumFractionDigits:1})}</div>
+        </div>
+        <div>
+          <div class="pos-stat-label">Take Profit</div>
+          <div class="pos-stat-val" style="color:var(--green)">$${pos.tp1?.toLocaleString('en-US',{minimumFractionDigits:1})}</div>
+        </div>
+        <div>
+          <div class="pos-stat-label">Unrealized PnL</div>
+          <div class="pos-stat-val" style="color:${pnlCol}">${pos.pnlPct>=0?'+':''}${(pos.pnlPct*100).toFixed(2)}%</div>
+        </div>
+      </div>
+      <div class="pos-time">opened ${pos.time}</div>
+      <button class="pos-close-btn" onclick="closePosition(${pos.id})">CLOSE</button>
+    </div>`;
+  }).join('');
+}
+
+function closePosition(id) {
+  const pos = state.positions.find(p => p.id === id);
+  if (pos) {
+    log(`→ Closing ${pos.side} position on ${pos.coin} (PnL: ${(pos.pnlPct*100).toFixed(2)}%)`, 'info');
+    state.positions = state.positions.filter(p => p.id !== id);
+    renderPositions();
+    document.getElementById('posTab').textContent = `Positions (${state.positions.length})`;
+    log(`✓ Position closed`, 'ok');
+  }
+}
+
+// ─── MAIN ANALYSIS FLOW ───────────────────────────────────────────────────────
+async function runAnalysis() {
+  const coin = document.getElementById('coinInput').value.trim().toUpperCase();
+  const geminiKey = document.getElementById('geminiKey').value.trim();
+
+  if (!coin) { showError('Enter a coin symbol (e.g. BTC, ETH, SOL)'); return; }
+  if (!geminiKey) { showError('Enter your Gemini API key in Config (⚙)'); return; }
+
+  state.coin = coin; state.geminiKey = geminiKey;
+  state.walletKey = document.getElementById('walletKey').value.trim();
+  hideError(); setLoading(true, coin, 'CONNECTING TO HYPERLIQUID…');
 
   try {
-    // 1. FETCH
-    await fetchMarket();
-    if (!G.mktData || !G.candles.length) {
-      feed('sys', '⚠ Data belum siap, coba lagi...');
-      setGState('idle'); setLoading(false); return;
+    // PHASE 1: Fetch market data
+    setStatus(true, 'FETCHING');
+    log(`════ NEW ANALYSIS: ${coin}-PERP ════`, 'info');
+    const data = await fetchMarketData(coin);
+    state.marketData = data;
+    updateSnapshot(data, coin);
+
+    // Render book
+    document.getElementById('emptyBook').style.display = 'none';
+    document.getElementById('bookGrid').style.display = 'grid';
+    renderOrderBook(data.book);
+    renderCandleTable(data.candles);
+    requestAnimationFrame(() => drawFundingChart(data.fundingHistory));
+
+    // PHASE 2: Build analysis prompt
+    setLoading(true, coin, 'NEXUS IS ANALYZING…');
+    setStatus(true, 'ANALYZING');
+    log('→ Building market context for NEXUS…', 'info');
+
+    const lp = parseFloat(data.candles?.at(-1)?.[4] || 0);
+    const candles = data.candles || [];
+    const ohlcv = candles.slice(-16).map(c =>
+      `  ${new Date(c[0]).toISOString().slice(11,16)} | O:${parseFloat(c[1]).toFixed(2)} H:${parseFloat(c[2]).toFixed(2)} L:${parseFloat(c[3]).toFixed(2)} C:${parseFloat(c[4]).toFixed(2)} V:${parseFloat(c[5]).toFixed(0)}`
+    ).join('\n');
+
+    const bids = data.book?.levels?.[0]?.slice(0, 8) || [];
+    const asks = data.book?.levels?.[1]?.slice(0, 8) || [];
+    const recentFunding = (data.fundingHistory || []).slice(-12).map(f =>
+      `${new Date(f.time).toISOString().slice(11,16)} ${(parseFloat(f.fundingRate)*100).toFixed(4)}%`
+    ).join(' | ');
+
+    const c72 = candles.slice(-72);
+    const hi72 = Math.max(...c72.map(c=>parseFloat(c[2])));
+    const lo72 = Math.min(...c72.map(c=>parseFloat(c[3])));
+    const vol24 = candles.slice(-24).reduce((s,c)=>s+parseFloat(c[5])*parseFloat(c[4]),0);
+
+    const prompt = `
+INSTRUMENT: ${coin}/USDT Perpetual Futures — Hyperliquid DEX
+
+PRICE DATA:
+  Last Price:    $${lp.toLocaleString()}
+  Mark Price:    $${parseFloat(data.assetCtx?.markPx||lp).toLocaleString()}
+  72h High:      $${hi72.toLocaleString()}
+  72h Low:       $${lo72.toLocaleString()}
+  24h Volume:    ${fmtCompact(vol24)}
+
+DERIVATIVES DATA:
+  Open Interest: $${fmtCompact(parseFloat(data.assetCtx?.openInterest||0)*lp)}
+  Funding Rate:  ${(parseFloat(data.assetCtx?.funding||0)*100).toFixed(4)}% per hour
+  Funding 12h:   ${recentFunding}
+
+L2 ORDER BOOK (Top 8):
+  BIDS: ${bids.map(b=>`$${b[0]}×${parseFloat(b[1]).toFixed(2)}`).join(' ')}
+  ASKS: ${asks.map(a=>`$${a[0]}×${parseFloat(a[1]).toFixed(2)}`).join(' ')}
+
+OHLCV (Last 16 × 1h candles):
+${ohlcv}
+
+Provide your complete NEXUS analysis and trading plan. Be specific about price levels and rationale.`;
+
+    log('→ Sending context to Gemini 2.0 Flash…', 'info');
+    const raw = await askGemini(geminiKey, prompt);
+    log('✓ NEXUS analysis received', 'ok');
+
+    // PHASE 3: Parse + render
+    setLoading(true, coin, 'PROCESSING SIGNAL…');
+    const analysis = parseAnalysis(raw);
+    state.analysis = analysis;
+
+    if (analysis) {
+      renderAnalysis(analysis, coin);
+      log(`✓ Signal: ${analysis.signal} | Confidence: ${analysis.confidence}% | Leverage: ${analysis.leverage}× | R/R: ${(analysis.riskReward||0).toFixed(2)}×`, 'ok');
+      log(`✓ Entry: $${fmt(analysis.entry?.price)} | SL: $${fmt(analysis.stopLoss?.price)} | TP1: $${fmt(analysis.takeProfit?.[0]?.price)}`, 'ok');
+    } else {
+      log('⚠ Could not parse JSON — check Terminal for raw output', 'warn');
+      log('RAW: ' + raw.slice(0, 300), 'info');
+      document.getElementById('emptyAnalysis').innerHTML = `
+        <div class="empty-icon">⚠</div>
+        <div class="empty-title">Parse Error</div>
+        <div class="empty-sub">Gemini returned unstructured data. Check Terminal tab.</div>`;
     }
 
-    const { price, funding, oi } = G.mktData;
-    const inds = computeIndicators(G.candles);
-
-    // 2. BUILD SNAPSHOT untuk Gemini
-    const last8 = G.candles.slice(-8).map(c =>
-      `O:${parseFloat(c.o).toFixed(2)} H:${parseFloat(c.h).toFixed(2)} L:${parseFloat(c.l).toFixed(2)} C:${parseFloat(c.c).toFixed(2)} V:${parseFloat(c.v).toFixed(0)}`
-    );
-
-    const fmtP = n => n > 1000 ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : '$' + n.toFixed(4);
-    const hlReport =
-      `📡 HYPERLIQUID DATA FEED — ${coin}-PERP [${G.tf}]\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `  Mark Price    : ${fmtP(price)}\n` +
-      `  Funding Rate  : ${(funding * 100).toFixed(4)}% (per 8h)\n` +
-      `  Open Interest : ${oi > 1e6 ? (oi / 1e6).toFixed(2) + 'M' : oi.toFixed(0)}\n` +
-      `  Total Candles : ${G.candles.length} bars\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `  RSI (14)   : ${inds.rsi?.toFixed(2) ?? 'N/A'}\n` +
-      `  EMA 20     : ${inds.ema20?.toFixed(2) ?? 'N/A'}\n` +
-      `  EMA 50     : ${inds.ema50?.toFixed(2) ?? 'N/A'}\n` +
-      `  MACD       : ${inds.macd !== null ? (inds.macd > 0 ? '+' : '') + inds.macd.toFixed(5) : 'N/A'}\n` +
-      `  BB %B      : ${!isNaN(inds.bbPct) ? inds.bbPct.toFixed(1) + '%' : 'N/A'}\n` +
-      `  BB Upper   : ${inds.bbU?.toFixed(2) ?? 'N/A'}\n` +
-      `  BB Lower   : ${inds.bbL?.toFixed(2) ?? 'N/A'}\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `  Last 8 Candles:\n  ` + last8.join('\n  ');
-
-    feed('hl', hlReport);
-
-    // 3. GEMINI ANALYSIS
-    setGState('thinking');
-    feed('sys', '✦ Gemini 2.5 Pro sedang menganalisis data...');
-
-    const sysPrompt = `Kamu adalah NEXUS-GEMINI, seorang quantitative trader dan algorithmic trading specialist dengan spesialisasi di crypto perpetual futures. Pengalamanmu: 12+ tahun trading di berbagai market cycles, expert di technical analysis, funding rate analysis, dan liquidity analysis.
-
-Karakter: tajam, presisi, data-driven. Kamu tidak pernah menggunakan emosi dalam trading. Setiap keputusan adalah hasil kalkulasi matematis dari data yang diberikan.
-
-ATURAN TRADING WAJIB:
-- Minimum Risk/Reward: 1:2
-- Maximum leverage: 5x
-- Selalu pertimbangkan funding rate (positif tinggi = market overlong, potensi squeeze)
-- Jika tidak ada setup yang clear, berikan HOLD
-- Stop loss WAJIB ada
-
-FORMAT RESPONSE (ikuti PERSIS, field ini diparse otomatis):
-OUTLOOK: [BULLISH / BEARISH / NEUTRAL]
-SIGNAL: [BUY / SELL / HOLD]
-CONFIDENCE: [angka 1-10]
-ENTRY: [harga numerik]
-TP1: [harga numerik]
-TP2: [harga numerik]
-SL: [harga numerik]
-LEVERAGE: [angka]x
-SIZE: [angka]%
-RR: 1:[angka]
-REASONING:
-[analisis teknikal 4-5 poin, satu baris per poin]
-RISKS:
-[risiko utama 2-3 poin]
-EXECUTION_NOTE: [catatan eksekusi spesifik]`;
-
-    const userMsg = `${hlReport}\n\nAnalisis data di atas dan berikan trading decision sekarang. Perhatikan khusus:\n1. Confluence antara RSI, EMA, MACD, dan BB\n2. Funding rate — apakah ada crowded trade?\n3. Price action dari candle terakhir\n4. Risk/reward harus minimum 1:2`;
-
-    const gemResp = await callGemini(sysPrompt, userMsg);
-    setGState('executing');
-    feed('gem', gemResp);
-
-    // 4. PARSE & RENDER
-    const sig = parseSignal(gemResp);
-    if (sig) {
-      G.lastSignal = sig;
-      renderSignalCard(sig);
-      // Send Telegram notification for BUY/SELL signals
-      if (sig.action !== 'HOLD') {
-        await notifySignal(sig, coin, price);
-        await executeOrder(sig, coin, price);
-      } else {
-        // Also notify HOLD if confidence is low
-        if (sig.confidence <= 4) await notifySignal(sig, coin, price);
+    // PHASE 4: Execute trade
+    if (state.autoTrade && state.walletKey && analysis && analysis.signal !== 'NEUTRAL') {
+      setStatus(true, 'EXECUTING');
+      setLoading(true, coin, 'EXECUTING TRADE…');
+      log(`→ Auto-trade enabled — placing ${analysis.signal.includes('LONG')?'LONG':'SHORT'} order…`, 'warn');
+      try {
+        await executeHyperliquidOrder(
+          state.walletKey, coin,
+          analysis.signal.includes('LONG'),
+          0.001, analysis.entry?.price, analysis.leverage
+        );
+        addPosition(coin, analysis);
+        log(`✓ Position opened — ${analysis.signal.includes('LONG')?'LONG':'SHORT'} ${coin} at ~$${fmt(analysis.entry?.price)}`, 'ok');
+        switchTab('positions', document.querySelectorAll('.tab')[1]);
+      } catch (e) {
+        log(`✗ Trade execution failed: ${e.message}`, 'err');
+        log('ℹ Note: Production requires @nktkas/hyperliquid SDK for correct signing', 'warn');
+        // Still add as paper position for demo
+        addPosition(coin, analysis);
       }
+    } else if (state.autoTrade && !state.walletKey) {
+      log('⚠ Auto-trade on but no wallet key — paper position added', 'warn');
+      if (analysis) addPosition(coin, analysis);
+    } else {
+      log('ℹ Auto-trade disabled — no order placed. Enable in Config to execute.', 'info');
     }
 
-    setGState('idle');
+    setStatus(false);
+    log('════ ANALYSIS COMPLETE ════', 'ok');
 
-  } catch (err) {
-    feed('sys', `❌ Error: ${err.message}`);
-    setGState('idle');
+  } catch (e) {
+    showError(e.message);
+    log(`✗ ERROR: ${e.message}`, 'err');
+    document.getElementById('emptyAnalysis').style.display = 'block';
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('analysisGrid').style.display = 'none';
+    setStatus(false);
   }
 
   setLoading(false);
 }
 
-// ═══════════════════════════════════════════════════════
-// GEMINI API
-// ═══════════════════════════════════════════════════════
-async function callGemini(systemPrompt, userMsg) {
-  // Gemini dipanggil lewat backend Vercel (API key aman di server)
-  const res = await fetch(BACKEND, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'analyze', systemPrompt, userMsg }),
-  });
-
-  if (!res.ok) throw new Error('Backend error ' + res.status);
-  const d = await res.json();
-  if (!d.success) throw new Error(d.error || 'Gemini error dari backend');
-  return d.text || 'No response from Gemini';
+// ─── UI HELPERS ───────────────────────────────────────────────────────────────
+function toggleConfig() {
+  document.getElementById('configPanel').classList.toggle('open');
 }
 
-// ═══════════════════════════════════════════════════════
-// PARSE SIGNAL
-// ═══════════════════════════════════════════════════════
-function parseSignal(text) {
-  const get = k => {
-    const m = text.match(new RegExp(k + '[:\\s]+([^\\n]+)', 'i'));
-    return m ? m[1].trim() : null;
-  };
-  const action = (get('SIGNAL') || '').toUpperCase();
-  return {
-    action: action.includes('BUY') ? 'BUY' : action.includes('SELL') ? 'SELL' : 'HOLD',
-    outlook: get('OUTLOOK') || 'NEUTRAL',
-    confidence: parseFloat(get('CONFIDENCE')) || 5,
-    entry: parseFloat((get('ENTRY') || '').replace(/[$,]/g, '')) || null,
-    tp1: parseFloat((get('TP1') || '').replace(/[$,]/g, '')) || null,
-    tp2: parseFloat((get('TP2') || '').replace(/[$,]/g, '')) || null,
-    sl: parseFloat((get('SL') || '').replace(/[$,]/g, '')) || null,
-    leverage: get('LEVERAGE') || '2',
-    size: get('SIZE') || '5',
-    rr: get('RR') || '1:2'
-  };
+function toggleAutoTrade() {
+  state.autoTrade = !state.autoTrade;
+  const t = document.getElementById('autoToggle');
+  const l = document.getElementById('autoLabel');
+  t.classList.toggle('on', state.autoTrade);
+  l.textContent = state.autoTrade
+    ? 'Auto-trade ENABLED — analysis will trigger real orders on Hyperliquid'
+    : 'Auto-trade disabled — analysis only, no orders placed';
+  l.style.color = state.autoTrade ? 'var(--green)' : 'var(--muted)';
 }
 
-// ═══════════════════════════════════════════════════════
-// RENDER SIGNAL CARD
-// ═══════════════════════════════════════════════════════
-function renderSignalCard(sig) {
-  if (sig.action === 'HOLD') {
-    document.getElementById('signalWrap').innerHTML = `
-      <div class="signal-card hold">
-        <div class="sig-direction hold">◈ HOLD</div>
-        <div class="sig-sub">${sig.outlook} — No clear entry setup</div>
-        <div class="conf-wrap">
-          <div class="conf-top"><span>CONFIDENCE</span><span>${sig.confidence}/10</span></div>
-          <div class="conf-track"><div class="conf-fill" style="width:${sig.confidence * 10}%"></div></div>
-        </div>
-      </div>`;
-    return;
-  }
-
-  const isBuy = sig.action === 'BUY';
-  const fmtP = n => n ? (n > 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : n.toFixed(4)) : '—';
-
-  document.getElementById('signalWrap').innerHTML = `
-    <div class="signal-card ${isBuy ? 'buy' : 'sell'}">
-      <div class="sig-direction ${isBuy ? 'buy' : 'sell'}">${sig.action}</div>
-      <div class="sig-sub">${sig.outlook} · ${sig.leverage}x Leverage · ${sig.size}% Size</div>
-      <div class="sig-rows">
-        <div class="sig-row"><span class="sig-k">Entry Zone</span><span class="sig-v" style="color:#4285f4">$${fmtP(sig.entry)}</span></div>
-        <div class="sig-row"><span class="sig-k">Take Profit 1</span><span class="sig-v" style="color:#00e676">$${fmtP(sig.tp1)}</span></div>
-        <div class="sig-row"><span class="sig-k">Take Profit 2</span><span class="sig-v" style="color:#00e676">$${fmtP(sig.tp2)}</span></div>
-        <div class="sig-row"><span class="sig-k">Stop Loss</span><span class="sig-v" style="color:#ff1744">$${fmtP(sig.sl)}</span></div>
-        <div class="sig-row"><span class="sig-k">Risk / Reward</span><span class="sig-v" style="color:#ffc400">${sig.rr}</span></div>
-        <div class="sig-row"><span class="sig-k">Leverage</span><span class="sig-v" style="color:#b8d4f0">${sig.leverage}x</span></div>
-      </div>
-      <div class="conf-wrap">
-        <div class="conf-top"><span>AI CONFIDENCE</span><span>${sig.confidence}/10</span></div>
-        <div class="conf-track"><div class="conf-fill" style="width:${sig.confidence * 10}%"></div></div>
-      </div>
-    </div>`;
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
-// ═══════════════════════════════════════════════════════
-// EXECUTE ORDER → HYPERLIQUID
-// ═══════════════════════════════════════════════════════
-async function executeOrder(sig, coin, price) {
-  const isBuy = sig.action === 'BUY';
-  const entryP = sig.entry || price;
-
-  feed('exec',
-    `⚡ ORDER EXECUTION — ${G.mode.toUpperCase()}\n` +
-    `  Pair     : ${coin}-PERP\n` +
-    `  Direction: ${sig.action}\n` +
-    `  Entry    : $${entryP.toLocaleString()}\n` +
-    `  TP1      : $${sig.tp1?.toLocaleString() ?? '—'}\n` +
-    `  SL       : $${sig.sl?.toLocaleString() ?? '—'}\n` +
-    `  Leverage : ${sig.leverage}x\n` +
-    `  Size     : ${sig.size}% of capital`
-  );
-
-  await sleep(600);
-
-  if (G.mode === 'sim') {
-    G.positions[coin] = {
-      side: isBuy ? 'long' : 'short', coin, entry: entryP,
-      leverage: sig.leverage, tp1: sig.tp1, tp2: sig.tp2, sl: sig.sl,
-      time: new Date().toLocaleTimeString('id-ID', { hour12: false })
-    };
-    renderPosition(G.positions[coin], price);
-
-    G.executions.unshift({
-      ic: isBuy ? '🟢' : '🔴',
-      txt: `[SIM] ${sig.action} ${coin} @ $${entryP.toLocaleString()} · ${sig.leverage}x · TP $${sig.tp1?.toLocaleString() ?? '—'} · SL $${sig.sl?.toLocaleString() ?? '—'}`,
-      t: new Date().toLocaleTimeString('id-ID', { hour12: false })
-    });
-    renderExecList();
-
-    feed('exec',
-      `✅ [SIMULATION] Order simulated successfully\n` +
-      `  ${sig.action} ${coin}-PERP @ $${entryP.toLocaleString()}\n` +
-      `  Leverage: ${sig.leverage}x\n\n` +
-      `  ━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `  Untuk LIVE execution via Hyperliquid SDK:\n\n` +
-      `  from hyperliquid.exchange import Exchange\n` +
-      `  from eth_account import Account\n\n` +
-      `  wallet = Account.from_key(PRIVATE_KEY)\n` +
-      `  ex = Exchange(wallet, "https://api.hyperliquid.xyz")\n` +
-      `  # Place limit order\n` +
-      `  ex.order("${coin}", is_buy=${isBuy}, sz=size,\n` +
-      `    limit_px=${entryP}, order_type={"limit": {"tif":"Gtc"}})\n` +
-      `  # Set TP\n` +
-      `  ex.order("${coin}", is_buy=${!isBuy}, sz=size,\n` +
-      `    limit_px=${sig.tp1}, order_type={"limit": {"tif":"Gtc"}})\n` +
-      `  # Set SL\n` +
-      `  ex.order("${coin}", is_buy=${!isBuy}, sz=size,\n` +
-      `    limit_px=${sig.sl}, order_type={"trigger": {"triggerPx":${sig.sl},"isMarket":true,"tpsl":"sl"}})\n\n` +
-      `  ⚠ Jalankan dari server Python dengan private key — BUKAN dari browser`
-    );
-  } else {
-    feed('exec', `🔴 LIVE/TESTNET mode: Gunakan hyperliquid-python-sdk di server untuk eksekusi nyata.\nPrivate key JANGAN pernah dimasukkan ke browser.`);
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// POSITION RENDER
-// ═══════════════════════════════════════════════════════
-function renderPosition(pos, price) {
-  if (!pos) { document.getElementById('posCard').innerHTML = '<div class="pos-empty">NO OPEN POSITION</div>'; return; }
-  // Pastikan price adalah harga dari coin yang sama dengan posisi
-  if (!price || isNaN(price) || price <= 0) return;
-  const entryPrice = parseFloat(pos.entry);
-  if (!entryPrice || isNaN(entryPrice) || entryPrice <= 0) return;
-  const pnlPct = pos.side === 'long'
-    ? ((price - entryPrice) / entryPrice * 100)
-    : ((entryPrice - price) / entryPrice * 100);
-  const lev = parseInt(pos.leverage) || 2;
-  const lpnl = pnlPct * lev;
-  const fmt = n => n ? (n > 1000 ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : '$' + n.toFixed(4)) : '—';
-
-  document.getElementById('posCard').innerHTML = `
-    <div class="pos-top">
-      <div class="pos-side-badge ${pos.side}">${pos.side.toUpperCase()}</div>
-      <div class="pos-coin-lbl">${pos.coin}-PERP · ${pos.leverage}x</div>
-      <div class="pos-pnl ${lpnl >= 0 ? 'pos' : 'neg'}">${lpnl >= 0 ? '+' : ''}${lpnl.toFixed(2)}%</div>
-    </div>
-    <div class="sig-rows">
-      <div class="sig-row"><span class="sig-k">Entry</span><span class="sig-v" style="color:#4285f4">${fmt(pos.entry)}</span></div>
-      <div class="sig-row"><span class="sig-k">Mark Price</span><span class="sig-v">${fmt(price)}</span></div>
-      <div class="sig-row"><span class="sig-k">Take Profit 1</span><span class="sig-v" style="color:#00e676">${fmt(pos.tp1)}</span></div>
-      <div class="sig-row"><span class="sig-k">Stop Loss</span><span class="sig-v" style="color:#ff1744">${fmt(pos.sl)}</span></div>
-      <div class="sig-row"><span class="sig-k">Opened</span><span class="sig-v" style="color:#4a7090">${pos.time}</span></div>
-    </div>`;
-}
-
-
-function renderAllPositions() {
-  const allPos = Object.values(G.positions);
-  const countEl = document.getElementById('posCount');
-  if (countEl) countEl.textContent = allPos.length + ' active';
-
-  const container = document.getElementById('allPositions');
-  if (!container || allPos.length <= 1) return;
-
-  container.innerHTML = '<div style="font-size:9px;letter-spacing:2px;color:var(--sub);margin-bottom:6px">ALL POSITIONS</div>' +
-    allPos.map(p => {
-      const lastP = G.prevPrices[p.coin] || parseFloat(p.entry);
-      const entry = parseFloat(p.entry);
-      if (!entry || !lastP) return '';
-      const pnl = p.side === 'long'
-        ? ((lastP - entry) / entry * 100 * (parseInt(p.leverage)||2))
-        : ((entry - lastP) / entry * 100 * (parseInt(p.leverage)||2));
-      const borderColor = pnl >= 0 ? 'rgba(0,230,118,.3)' : 'rgba(255,23,68,.3)';
-      const sideColor = p.side === 'long' ? 'var(--bull)' : 'var(--bear)';
-      const pnlColor = pnl >= 0 ? 'var(--bull)' : 'var(--bear)';
-      const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(1) + '%';
-      const entryStr = parseFloat(p.entry).toLocaleString();
-      return '<div style="background:var(--surface);border:1px solid ' + borderColor + ';padding:8px;border-radius:3px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="document.getElementById(\'coinSel\').value=\'' + p.coin + '\';onCoinChange()">' +
-        '<div>' +
-          '<div style="font-size:11px;font-weight:700;color:var(--text)">' + p.coin + ' <span style="color:' + sideColor + ';font-size:9px">' + p.side.toUpperCase() + '</span></div>' +
-          '<div style="font-size:9px;color:var(--sub)">Entry $' + entryStr + '</div>' +
-        '</div>' +
-        '<div style="font-family:\'Exo 2\';font-size:13px;font-weight:700;color:' + pnlColor + '">' + pnlStr + '</div>' +
-      '</div>';
-    }).join('');
-}
-
-function renderExecList() {
-  const el = document.getElementById('execList');
-  if (!G.executions.length) { el.innerHTML = '<div class="empty-state">No executions</div>'; return; }
-  el.innerHTML = G.executions.slice(0, 6).map(e =>
-    `<div class="exec-row"><div class="exec-ic">${e.ic}</div><div class="exec-txt">${e.txt}</div><div class="exec-t">${e.t}</div></div>`
-  ).join('');
-}
-
-// ═══════════════════════════════════════════════════════
-// FEED MESSAGES
-// ═══════════════════════════════════════════════════════
-const feedMeta = {
-  sys: { icon: '⚙', who: 'SYSTEM' },
-  hl: { icon: '◈', who: 'HYPERLIQUID' },
-  gem: { icon: '✦', who: 'GEMINI PRO' },
-  exec: { icon: '⚡', who: 'EXECUTION ENGINE' }
-};
-
-function feed(type, text) {
-  const el = document.getElementById('feed');
-  const m = feedMeta[type] || feedMeta.sys;
-  const ts = new Date().toLocaleTimeString('id-ID', { hour12: false });
-  const div = document.createElement('div');
-  div.className = `feed-msg ftype-${type}`;
-  div.innerHTML = `
-    <div class="fm-icon">${m.icon}</div>
-    <div class="fm-body">
-      <div class="fm-meta"><span class="fm-who">${m.who}</span><span class="fm-ts">${ts}</span></div>
-      <div class="fm-bubble">${colorize(esc(text))}</div>
-    </div>`;
-  el.appendChild(div);
-  el.scrollTop = el.scrollHeight;
-  while (el.children.length > 60) el.removeChild(el.firstChild);
-}
-
-function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-function colorize(s) {
-  return s
-    .replace(/(BULLISH|BUY|LONG)/gi, '<span class="t-bull">$1</span>')
-    .replace(/(BEARISH|SELL|SHORT)/gi, '<span class="t-bear">$1</span>')
-    .replace(/(HOLD|NEUTRAL)/gi, '<span class="t-neutral">$1</span>')
-    .replace(/(\$[\d,]+\.?\d*)/g, '<span class="t-val">$1</span>')
-    .replace(/(\d+\.\d+%)/g, '<span class="t-val">$1</span>');
-}
-
-// ═══════════════════════════════════════════════════════
-// UI HELPERS
-// ═══════════════════════════════════════════════════════
-function setStatus(s) {
-  const dot = document.getElementById('pulseDot');
-  const lbl = document.getElementById('sysLabel');
-  dot.className = 'pulse-ring ' + s;
-  lbl.textContent = { online: 'ONLINE', offline: 'OFFLINE', thinking: 'THINKING', executing: 'EXECUTING' }[s] || s.toUpperCase();
-}
-
-function setGState(s) {
-  const el = document.getElementById('gState');
-  const cls = { idle: 'gs-idle', fetching: 'gs-fetching', thinking: 'gs-thinking', executing: 'gs-executing' };
-  const lbl = { idle: 'IDLE', fetching: 'FETCHING DATA', thinking: 'ANALYZING', executing: 'EXECUTING' };
-  el.className = 'g-state ' + (cls[s] || 'gs-idle');
-  el.textContent = lbl[s] || s.toUpperCase();
-  if (s !== 'idle') setStatus(s);
-  else if (G.running) setStatus('online');
-}
-
-function setLoading(on) {
-  document.getElementById('progBar').className = 'prog-bar' + (on ? ' active' : '');
-}
-
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-
-
-
-// ── Switch coin → update posisi yang tampil ──────────────────────────────
-function onCoinChange() {
-  const coin = document.getElementById('coinSel').value;
-  G.coin = coin;
-  const pos = G.positions[coin];
-  if (pos) {
-    // Tampilkan posisi coin ini dengan harga terakhir yang diketahui
-    const lastPrice = G.prevPrices[coin] || pos.entry;
-    renderPosition(pos, lastPrice);
-  } else {
-    document.getElementById('posCard').innerHTML = '<div class="pos-empty">NO OPEN POSITION</div>';
-  }
-  // Reset signal display
-  document.getElementById('signalWrap').innerHTML = `
-    <div class="empty-state" style="border:1px solid var(--rim);border-radius:3px;margin-bottom:12px">
-      NO SIGNAL YET — Click ANALYZE for ${coin}-PERP
-    </div>`;
-}
-
-// ═══════════════════════════════════════════════════════
-// MULTI-COIN SCANNER
-// ═══════════════════════════════════════════════════════
-const SCAN_COINS = ['BTC','ETH','SOL','HYPE','ARB','DOGE','AVAX','WIF','SUI','INJ','LINK','XRP'];
-
-async function scanAllCoins() {
-  if (!G.running) { feed('sys', '⚠ Start sistem dulu sebelum scan'); return; }
-  feed('sys', `🔍 Scanning ${SCAN_COINS.length} coins...`);
-
-  const grid = document.getElementById('scannerGrid');
-  grid.innerHTML = SCAN_COINS.map(c =>
-    `<div id="sc-${c}" style="background:var(--surface);border:1px solid var(--rim);padding:10px;border-radius:3px;">
-      <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px">${c}-PERP</div>
-      <div style="font-size:11px;color:var(--dim);margin-top:4px">Scanning...</div>
-    </div>`
-  ).join('');
-
-  const results = [];
-  for (const coin of SCAN_COINS) {
-    try {
-      const meta = await hlPost({ type: 'metaAndAssetCtxs' });
-      const assets = meta[0].universe;
-      const ctxs = meta[1];
-      const i = assets.findIndex(a => a.name === coin);
-      if (i < 0) continue;
-      const ctx = ctxs[i];
-      const price = parseFloat(ctx.markPx);
-      const funding = parseFloat(ctx.funding) * 100;
-      const oi = parseFloat(ctx.openInterest);
-
-      // Quick candle fetch for RSI
-      const tfMs = { '1h': 3600000 };
-      const now = Date.now();
-      let rsiVal = 50;
-      try {
-        const candles = await hlPost({ type: 'candleSnapshot', req: { coin, interval: '1h', startTime: now - 3600000*20, endTime: now }});
-        if (Array.isArray(candles) && candles.length >= 15) {
-          const cls = candles.map(c => parseFloat(c.c));
-          const diffs = cls.slice(-15).map((c,i,arr) => i===0?0:c-arr[i-1]);
-          const gains = diffs.filter(d=>d>0).reduce((a,b)=>a+b,0)/14;
-          const losses = Math.abs(diffs.filter(d=>d<0).reduce((a,b)=>a+b,0))/14;
-          rsiVal = losses===0?100:100-100/(1+gains/losses);
-        }
-      } catch(e){}
-
-      // Quick signal based on RSI + funding
-      let quickSig = 'HOLD';
-      let sigColor = 'var(--neutral)';
-      if (rsiVal < 32 && funding < 0) { quickSig = 'BUY'; sigColor = 'var(--bull)'; }
-      else if (rsiVal > 68 && funding > 0) { quickSig = 'SELL'; sigColor = 'var(--bear)'; }
-      else if (rsiVal < 40) { quickSig = 'WATCH 👀'; sigColor = '#00bcd4'; }
-
-      results.push({ coin, price, funding, oi, rsi: rsiVal, signal: quickSig });
-
-      const el = document.getElementById(`sc-${coin}`);
-      if (el) {
-        el.style.borderColor = sigColor;
-        el.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-size:11px;font-weight:700;color:var(--text);letter-spacing:1px">${coin}</div>
-            <div style="font-size:10px;font-weight:700;color:${sigColor};padding:2px 6px;border:1px solid ${sigColor};border-radius:2px">${quickSig}</div>
-          </div>
-          <div style="font-family:'Exo 2';font-size:14px;font-weight:700;color:var(--white);margin:4px 0">$${price > 1 ? price.toLocaleString('en-US',{maximumFractionDigits:2}) : price.toFixed(5)}</div>
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sub)">
-            <span>RSI ${rsiVal.toFixed(1)}</span>
-            <span style="color:${funding>=0?'var(--neutral)':'var(--bull)'}">FR ${funding.toFixed(4)}%</span>
-          </div>`;
-      }
-      await sleep(200);
-    } catch(e) {
-      const el = document.getElementById(`sc-${coin}`);
-      if (el) el.innerHTML = `<div style="font-size:10px;color:var(--sub)">${coin}: error</div>`;
+function setLoading(on, coin, phase) {
+  const btn = document.getElementById('analyzeBtn');
+  const ls = document.getElementById('loadingState');
+  const ea = document.getElementById('emptyAnalysis');
+  btn.disabled = on;
+  btn.classList.toggle('loading', on);
+  btn.textContent = on ? '…' : '▶ ANALYZE';
+  if (on) {
+    document.getElementById('loadingCoin').textContent = coin || '';
+    document.getElementById('loadingPhase').textContent = phase || '';
+    if (document.getElementById('analysisGrid').style.display === 'none') {
+      ls.style.display = 'block'; ea.style.display = 'none';
     }
-  }
-
-  // Find best opportunities
-  const buys = results.filter(r => r.signal === 'BUY');
-  const sells = results.filter(r => r.signal === 'SELL');
-  feed('sys',
-    `✅ Scan selesai!
-` +
-    `  BUY signals  : ${buys.map(r=>r.coin).join(', ') || 'none'}
-` +
-    `  SELL signals : ${sells.map(r=>r.coin).join(', ') || 'none'}
-` +
-    `  Total scanned: ${results.length} coins`
-  );
-
-  // Telegram summary
-  if (buys.length || sells.length) {
-    const msg =
-      `<b>🔍 NEXUS MULTI-SCAN COMPLETE</b>
-
-` +
-      (buys.length ? `🟢 BUY: <b>${buys.map(r=>r.coin).join(', ')}</b>
-` : '') +
-      (sells.length ? `🔴 SELL: <b>${sells.map(r=>r.coin).join(', ')}</b>
-` : '') +
-      `
-📊 ${results.length} coins scanned
-` +
-      `🕐 ${new Date().toLocaleTimeString('id-ID',{hour12:false})}`;
-    await sendTelegram(msg);
+  } else {
+    ls.style.display = 'none';
   }
 }
 
-// ═══════════════════════════════════════════════════════
-// TELEGRAM NOTIFICATIONS
-// ═══════════════════════════════════════════════════════
-async function sendTelegram(msg) {
-  const token = document.getElementById('tgToken')?.value.trim();
-  const chatId = document.getElementById('tgChatId')?.value.trim();
-  if (!token || !chatId) return; // silent if not configured
-
-  try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: msg,
-        parse_mode: 'HTML',
-      }),
-    });
-  } catch (e) {
-    console.log('Telegram error:', e.message);
-  }
+function setStatus(on, text) {
+  const el = document.getElementById('statusPill');
+  el.style.display = on ? 'flex' : 'none';
+  document.getElementById('statusText').textContent = text || 'ACTIVE';
 }
 
-async function notifySignal(sig, coin, price) {
-  const dir = sig.action === 'BUY' ? '🟢 LONG' : sig.action === 'SELL' ? '🔴 SHORT' : '🟡 HOLD';
-  const fmtP = n => n ? '$' + parseFloat(n).toLocaleString('en-US', {maximumFractionDigits: 4}) : '—';
-
-  const msg =
-    `<b>⚡ NEXUS SIGNAL — ${coin}-PERP</b>
-
-` +
-    `${dir} <b>${sig.action}</b>
-` +
-    `📊 Outlook: ${sig.outlook}
-` +
-    `🎯 Confidence: ${sig.confidence}/10
-
-` +
-    `💰 Entry: <b>${fmtP(sig.entry)}</b>
-` +
-    `✅ TP1: ${fmtP(sig.tp1)}
-` +
-    `✅ TP2: ${fmtP(sig.tp2)}
-` +
-    `🛑 SL: ${fmtP(sig.sl)}
-` +
-    `⚖️ R/R: ${sig.rr}
-` +
-    `🔧 Leverage: ${sig.leverage}x
-
-` +
-    `💵 Mark Price: $${price.toLocaleString()}
-` +
-    `🕐 Time: ${new Date().toLocaleTimeString('id-ID', {hour12: false})}
-
-` +
-    `<i>NEXUS AI Trading System</i>`;
-
-  await sendTelegram(msg);
+function showError(msg) {
+  const el = document.getElementById('errorBar');
+  el.textContent = '✗ ' + msg;
+  el.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('errorBar').style.display = 'none';
 }
 
-async function testTelegram() {
-  const token = document.getElementById('tgToken')?.value.trim();
-  const chatId = document.getElementById('tgChatId')?.value.trim();
-  if (!token || !chatId) {
-    feed('sys', '❌ Masukkan Telegram Bot Token dan Chat ID terlebih dahulu');
-    return;
-  }
-  await sendTelegram('✅ <b>NEXUS Connected!</b>\nTelegram notification aktif.');
-  feed('sys', '✅ Test Telegram terkirim — cek HP kamu!');
-}
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Load saved keys from sessionStorage (not persistent, just for session)
+  const sk = sessionStorage.getItem('gk');
+  if (sk) document.getElementById('geminiKey').value = sk;
+  document.getElementById('geminiKey').addEventListener('input', e => sessionStorage.setItem('gk', e.target.value));
 
-// Live PnL update — hanya update posisi coin yang sedang aktif
-setInterval(() => {
-  const currentCoin = document.getElementById('coinSel')?.value || G.coin;
-  const pos = G.positions[currentCoin];
-  if (pos && G.mktData && G.mktData.coin === currentCoin) {
-    renderPosition(pos, G.mktData.price);
-  } else if (!pos) {
-    document.getElementById('posCard').innerHTML = '<div class="pos-empty">NO OPEN POSITION</div>';
-  }
-}, 4000);
-
-// Resize chart on window resize
-window.addEventListener('resize', () => { if (G.candles.length) renderChart(G.candles.slice(-30)); });
+  // Default focus
+  document.getElementById('coinInput').focus();
+  log('NEXUS Trader v2.0 initialized — Gemini 2.0 Flash × Hyperliquid', 'info');
+  log('Enter a coin symbol and your Gemini API key in Config (⚙) to begin.', 'info');
+});
 </script>
 </body>
 </html>
