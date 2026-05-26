@@ -1,5 +1,5 @@
 // api/claude.js — Vercel Serverless Function
-// Hyperliquid proxy + Claude AI analysis (Anthropic)
+// Hyperliquid proxy + Groq AI (LLaMA 3.3 70B) — 100% Free
 
 const HL = 'https://api.hyperliquid.xyz/info';
 
@@ -31,43 +31,41 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, data });
     }
 
-    // ── Claude AI Analysis ────────────────────────────────────────────────
+    // ── Groq AI Analysis (LLaMA 3.3 70B) ─────────────────────────────────
     if (action === 'analyze') {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) throw new Error('ANTHROPIC_API_KEY tidak ada di Vercel');
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey) throw new Error('GROQ_API_KEY tidak ada di Vercel Environment Variables');
 
       const { systemPrompt, userMsg } = req.body;
 
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
+          'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 2048,
+          model: 'llama-3.3-70b-versatile',
           messages: [
-            {
-              role: 'user',
-              content: systemPrompt + '\n\n' + userMsg,
-            }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMsg },
           ],
+          temperature: 0.2,
+          max_tokens: 2048,
         }),
       });
 
       const raw = await r.text();
 
       if (!r.ok) {
-        throw new Error('Claude API ' + r.status + ': ' + raw.slice(0, 200));
+        throw new Error('Groq API ' + r.status + ': ' + raw.slice(0, 200));
       }
 
       const d = JSON.parse(raw);
-      const text = d.content?.[0]?.text || '';
-      if (!text) throw new Error('Claude response kosong');
+      const text = d.choices?.[0]?.message?.content || '';
+      if (!text) throw new Error('Groq response kosong');
 
-      return res.status(200).json({ success: true, text, model: 'claude-haiku' });
+      return res.status(200).json({ success: true, text, model: 'llama-3.3-70b' });
     }
 
     return res.status(400).json({ error: 'Unknown action: ' + action });
