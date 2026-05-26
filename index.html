@@ -670,7 +670,7 @@ canvas#miniChart { display: block; width: 100%; height: 90px; }
   </div>
   <div class="cfg-group sm">
     <div class="cfg-label">Market</div>
-    <select id="coinSel">
+    <select id="coinSel" onchange="onCoinChange()">
       <option value="BTC">BTC-PERP</option>
       <option value="ETH">ETH-PERP</option>
       <option value="SOL">SOL-PERP</option>
@@ -678,6 +678,19 @@ canvas#miniChart { display: block; width: 100%; height: 90px; }
       <option value="ARB">ARB-PERP</option>
       <option value="DOGE">DOGE-PERP</option>
       <option value="AVAX">AVAX-PERP</option>
+      <option value="WIF">WIF-PERP</option>
+      <option value="PEPE">PEPE-PERP</option>
+      <option value="SUI">SUI-PERP</option>
+      <option value="TIA">TIA-PERP</option>
+      <option value="INJ">INJ-PERP</option>
+      <option value="JUP">JUP-PERP</option>
+      <option value="LINK">LINK-PERP</option>
+      <option value="OP">OP-PERP</option>
+      <option value="APT">APT-PERP</option>
+      <option value="MATIC">MATIC-PERP</option>
+      <option value="ATOM">ATOM-PERP</option>
+      <option value="XRP">XRP-PERP</option>
+      <option value="ADA">ADA-PERP</option>
     </select>
   </div>
   <div class="cfg-group sm">
@@ -693,9 +706,13 @@ canvas#miniChart { display: block; width: 100%; height: 90px; }
     <div class="cfg-label">Auto-Cycle</div>
     <select id="autoCycleSel">
       <option value="0">Manual Only</option>
+      <option value="30">Every 30 sec</option>
       <option value="60">Every 1 min</option>
+      <option value="180">Every 3 min</option>
       <option value="300">Every 5 min</option>
+      <option value="600">Every 10 min</option>
       <option value="900">Every 15 min</option>
+      <option value="1800">Every 30 min</option>
     </select>
   </div>
   <div class="cfg-group sm">
@@ -705,6 +722,14 @@ canvas#miniChart { display: block; width: 100%; height: 90px; }
       <option value="5" selected>5% Capital</option>
       <option value="10">10% Capital</option>
     </select>
+  </div>
+  <div class="cfg-group sm">
+    <div class="cfg-label">Telegram Bot Token</div>
+    <input type="password" id="tgToken" placeholder="bot123:ABC..." style="width:160px">
+  </div>
+  <div class="cfg-group sm">
+    <div class="cfg-label">Telegram Chat ID</div>
+    <input type="text" id="tgChatId" placeholder="-100123456..." style="width:130px">
   </div>
   <div class="cfg-btns">
     <button class="btn-go" id="btnStart" onclick="startNexus()">▶ START</button>
@@ -820,11 +845,12 @@ canvas#miniChart { display: block; width: 100%; height: 90px; }
       </div>
 
       <div class="sec-head" style="padding:8px 0;border:none;position:static;margin:12px 0 8px">
-        <div class="sec-title">Open Position</div>
+        <div class="sec-title">Open Position — <span id="posCount" style="color:var(--g-blue)">0 active</span></div>
       </div>
       <div class="pos-card" id="posCard">
         <div class="pos-empty">NO OPEN POSITION</div>
       </div>
+      <div id="allPositions" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
 
       <div class="sec-head" style="padding:8px 0;border:none;position:static;margin:12px 0 8px">
         <div class="sec-title">Execution Log</div>
@@ -853,7 +879,7 @@ const G = {
   mktData: null,
   candles: [],
   prevPrices: {},
-  position: null,
+  positions: {}, // { 'BTC': {...}, 'ETH': {...} } — per coin
   executions: [],
   lastSignal: null,
   tickerInterval: null,
@@ -1294,8 +1320,13 @@ EXECUTION_NOTE: [catatan eksekusi spesifik]`;
     if (sig) {
       G.lastSignal = sig;
       renderSignalCard(sig);
+      // Send Telegram notification for BUY/SELL signals
       if (sig.action !== 'HOLD') {
+        await notifySignal(sig, coin, price);
         await executeOrder(sig, coin, price);
+      } else {
+        // Also notify HOLD if confidence is low
+        if (sig.confidence <= 4) await notifySignal(sig, coin, price);
       }
     }
 
@@ -1409,12 +1440,12 @@ async function executeOrder(sig, coin, price) {
   await sleep(600);
 
   if (G.mode === 'sim') {
-    G.position = {
+    G.positions[coin] = {
       side: isBuy ? 'long' : 'short', coin, entry: entryP,
       leverage: sig.leverage, tp1: sig.tp1, tp2: sig.tp2, sl: sig.sl,
       time: new Date().toLocaleTimeString('id-ID', { hour12: false })
     };
-    renderPosition(G.position, price);
+    renderPosition(G.positions[coin], price);
 
     G.executions.unshift({
       ic: isBuy ? '🟢' : '🔴',
@@ -1454,9 +1485,13 @@ async function executeOrder(sig, coin, price) {
 // ═══════════════════════════════════════════════════════
 function renderPosition(pos, price) {
   if (!pos) { document.getElementById('posCard').innerHTML = '<div class="pos-empty">NO OPEN POSITION</div>'; return; }
+  // Pastikan price adalah harga dari coin yang sama dengan posisi
+  if (!price || isNaN(price) || price <= 0) return;
+  const entryPrice = parseFloat(pos.entry);
+  if (!entryPrice || isNaN(entryPrice) || entryPrice <= 0) return;
   const pnlPct = pos.side === 'long'
-    ? ((price - pos.entry) / pos.entry * 100)
-    : ((pos.entry - price) / pos.entry * 100);
+    ? ((price - entryPrice) / entryPrice * 100)
+    : ((entryPrice - price) / entryPrice * 100);
   const lev = parseInt(pos.leverage) || 2;
   const lpnl = pnlPct * lev;
   const fmt = n => n ? (n > 1000 ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : '$' + n.toFixed(4)) : '—';
@@ -1474,6 +1509,38 @@ function renderPosition(pos, price) {
       <div class="sig-row"><span class="sig-k">Stop Loss</span><span class="sig-v" style="color:#ff1744">${fmt(pos.sl)}</span></div>
       <div class="sig-row"><span class="sig-k">Opened</span><span class="sig-v" style="color:#4a7090">${pos.time}</span></div>
     </div>`;
+}
+
+
+function renderAllPositions() {
+  const allPos = Object.values(G.positions);
+  const countEl = document.getElementById('posCount');
+  if (countEl) countEl.textContent = allPos.length + ' active';
+
+  const container = document.getElementById('allPositions');
+  if (!container || allPos.length <= 1) return;
+
+  container.innerHTML = '<div style="font-size:9px;letter-spacing:2px;color:var(--sub);margin-bottom:6px">ALL POSITIONS</div>' +
+    allPos.map(p => {
+      const lastP = G.prevPrices[p.coin] || parseFloat(p.entry);
+      const entry = parseFloat(p.entry);
+      if (!entry || !lastP) return '';
+      const pnl = p.side === 'long'
+        ? ((lastP - entry) / entry * 100 * (parseInt(p.leverage)||2))
+        : ((entry - lastP) / entry * 100 * (parseInt(p.leverage)||2));
+      const borderColor = pnl >= 0 ? 'rgba(0,230,118,.3)' : 'rgba(255,23,68,.3)';
+      const sideColor = p.side === 'long' ? 'var(--bull)' : 'var(--bear)';
+      const pnlColor = pnl >= 0 ? 'var(--bull)' : 'var(--bear)';
+      const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(1) + '%';
+      const entryStr = parseFloat(p.entry).toLocaleString();
+      return '<div style="background:var(--surface);border:1px solid ' + borderColor + ';padding:8px;border-radius:3px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="document.getElementById(\'coinSel\').value=\'' + p.coin + '\';onCoinChange()">' +
+        '<div>' +
+          '<div style="font-size:11px;font-weight:700;color:var(--text)">' + p.coin + ' <span style="color:' + sideColor + ';font-size:9px">' + p.side.toUpperCase() + '</span></div>' +
+          '<div style="font-size:9px;color:var(--sub)">Entry $' + entryStr + '</div>' +
+        '</div>' +
+        '<div style="font-family:\'Exo 2\';font-size:13px;font-weight:700;color:' + pnlColor + '">' + pnlStr + '</div>' +
+      '</div>';
+    }).join('');
 }
 
 function renderExecList() {
@@ -1548,9 +1615,215 @@ function setLoading(on) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// Live PnL update
+
+
+
+// ── Switch coin → update posisi yang tampil ──────────────────────────────
+function onCoinChange() {
+  const coin = document.getElementById('coinSel').value;
+  G.coin = coin;
+  const pos = G.positions[coin];
+  if (pos) {
+    // Tampilkan posisi coin ini dengan harga terakhir yang diketahui
+    const lastPrice = G.prevPrices[coin] || pos.entry;
+    renderPosition(pos, lastPrice);
+  } else {
+    document.getElementById('posCard').innerHTML = '<div class="pos-empty">NO OPEN POSITION</div>';
+  }
+  // Reset signal display
+  document.getElementById('signalWrap').innerHTML = `
+    <div class="empty-state" style="border:1px solid var(--rim);border-radius:3px;margin-bottom:12px">
+      NO SIGNAL YET — Click ANALYZE for ${coin}-PERP
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// MULTI-COIN SCANNER
+// ═══════════════════════════════════════════════════════
+const SCAN_COINS = ['BTC','ETH','SOL','HYPE','ARB','DOGE','AVAX','WIF','SUI','INJ','LINK','XRP'];
+
+async function scanAllCoins() {
+  if (!G.running) { feed('sys', '⚠ Start sistem dulu sebelum scan'); return; }
+  feed('sys', `🔍 Scanning ${SCAN_COINS.length} coins...`);
+
+  const grid = document.getElementById('scannerGrid');
+  grid.innerHTML = SCAN_COINS.map(c =>
+    `<div id="sc-${c}" style="background:var(--surface);border:1px solid var(--rim);padding:10px;border-radius:3px;">
+      <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px">${c}-PERP</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:4px">Scanning...</div>
+    </div>`
+  ).join('');
+
+  const results = [];
+  for (const coin of SCAN_COINS) {
+    try {
+      const meta = await hlPost({ type: 'metaAndAssetCtxs' });
+      const assets = meta[0].universe;
+      const ctxs = meta[1];
+      const i = assets.findIndex(a => a.name === coin);
+      if (i < 0) continue;
+      const ctx = ctxs[i];
+      const price = parseFloat(ctx.markPx);
+      const funding = parseFloat(ctx.funding) * 100;
+      const oi = parseFloat(ctx.openInterest);
+
+      // Quick candle fetch for RSI
+      const tfMs = { '1h': 3600000 };
+      const now = Date.now();
+      let rsiVal = 50;
+      try {
+        const candles = await hlPost({ type: 'candleSnapshot', req: { coin, interval: '1h', startTime: now - 3600000*20, endTime: now }});
+        if (Array.isArray(candles) && candles.length >= 15) {
+          const cls = candles.map(c => parseFloat(c.c));
+          const diffs = cls.slice(-15).map((c,i,arr) => i===0?0:c-arr[i-1]);
+          const gains = diffs.filter(d=>d>0).reduce((a,b)=>a+b,0)/14;
+          const losses = Math.abs(diffs.filter(d=>d<0).reduce((a,b)=>a+b,0))/14;
+          rsiVal = losses===0?100:100-100/(1+gains/losses);
+        }
+      } catch(e){}
+
+      // Quick signal based on RSI + funding
+      let quickSig = 'HOLD';
+      let sigColor = 'var(--neutral)';
+      if (rsiVal < 32 && funding < 0) { quickSig = 'BUY'; sigColor = 'var(--bull)'; }
+      else if (rsiVal > 68 && funding > 0) { quickSig = 'SELL'; sigColor = 'var(--bear)'; }
+      else if (rsiVal < 40) { quickSig = 'WATCH 👀'; sigColor = '#00bcd4'; }
+
+      results.push({ coin, price, funding, oi, rsi: rsiVal, signal: quickSig });
+
+      const el = document.getElementById(`sc-${coin}`);
+      if (el) {
+        el.style.borderColor = sigColor;
+        el.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:11px;font-weight:700;color:var(--text);letter-spacing:1px">${coin}</div>
+            <div style="font-size:10px;font-weight:700;color:${sigColor};padding:2px 6px;border:1px solid ${sigColor};border-radius:2px">${quickSig}</div>
+          </div>
+          <div style="font-family:'Exo 2';font-size:14px;font-weight:700;color:var(--white);margin:4px 0">$${price > 1 ? price.toLocaleString('en-US',{maximumFractionDigits:2}) : price.toFixed(5)}</div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sub)">
+            <span>RSI ${rsiVal.toFixed(1)}</span>
+            <span style="color:${funding>=0?'var(--neutral)':'var(--bull)'}">FR ${funding.toFixed(4)}%</span>
+          </div>`;
+      }
+      await sleep(200);
+    } catch(e) {
+      const el = document.getElementById(`sc-${coin}`);
+      if (el) el.innerHTML = `<div style="font-size:10px;color:var(--sub)">${coin}: error</div>`;
+    }
+  }
+
+  // Find best opportunities
+  const buys = results.filter(r => r.signal === 'BUY');
+  const sells = results.filter(r => r.signal === 'SELL');
+  feed('sys',
+    `✅ Scan selesai!
+` +
+    `  BUY signals  : ${buys.map(r=>r.coin).join(', ') || 'none'}
+` +
+    `  SELL signals : ${sells.map(r=>r.coin).join(', ') || 'none'}
+` +
+    `  Total scanned: ${results.length} coins`
+  );
+
+  // Telegram summary
+  if (buys.length || sells.length) {
+    const msg =
+      `<b>🔍 NEXUS MULTI-SCAN COMPLETE</b>
+
+` +
+      (buys.length ? `🟢 BUY: <b>${buys.map(r=>r.coin).join(', ')}</b>
+` : '') +
+      (sells.length ? `🔴 SELL: <b>${sells.map(r=>r.coin).join(', ')}</b>
+` : '') +
+      `
+📊 ${results.length} coins scanned
+` +
+      `🕐 ${new Date().toLocaleTimeString('id-ID',{hour12:false})}`;
+    await sendTelegram(msg);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// TELEGRAM NOTIFICATIONS
+// ═══════════════════════════════════════════════════════
+async function sendTelegram(msg) {
+  const token = document.getElementById('tgToken')?.value.trim();
+  const chatId = document.getElementById('tgChatId')?.value.trim();
+  if (!token || !chatId) return; // silent if not configured
+
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: msg,
+        parse_mode: 'HTML',
+      }),
+    });
+  } catch (e) {
+    console.log('Telegram error:', e.message);
+  }
+}
+
+async function notifySignal(sig, coin, price) {
+  const dir = sig.action === 'BUY' ? '🟢 LONG' : sig.action === 'SELL' ? '🔴 SHORT' : '🟡 HOLD';
+  const fmtP = n => n ? '$' + parseFloat(n).toLocaleString('en-US', {maximumFractionDigits: 4}) : '—';
+
+  const msg =
+    `<b>⚡ NEXUS SIGNAL — ${coin}-PERP</b>
+
+` +
+    `${dir} <b>${sig.action}</b>
+` +
+    `📊 Outlook: ${sig.outlook}
+` +
+    `🎯 Confidence: ${sig.confidence}/10
+
+` +
+    `💰 Entry: <b>${fmtP(sig.entry)}</b>
+` +
+    `✅ TP1: ${fmtP(sig.tp1)}
+` +
+    `✅ TP2: ${fmtP(sig.tp2)}
+` +
+    `🛑 SL: ${fmtP(sig.sl)}
+` +
+    `⚖️ R/R: ${sig.rr}
+` +
+    `🔧 Leverage: ${sig.leverage}x
+
+` +
+    `💵 Mark Price: $${price.toLocaleString()}
+` +
+    `🕐 Time: ${new Date().toLocaleTimeString('id-ID', {hour12: false})}
+
+` +
+    `<i>NEXUS AI Trading System</i>`;
+
+  await sendTelegram(msg);
+}
+
+async function testTelegram() {
+  const token = document.getElementById('tgToken')?.value.trim();
+  const chatId = document.getElementById('tgChatId')?.value.trim();
+  if (!token || !chatId) {
+    feed('sys', '❌ Masukkan Telegram Bot Token dan Chat ID terlebih dahulu');
+    return;
+  }
+  await sendTelegram('✅ <b>NEXUS Connected!</b>\nTelegram notification aktif.');
+  feed('sys', '✅ Test Telegram terkirim — cek HP kamu!');
+}
+
+// Live PnL update — hanya update posisi coin yang sedang aktif
 setInterval(() => {
-  if (G.position && G.mktData) renderPosition(G.position, G.mktData.price);
+  const currentCoin = document.getElementById('coinSel')?.value || G.coin;
+  const pos = G.positions[currentCoin];
+  if (pos && G.mktData && G.mktData.coin === currentCoin) {
+    renderPosition(pos, G.mktData.price);
+  } else if (!pos) {
+    document.getElementById('posCard').innerHTML = '<div class="pos-empty">NO OPEN POSITION</div>';
+  }
 }, 4000);
 
 // Resize chart on window resize
