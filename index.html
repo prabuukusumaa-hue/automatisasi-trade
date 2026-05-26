@@ -511,7 +511,7 @@ footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;col
         <div class="term-dot" style="background:#ff3b5c"></div>
         <div class="term-dot" style="background:#ff9500"></div>
         <div class="term-dot" style="background:#00ff9f"></div>
-        <div class="term-title">NEXUS EXECUTION LOG — GEMINI × HYPERLIQUID</div>
+        <div class="term-title">NEXUS EXECUTION LOG — GROQ × HYPERLIQUID</div>
       </div>
       <div class="terminal-body" id="terminalBody">
         <div class="log-line"><span class="log-info">System initialized. NEXUS Trader v2.1 ready.</span></div>
@@ -531,7 +531,7 @@ footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;col
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 const state = {
-  AiApiKey: '',
+  geminiKey: '',
   walletKey: '',
   autoTrade: false,
   loading: false,
@@ -815,7 +815,12 @@ function renderOrderBook(book) {
   if (!el || !book?.levels) return;
   const bids = book.levels[0]?.slice(0, 10) || [];
   const asks = book.levels[1]?.slice(0, 10) || [];
-  const maxSz = Math.max(...[...bids, ...asks].map(l => parseFloat(l[1])), 1);
+
+  // Hyperliquid returns {px, sz, n} objects — normalize helper
+  const px = l => parseFloat(l.px ?? l[0] ?? 0);
+  const sz = l => parseFloat(l.sz ?? l[1] ?? 0);
+
+  const maxSz = Math.max(...[...bids, ...asks].map(l => sz(l)), 1);
 
   let html = `
     <div class="book-header" style="color:var(--green)">BIDS &nbsp;Price / Size</div>
@@ -824,16 +829,16 @@ function renderOrderBook(book) {
   const rows = Math.max(bids.length, asks.length);
   for (let i = 0; i < rows; i++) {
     const bid = bids[i], ask = asks[i];
-    const bidPct = bid ? (parseFloat(bid[1]) / maxSz * 100) : 0;
-    const askPct = ask ? (parseFloat(ask[1]) / maxSz * 100) : 0;
+    const bidPct = bid ? (sz(bid) / maxSz * 100) : 0;
+    const askPct = ask ? (sz(ask) / maxSz * 100) : 0;
     html += `
       <div class="book-row">
         <div class="book-bar bid" style="width:${bidPct}%"></div>
-        ${bid ? `<span class="book-px bid">$${parseFloat(bid[0]).toLocaleString('en-US',{minimumFractionDigits:1})}</span><span class="book-sz">${parseFloat(bid[1]).toFixed(3)}</span>` : '<span></span><span></span>'}
+        ${bid ? `<span class="book-px bid">$${px(bid).toLocaleString('en-US',{minimumFractionDigits:1})}</span><span class="book-sz">${sz(bid).toFixed(3)}</span>` : '<span></span><span></span>'}
       </div>
       <div class="book-row">
         <div class="book-bar ask" style="width:${askPct}%"></div>
-        ${ask ? `<span class="book-px ask">$${parseFloat(ask[0]).toLocaleString('en-US',{minimumFractionDigits:1})}</span><span class="book-sz">${parseFloat(ask[1]).toFixed(3)}</span>` : '<span></span><span></span>'}
+        ${ask ? `<span class="book-px ask">$${px(ask).toLocaleString('en-US',{minimumFractionDigits:1})}</span><span class="book-sz">${sz(ask).toFixed(3)}</span>` : '<span></span><span></span>'}
       </div>
     `;
   }
@@ -1166,6 +1171,8 @@ async function runAnalysis() {
 
     const bids = data.book?.levels?.[0]?.slice(0, 8) || [];
     const asks = data.book?.levels?.[1]?.slice(0, 8) || [];
+    const bookPx = l => l.px ?? l[0] ?? '?';
+    const bookSz = l => parseFloat(l.sz ?? l[1] ?? 0);
     const recentFunding = (data.fundingHistory || []).slice(-12).map(f => {
       const t = f.time ? new Date(Number(f.time)).toISOString().slice(11,16) : '--:--';
       return `${t} ${(parseFloat(f.fundingRate)*100).toFixed(4)}%`;
@@ -1192,8 +1199,8 @@ DERIVATIVES DATA:
   Funding 12h:   ${recentFunding}
 
 L2 ORDER BOOK (Top 8):
-  BIDS: ${bids.map(b=>`$${b[0]}×${parseFloat(b[1]).toFixed(2)}`).join(' ')}
-  ASKS: ${asks.map(a=>`$${a[0]}×${parseFloat(a[1]).toFixed(2)}`).join(' ')}
+  BIDS: ${bids.map(b=>`$${bookPx(b)}×${bookSz(b).toFixed(2)}`).join(' ')}
+  ASKS: ${asks.map(a=>`$${bookPx(a)}×${bookSz(a).toFixed(2)}`).join(' ')}
 
 OHLCV (Last 16 × 1h candles):
 ${ohlcv}
@@ -1285,6 +1292,10 @@ function switchTab(id, btn) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
   if (btn) btn.classList.add('active');
+  // Re-draw canvas charts when their tab becomes visible (canvas needs offsetWidth > 0)
+  if (id === 'orderbook' && state.marketData) {
+    requestAnimationFrame(() => drawFundingChart(state.marketData.fundingHistory));
+  }
 }
 
 function setLoading(on, coin, phase) {
