@@ -661,12 +661,18 @@ async function fetchMarketData(coin) {
   const assetMeta = universe[idx] || {};
   const assetCtx = ctxs[idx] || {};
 
-  log(`✓ Received ${candles?.length || 0} hourly candles`, 'ok');
+  // ── FIX: Hyperliquid returns candles as objects {t,o,h,l,c,v}, normalize to arrays ──
+  const normCandle = c => Array.isArray(c)
+    ? c
+    : [c.t, c.o, c.h, c.l, c.c, c.v];
+  const normalizedCandles = (Array.isArray(candles) ? candles : []).map(normCandle);
+
+  log(`✓ Received ${normalizedCandles.length} hourly candles`, 'ok');
   log(`✓ L2 book: ${book?.levels?.[0]?.length || 0} bid levels, ${book?.levels?.[1]?.length || 0} ask levels`, 'ok');
   log(`✓ Funding history: ${funding?.length || 0} data points`, 'ok');
   log(`✓ Mark price: $${parseFloat(assetCtx.markPx || 0).toLocaleString()}`, 'ok');
 
-  return { candles, book, assetMeta, assetCtx, fundingHistory: funding };
+  return { candles: normalizedCandles, book, assetMeta, assetCtx, fundingHistory: funding };
 }
 
 // ─── GEMINI API ───────────────────────────────────────────────────────────────
@@ -846,7 +852,7 @@ function renderCandleTable(candles) {
   recent.reverse().forEach(c => {
     const o = parseFloat(c[1]), cl = parseFloat(c[4]);
     const isUp = cl >= o;
-    const t = new Date(c[0]).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+    const t = c[0] ? new Date(Number(c[0])).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}) : '--:--';
     html += `<tr style="border-top:1px solid rgba(255,255,255,0.04);color:${isUp?'var(--green)':'var(--red)'}">
       <td style="padding:4px 6px;color:var(--muted);font-size:10px">${t}</td>
       <td style="text-align:center;padding:4px 6px">$${o.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
@@ -1149,15 +1155,17 @@ async function runAnalysis() {
 
     const lp = parseFloat(data.candles?.at(-1)?.[4] || 0);
     const candles = data.candles || [];
-    const ohlcv = candles.slice(-16).map(c =>
-      `  ${new Date(c[0]).toISOString().slice(11,16)} | O:${parseFloat(c[1]).toFixed(2)} H:${parseFloat(c[2]).toFixed(2)} L:${parseFloat(c[3]).toFixed(2)} C:${parseFloat(c[4]).toFixed(2)} V:${parseFloat(c[5]).toFixed(0)}`
-    ).join('\n');
+    const ohlcv = candles.slice(-16).map(c => {
+      const ts = c[0] ? new Date(Number(c[0])).toISOString().slice(11,16) : '--:--';
+      return `  ${ts} | O:${parseFloat(c[1]).toFixed(2)} H:${parseFloat(c[2]).toFixed(2)} L:${parseFloat(c[3]).toFixed(2)} C:${parseFloat(c[4]).toFixed(2)} V:${parseFloat(c[5]).toFixed(0)}`;
+    }).join('\n');
 
     const bids = data.book?.levels?.[0]?.slice(0, 8) || [];
     const asks = data.book?.levels?.[1]?.slice(0, 8) || [];
-    const recentFunding = (data.fundingHistory || []).slice(-12).map(f =>
-      `${new Date(f.time).toISOString().slice(11,16)} ${(parseFloat(f.fundingRate)*100).toFixed(4)}%`
-    ).join(' | ');
+    const recentFunding = (data.fundingHistory || []).slice(-12).map(f => {
+      const t = f.time ? new Date(Number(f.time)).toISOString().slice(11,16) : '--:--';
+      return `${t} ${(parseFloat(f.fundingRate)*100).toFixed(4)}%`;
+    }).join(' | ');
 
     const c72 = candles.slice(-72);
     const hi72 = Math.max(...c72.map(c=>parseFloat(c[2])));
