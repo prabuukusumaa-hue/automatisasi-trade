@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEXUS — Gemini × Hyperliquid Trader</title>
+<title>NEXUS — Groq × Hyperliquid Trader</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <style>
@@ -355,7 +355,7 @@ footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;col
     <div class="logo-icon">N</div>
     <div class="logo-text">
       <div class="logo-name">NEXUS TRADER</div>
-      <div class="logo-sub">GEMINI × HYPERLIQUID</div>
+      <div class="logo-sub">GROQ × HYPERLIQUID</div>
     </div>
   </div>
   <div class="header-right">
@@ -375,9 +375,9 @@ footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;col
     <div class="config-title">Configuration</div>
     <div class="config-grid">
       <div>
-        <div class="field-label">Gemini API Key</div>
-        <input type="password" id="geminiKey" class="field-input" placeholder="AIzaSy…">
-        <div class="field-hint">Free key at <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> → Get API Key</div>
+        <div class="field-label">Groq API Key <span style="color:var(--green);font-size:9px">— 100% FREE</span></div>
+        <input type="password" id="geminiKey" class="field-input" placeholder="gsk_…">
+        <div class="field-hint">Free key (no CC needed) at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> → Create API Key</div>
       </div>
       <div>
         <div class="field-label">Hyperliquid Private Key <span style="color:var(--dim)">(optional)</span></div>
@@ -514,16 +514,16 @@ footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;col
         <div class="term-title">NEXUS EXECUTION LOG — GEMINI × HYPERLIQUID</div>
       </div>
       <div class="terminal-body" id="terminalBody">
-        <div class="log-line"><span class="log-info">System initialized. NEXUS Trader v2.0 ready.</span></div>
+        <div class="log-line"><span class="log-info">System initialized. NEXUS Trader v2.1 ready.</span></div>
         <div class="log-line"><span class="log-info">Hyperliquid endpoint: api.hyperliquid.xyz</span></div>
-        <div class="log-line"><span class="log-info">Gemini model: gemini-2.0-flash</span></div>
+        <div class="log-line"><span class="log-info">AI model: Groq — Llama 3.3 70B Versatile (FREE)</span></div>
         <div class="log-line"><span class="log-info">Awaiting user input…</span> <span class="log-cursor">█</span></div>
       </div>
     </div>
   </div>
 
 </main>
-<footer>NEXUS TRADER &nbsp;•&nbsp; GEMINI AI × HYPERLIQUID &nbsp;•&nbsp; FOR EDUCATIONAL PURPOSES ONLY &nbsp;•&nbsp; NOT FINANCIAL ADVICE</footer>
+<footer>NEXUS TRADER &nbsp;•&nbsp; GROQ AI × HYPERLIQUID &nbsp;•&nbsp; FOR EDUCATIONAL PURPOSES ONLY &nbsp;•&nbsp; NOT FINANCIAL ADVICE</footer>
 </div>
 
 <script>
@@ -531,7 +531,7 @@ footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;col
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 const state = {
-  geminiKey: '',
+  AiApiKey: '',
   walletKey: '',
   autoTrade: false,
   loading: false,
@@ -675,23 +675,27 @@ async function fetchMarketData(coin) {
   return { candles: normalizedCandles, book, assetMeta, assetCtx, fundingHistory: funding };
 }
 
-// ─── GEMINI API ───────────────────────────────────────────────────────────────
+// ─── GROQ API ─────────────────────────────────────────────────────────────────
 async function askGemini(key, userPrompt) {
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: GEMINI_SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: { temperature: 0.25, maxOutputTokens: 3072, topK: 20, topP: 0.85 },
-      }),
-    }
-  );
+  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: GEMINI_SYSTEM },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.25,
+      max_tokens: 3072,
+    }),
+  });
   const data = await r.json();
-  if (data.error) throw new Error(`Gemini: ${data.error.message}`);
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (data.error) throw new Error(`Groq: ${data.error.message}`);
+  return data.choices?.[0]?.message?.content || '';
 }
 
 // ─── TRADE EXECUTION ──────────────────────────────────────────────────────────
@@ -1196,9 +1200,9 @@ ${ohlcv}
 
 Provide your complete NEXUS analysis and trading plan. Be specific about price levels and rationale.`;
 
-    log('→ Sending context to Gemini 2.0 Flash…', 'info');
+    log('→ Sending context to Groq — Llama 3.3 70B…', 'info');
     const raw = await askGemini(geminiKey, prompt);
-    log('✓ NEXUS analysis received', 'ok');
+    log('✓ NEXUS analysis received from Groq', 'ok');
 
     // PHASE 3: Parse + render
     setLoading(true, coin, 'PROCESSING SIGNAL…');
@@ -1325,8 +1329,8 @@ window.addEventListener('load', () => {
 
   // Default focus
   document.getElementById('coinInput').focus();
-  log('NEXUS Trader v2.0 initialized — Gemini 2.0 Flash × Hyperliquid', 'info');
-  log('Enter a coin symbol and your Gemini API key in Config (⚙) to begin.', 'info');
+  log('NEXUS Trader v2.1 initialized — Groq Llama 3.3 70B × Hyperliquid', 'info');
+  log('Enter a coin symbol and your Groq API key in Config (⚙) to begin.', 'info');
 });
 </script>
 </body>
