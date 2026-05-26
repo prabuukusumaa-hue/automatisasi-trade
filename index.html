@@ -315,6 +315,44 @@ main{flex:1;max-width:1380px;width:100%;margin:0 auto;padding:24px 24px 40px}
 /* FOOTER */
 footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px;border-top:1px solid rgba(255,255,255,0.04)}
 
+/* CONFIRM MODAL */
+.modal-overlay{
+  position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
+  background:rgba(3,5,10,0.82);backdrop-filter:blur(12px);
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-box{
+  background:rgba(7,10,18,0.98);border:1px solid rgba(0,255,159,0.22);
+  border-top:1px solid rgba(0,255,159,0.45);border-radius:16px;
+  padding:28px 32px;max-width:440px;width:90%;
+  box-shadow:0 0 80px rgba(0,255,159,0.08);
+  animation:slideDown .2s ease;
+}
+.modal-title{font-family:var(--mono);font-size:11px;letter-spacing:3px;
+  text-transform:uppercase;color:var(--orange);margin-bottom:18px}
+.modal-body{font-size:13px;color:var(--text);line-height:1.7;margin-bottom:22px}
+.modal-row{display:flex;justify-content:space-between;align-items:center;
+  padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-family:var(--mono);font-size:11px}
+.modal-row:last-of-type{border-bottom:none}
+.modal-key{color:var(--muted)}
+.modal-val{font-weight:700}
+.modal-actions{display:flex;gap:10px;margin-top:22px}
+.modal-cancel{flex:1;padding:11px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);
+  background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;
+  letter-spacing:1px;transition:all .2s;cursor:pointer}
+.modal-cancel:hover{border-color:rgba(255,255,255,0.2);color:var(--text)}
+.modal-confirm{flex:1;padding:11px;border-radius:9px;border:none;
+  background:linear-gradient(135deg,#ff3b5c,#c0002a);
+  color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;
+  letter-spacing:1px;transition:all .2s;cursor:pointer}
+.modal-confirm:hover{box-shadow:0 0 30px rgba(255,59,92,0.3)}
+.modal-confirm.long-mode{background:linear-gradient(135deg,#00ff9f,#00c878);color:#03050a}
+.modal-confirm.long-mode:hover{box-shadow:0 0 30px rgba(0,255,159,0.3)}
+.paper-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;
+  background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.25);
+  border-radius:6px;font-size:10px;color:var(--orange);font-family:var(--mono)}
+
 /* LOADING INDICATOR */
 .loading-state{text-align:center;padding:70px 0}
 .loading-coin{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green);letter-spacing:6px;margin-bottom:12px}
@@ -526,12 +564,25 @@ footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;col
 <footer>NEXUS TRADER &nbsp;•&nbsp; GROQ AI × HYPERLIQUID &nbsp;•&nbsp; FOR EDUCATIONAL PURPOSES ONLY &nbsp;•&nbsp; NOT FINANCIAL ADVICE</footer>
 </div>
 
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-title">⚠ Confirm Order Execution</div>
+    <div class="modal-body" id="modalBody"></div>
+    <div id="modalRows"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="modalReject()">✕ CANCEL</button>
+      <button class="modal-confirm" id="modalConfirmBtn" onclick="modalAccept()">✓ EXECUTE</button>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 const state = {
-  geminiKey: '',
+  groqKey: '',        // was: geminiKey (renamed - this is Groq, not Gemini)
   walletKey: '',
   autoTrade: false,
   loading: false,
@@ -541,11 +592,16 @@ const state = {
   positions: [],
   logs: [],
   coin: '',
+  lastAnalyzeTime: 0,  // rate-limiter
+  pnlInterval: null,   // real PnL polling interval
 };
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const HL_INFO = 'https://api.hyperliquid.xyz/info';
 const HL_EXCHANGE = 'https://api.hyperliquid.xyz/exchange';
+const HL_EIP712_CHAIN_ID = 1337; // Hyperliquid uses 1337 for EIP-712 domain regardless of network
+const HL_VERIFYING_CONTRACT = '0x0000000000000000000000000000000000000000';
+const ANALYZE_RATE_LIMIT_MS = 10000; // 10s minimum between analyses
 
 const GEMINI_SYSTEM = `You are NEXUS — an elite quantitative derivatives trader with 20+ years experience in traditional finance and DeFi. Your specializations:
 • Perpetual futures trading on decentralized exchanges (Hyperliquid, dYdX, GMX)
@@ -672,11 +728,12 @@ async function fetchMarketData(coin) {
   log(`✓ Funding history: ${funding?.length || 0} data points`, 'ok');
   log(`✓ Mark price: $${parseFloat(assetCtx.markPx || 0).toLocaleString()}`, 'ok');
 
-  return { candles: normalizedCandles, book, assetMeta, assetCtx, fundingHistory: funding };
+  return { candles: normalizedCandles, book, assetMeta, assetCtx, fundingHistory: funding, assetIndex: idx };
 }
 
 // ─── GROQ API ─────────────────────────────────────────────────────────────────
-async function askGemini(key, userPrompt) {
+// Renamed from askGemini → askGroq (this is Groq, not Gemini)
+async function askGroq(key, userPrompt) {
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -699,47 +756,244 @@ async function askGemini(key, userPrompt) {
 }
 
 // ─── TRADE EXECUTION ──────────────────────────────────────────────────────────
-async function executeHyperliquidOrder(walletKey, coin, isBuy, sz, limitPx, leverage) {
+
+// ── Minimal MsgPack encoder (required for Hyperliquid EIP-712 action hashing) ──
+function msgpackEncode(value) {
+  const chunks = [];
+  function enc(v) {
+    if (v === null || v === undefined) {
+      chunks.push(new Uint8Array([0xc0]));
+    } else if (typeof v === 'boolean') {
+      chunks.push(new Uint8Array([v ? 0xc3 : 0xc2]));
+    } else if (typeof v === 'number' && Number.isInteger(v)) {
+      if (v >= 0 && v <= 0x7f) {
+        chunks.push(new Uint8Array([v]));
+      } else if (v >= 0 && v <= 0xff) {
+        chunks.push(new Uint8Array([0xcc, v]));
+      } else if (v >= 0 && v <= 0xffff) {
+        const b = new Uint8Array(3); b[0] = 0xcd;
+        new DataView(b.buffer).setUint16(1, v); chunks.push(b);
+      } else if (v >= 0 && v <= 0xffffffff) {
+        const b = new Uint8Array(5); b[0] = 0xce;
+        new DataView(b.buffer).setUint32(1, v); chunks.push(b);
+      } else {
+        const b = new Uint8Array(9); b[0] = 0xcf;
+        const dv = new DataView(b.buffer);
+        dv.setUint32(1, Math.floor(v / 0x100000000));
+        dv.setUint32(5, v % 0x100000000); chunks.push(b);
+      }
+    } else if (typeof v === 'string') {
+      const bytes = new TextEncoder().encode(v);
+      const len = bytes.length;
+      if (len <= 31) chunks.push(new Uint8Array([0xa0 | len]));
+      else if (len <= 0xff) chunks.push(new Uint8Array([0xd9, len]));
+      else { const b = new Uint8Array(3); b[0] = 0xda; new DataView(b.buffer).setUint16(1, len); chunks.push(b); }
+      chunks.push(bytes);
+    } else if (Array.isArray(v)) {
+      const len = v.length;
+      if (len <= 15) chunks.push(new Uint8Array([0x90 | len]));
+      else { const b = new Uint8Array(3); b[0] = 0xdc; new DataView(b.buffer).setUint16(1, len); chunks.push(b); }
+      v.forEach(enc);
+    } else if (typeof v === 'object') {
+      const keys = Object.keys(v);
+      const len = keys.length;
+      if (len <= 15) chunks.push(new Uint8Array([0x80 | len]));
+      else { const b = new Uint8Array(3); b[0] = 0xde; new DataView(b.buffer).setUint16(1, len); chunks.push(b); }
+      keys.forEach(k => { enc(k); enc(v[k]); });
+    }
+  }
+  enc(value);
+  const total = chunks.reduce((s, c) => s + c.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  chunks.forEach(c => { out.set(c, off); off += c.length; });
+  return out;
+}
+
+// ── EIP-712 Hyperliquid L1 Action Signing ──
+// Implements the exact signing spec from hyperliquid-python-sdk:
+// connectionId = keccak256(msgpack(action) + \x00 + nonce_uint64_be)
+// Then sign EIP-712 Agent { source: "a", connectionId } over domain Exchange/1337
+async function signL1Action(wallet, action, nonce, vaultAddress = null) {
+  // Step 1: msgpack-encode the action
+  const actionBytes = msgpackEncode(action);
+
+  // Step 2: vault prefix byte (0x00 = no vault, 0x01 + 20 bytes = vault)
+  let vaultBytes;
+  if (vaultAddress) {
+    const addrHex = vaultAddress.replace(/^0x/, '');
+    const addrBytes = new Uint8Array(addrHex.match(/.{2}/g).map(b => parseInt(b, 16)));
+    vaultBytes = new Uint8Array([0x01, ...addrBytes]);
+  } else {
+    vaultBytes = new Uint8Array([0x00]);
+  }
+
+  // Step 3: nonce as big-endian uint64 (8 bytes)
+  const nonceBytes = new Uint8Array(8);
+  const dv = new DataView(nonceBytes.buffer);
+  dv.setUint32(0, Math.floor(nonce / 0x100000000));
+  dv.setUint32(4, nonce % 0x100000000);
+
+  // Step 4: concatenate and keccak256 → connectionId
+  const all = new Uint8Array(actionBytes.length + vaultBytes.length + 8);
+  all.set(actionBytes, 0);
+  all.set(vaultBytes, actionBytes.length);
+  all.set(nonceBytes, actionBytes.length + vaultBytes.length);
+  const connectionId = ethers.utils.keccak256(all);
+
+  // Step 5: EIP-712 typed data sign
+  const domain = {
+    name: 'Exchange',
+    version: '1',
+    chainId: HL_EIP712_CHAIN_ID,
+    verifyingContract: HL_VERIFYING_CONTRACT,
+  };
+  const types = {
+    Agent: [
+      { name: 'source', type: 'string' },
+      { name: 'connectionId', type: 'bytes32' },
+    ],
+  };
+  const message = { source: 'a', connectionId }; // 'a' = mainnet
+
+  return wallet._signTypedData(domain, types, message);
+}
+
+// ── Parse ethers signature → Hyperliquid {r,s,v} format ──
+function parseSig(sig) {
+  return {
+    r: sig.slice(0, 66),
+    s: '0x' + sig.slice(66, 130),
+    v: parseInt(sig.slice(130, 132), 16),
+  };
+}
+
+// ── Send signed action to HL Exchange endpoint ──
+async function hlExchange(action, nonce, sig) {
+  const res = await fetch(HL_EXCHANGE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, nonce, signature: parseSig(sig) }),
+  });
+  if (!res.ok) throw new Error(`HL Exchange HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.status === 'err') throw new Error(`HL Exchange: ${json.response}`);
+  return json;
+}
+
+// ── Smart price formatting based on asset price magnitude ──
+function formatOrderPrice(price, szDecimals) {
+  // Use more precision for cheaper assets
+  if (price >= 10000) return parseFloat(price).toFixed(1);
+  if (price >= 1000)  return parseFloat(price).toFixed(2);
+  if (price >= 100)   return parseFloat(price).toFixed(3);
+  if (price >= 10)    return parseFloat(price).toFixed(4);
+  if (price >= 1)     return parseFloat(price).toFixed(5);
+  return parseFloat(price).toFixed(6);
+}
+
+// ── Small async delay helper ──
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+// ── Main order execution: dynamic index, correct leverage, real size, SL/TP ──
+async function executeHyperliquidOrder(walletKey, coin, isBuy, analysis, marketData) {
   if (!ethers) throw new Error('ethers.js not loaded');
   const wallet = new ethers.Wallet(walletKey);
   log(`→ Wallet: ${wallet.address.slice(0, 10)}…${wallet.address.slice(-6)}`, 'info');
 
-  // Build order action
-  const nonce = Date.now();
-  const orderAction = {
-    type: 'order',
-    orders: [{
-      a: 0, // asset index (0 = BTC on mainnet; use meta to find correct index)
-      b: isBuy,
-      p: parseFloat(limitPx).toFixed(1),
-      s: String(sz),
-      r: false,
-      t: { limit: { tif: 'Gtc' } },
-    }],
-    grouping: 'na',
+  // ── FIX #1: Dynamic asset index lookup ──
+  const assetIndex = marketData.assetIndex;
+  const assetMeta  = marketData.assetMeta;
+  const szDecimals = assetMeta?.szDecimals ?? 3;
+  if (assetIndex === -1) throw new Error(`Asset "${coin}" not found in Hyperliquid universe`);
+  log(`→ Asset index for ${coin}: ${assetIndex} (szDecimals=${szDecimals})`, 'info');
+
+  // ── FIX #3: Calculate size from real account balance ──
+  log(`→ Fetching account balance…`, 'info');
+  const accountState = await hlInfo({ type: 'clearinghouseState', user: wallet.address });
+  const accountValue = parseFloat(accountState.marginSummary?.accountValue || 0);
+  log(`→ Account value: $${accountValue.toFixed(2)} USDC`, 'info');
+  if (accountValue < 5) throw new Error(`Insufficient balance: $${accountValue.toFixed(2)} (need ≥$5)`);
+
+  const leverage = analysis.leverage || 5;
+  const positionFraction = Math.min(analysis.positionSize || 0.1, 1.0);
+  const entryPrice = analysis.entry?.price;
+  if (!entryPrice || entryPrice <= 0) throw new Error('Invalid entry price from AI analysis');
+
+  const targetCapital = accountValue * positionFraction;
+  const rawSz = (targetCapital * leverage) / entryPrice;
+  const factor = Math.pow(10, szDecimals);
+  const sz = Math.floor(rawSz * factor) / factor; // floor to szDecimals
+  const minSz = 1 / factor;
+  if (sz < minSz) throw new Error(`Computed size ${sz} < minimum ${minSz} for ${coin}`);
+  log(`→ Size: ${(positionFraction*100).toFixed(0)}% × $${accountValue.toFixed(0)} × ${leverage}× ÷ $${entryPrice.toLocaleString()} = ${sz} ${coin}`, 'info');
+
+  // ── FIX #4: Set leverage FIRST via updateLeverage action ──
+  log(`→ Setting isolated ${leverage}× leverage on ${coin}…`, 'info');
+  const levNonce = Date.now();
+  const levAction = { type: 'updateLeverage', asset: assetIndex, isCross: false, leverage };
+  const levSig = await signL1Action(wallet, levAction, levNonce);
+  await hlExchange(levAction, levNonce, levSig);
+  log(`✓ Leverage set: ${leverage}× isolated`, 'ok');
+
+  await delay(300);
+
+  // ── FIX #2: Correct EIP-712 signing for main order ──
+  const pxStr = formatOrderPrice(entryPrice, szDecimals);
+  const orderNonce = Date.now();
+  const mainOrder = {
+    a: assetIndex,
+    b: isBuy,
+    p: pxStr,
+    s: String(sz),
+    r: false,
+    t: { limit: { tif: 'Gtc' } },
   };
+  const mainAction = { type: 'order', orders: [mainOrder], grouping: 'na' };
+  const mainSig = await signL1Action(wallet, mainAction, orderNonce);
+  log(`→ Placing ${isBuy ? '▲ LONG' : '▼ SHORT'} ${sz} ${coin} @ $${pxStr}…`, 'info');
+  const mainResult = await hlExchange(mainAction, orderNonce, mainSig);
+  log(`✓ Main order accepted: ${JSON.stringify(mainResult).slice(0, 120)}`, 'ok');
 
-  // Hyperliquid uses personal_sign over keccak256 of encoded action
-  // Simplified implementation — production should use @nktkas/hyperliquid or hyperliquid-ts SDK
-  const actionStr = JSON.stringify(orderAction) + nonce;
-  const msgHash = ethers.utils.id(actionStr);
-  const sig = await wallet.signMessage(ethers.utils.arrayify(msgHash));
+  // ── FIX #8: Place SL order on exchange ──
+  if (analysis.stopLoss?.price) {
+    await delay(400);
+    const slPx = formatOrderPrice(analysis.stopLoss.price, szDecimals);
+    const slNonce = Date.now();
+    const slOrder = {
+      a: assetIndex,
+      b: !isBuy,         // opposite side
+      p: slPx,
+      s: String(sz),
+      r: true,           // reduce-only
+      t: { trigger: { triggerPx: slPx, isMarket: true, tpsl: 'sl' } },
+    };
+    const slAction = { type: 'order', orders: [slOrder], grouping: 'na' };
+    const slSig = await signL1Action(wallet, slAction, slNonce);
+    const slResult = await hlExchange(slAction, slNonce, slSig);
+    log(`✓ Stop-loss @ $${slPx} placed: ${JSON.stringify(slResult).slice(0, 80)}`, 'ok');
+  }
 
-  log(`✓ Order signed (nonce: ${nonce})`, 'ok');
-  log(`→ Sending order to Hyperliquid Exchange…`, 'info');
+  // ── FIX #8: Place TP1 order on exchange ──
+  if (analysis.takeProfit?.[0]?.price) {
+    await delay(400);
+    const tp1Px = formatOrderPrice(analysis.takeProfit[0].price, szDecimals);
+    const tp1Nonce = Date.now();
+    const tp1Order = {
+      a: assetIndex,
+      b: !isBuy,
+      p: tp1Px,
+      s: String(sz),
+      r: true,
+      t: { trigger: { triggerPx: tp1Px, isMarket: false, tpsl: 'tp' } },
+    };
+    const tp1Action = { type: 'order', orders: [tp1Order], grouping: 'na' };
+    const tp1Sig = await signL1Action(wallet, tp1Action, tp1Nonce);
+    const tp1Result = await hlExchange(tp1Action, tp1Nonce, tp1Sig);
+    log(`✓ Take-profit @ $${tp1Px} placed: ${JSON.stringify(tp1Result).slice(0, 80)}`, 'ok');
+  }
 
-  const res = await fetch(HL_EXCHANGE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: orderAction,
-      nonce,
-      signature: { r: sig.slice(0, 66), s: '0x' + sig.slice(66, 130), v: parseInt(sig.slice(130, 132), 16) },
-    }),
-  });
-  const result = await res.json();
-  log(`✓ Exchange response: ${JSON.stringify(result).slice(0, 100)}`, 'ok');
-  return result;
+  return { sz, assetIndex };
 }
 
 // ─── MINI CHART ───────────────────────────────────────────────────────────────
@@ -1048,7 +1302,9 @@ function updateSnapshot(data, coin) {
 }
 
 // ─── POSITION MANAGEMENT ──────────────────────────────────────────────────────
-function addPosition(coin, analysis) {
+function addPosition(coin, analysis, executionData = {}) {
+  // FIX #6: No more random PnL — real PnL fetched from Hyperliquid
+  // executionData: { sz, assetIndex } from real order, or empty for paper positions
   const pos = {
     id: Date.now(),
     coin,
@@ -1058,8 +1314,11 @@ function addPosition(coin, analysis) {
     tp1: analysis.takeProfit?.[0]?.price,
     size: analysis.positionSize,
     leverage: analysis.leverage,
+    actualSz: executionData.sz || null,        // real size from exchange
+    assetIndex: executionData.assetIndex ?? -1,
+    isPaper: !executionData.sz,                 // paper if no real order sent
     pnlPct: 0,
-    pnlDelta: (Math.random() - 0.48) * 0.002,
+    pnlUsd: 0,
     time: now(),
     signal: analysis.signal,
     confidence: analysis.confidence,
@@ -1068,13 +1327,62 @@ function addPosition(coin, analysis) {
   renderPositions();
   document.getElementById('posTab').textContent = `Positions (${state.positions.length})`;
 
-  // Simulate live P&L ticks
-  const tick = setInterval(() => {
-    pos.pnlPct += pos.pnlDelta + (Math.random() - 0.49) * 0.003;
-    pos.pnlDelta = pos.pnlDelta * 0.95 + (Math.random() - 0.49) * 0.002;
-    if (state.positions.find(p => p.id === pos.id)) renderPositions();
-    else clearInterval(tick);
-  }, 2500);
+  // Start PnL refresh — real data if wallet key exists, simulated for paper
+  startPnLPolling();
+}
+
+// ── FIX #6: Fetch real unrealized PnL from Hyperliquid ──
+async function fetchRealPnL() {
+  const walletKey = document.getElementById('walletKey').value.trim();
+  if (!walletKey || !state.positions.length) return;
+
+  try {
+    const wallet = new ethers.Wallet(walletKey);
+    const accountState = await hlInfo({ type: 'clearinghouseState', user: wallet.address });
+    const hlPositions = accountState.assetPositions || [];
+
+    let updated = false;
+    state.positions.forEach(pos => {
+      if (pos.isPaper) return; // paper positions skip
+      const hlPos = hlPositions.find(p => p.position?.coin === pos.coin);
+      if (hlPos?.position) {
+        const unrealPnl = parseFloat(hlPos.position.unrealizedPnl || 0);
+        const posValue = Math.abs(parseFloat(hlPos.position.positionValue || 1));
+        pos.pnlUsd = unrealPnl;
+        pos.pnlPct = posValue > 0 ? unrealPnl / posValue : 0;
+        updated = true;
+      }
+    });
+
+    // Simulate PnL for paper positions (clearly marked)
+    state.positions.forEach(pos => {
+      if (!pos.isPaper) return;
+      const drift = (Math.random() - 0.499) * 0.0015;
+      pos.pnlPct = (pos.pnlPct || 0) + drift;
+      pos.pnlUsd = null; // unknown for paper
+    });
+
+    if (updated || state.positions.some(p => p.isPaper)) renderPositions();
+  } catch (e) {
+    // Silently handle PnL fetch errors — still simulate paper positions
+    state.positions.forEach(pos => {
+      if (!pos.isPaper) return;
+      pos.pnlPct = (pos.pnlPct || 0) + (Math.random() - 0.499) * 0.0015;
+    });
+    renderPositions();
+  }
+}
+
+function startPnLPolling() {
+  if (state.pnlInterval) return; // already running
+  state.pnlInterval = setInterval(fetchRealPnL, 5000); // every 5s
+}
+
+function stopPnLPolling() {
+  if (!state.positions.length) {
+    clearInterval(state.pnlInterval);
+    state.pnlInterval = null;
+  }
 }
 
 function renderPositions() {
@@ -1084,17 +1392,22 @@ function renderPositions() {
   empty.style.display = 'none';
   el.innerHTML = state.positions.map(pos => {
     const pnlCol = pos.pnlPct >= 0 ? 'var(--green)' : 'var(--red)';
+    const pnlDisplay = pos.isPaper
+      ? `${pos.pnlPct >= 0 ? '+' : ''}${(pos.pnlPct * 100).toFixed(2)}% <span style="color:var(--orange);font-size:9px">PAPER</span>`
+      : pos.pnlUsd !== null
+        ? `${pos.pnlPct >= 0 ? '+' : ''}${(pos.pnlPct * 100).toFixed(2)}% <span style="font-size:10px">(${pos.pnlUsd >= 0 ? '+' : ''}$${Math.abs(pos.pnlUsd).toFixed(2)})</span>`
+        : '—';
     return `
     <div class="pos-card">
       <div class="pos-item">
         <div class="pos-coin">${pos.coin}</div>
-        <div class="pos-sub">PERP</div>
+        <div class="pos-sub">${pos.isPaper ? '◈ PAPER' : 'PERP'}</div>
       </div>
       <div class="side-badge ${pos.side.toLowerCase()}">${pos.side}</div>
       <div class="pos-stats">
         <div>
           <div class="pos-stat-label">Entry</div>
-          <div class="pos-stat-val">$${pos.entry?.toLocaleString('en-US',{minimumFractionDigits:1})}</div>
+          <div class="pos-stat-val">$${pos.entry?.toLocaleString('en-US', { minimumFractionDigits: 1 })}</div>
         </div>
         <div>
           <div class="pos-stat-label">Leverage</div>
@@ -1102,15 +1415,15 @@ function renderPositions() {
         </div>
         <div>
           <div class="pos-stat-label">Stop Loss</div>
-          <div class="pos-stat-val" style="color:var(--red)">$${pos.sl?.toLocaleString('en-US',{minimumFractionDigits:1})}</div>
+          <div class="pos-stat-val" style="color:var(--red)">$${pos.sl?.toLocaleString('en-US', { minimumFractionDigits: 1 })}</div>
         </div>
         <div>
           <div class="pos-stat-label">Take Profit</div>
-          <div class="pos-stat-val" style="color:var(--green)">$${pos.tp1?.toLocaleString('en-US',{minimumFractionDigits:1})}</div>
+          <div class="pos-stat-val" style="color:var(--green)">$${pos.tp1?.toLocaleString('en-US', { minimumFractionDigits: 1 })}</div>
         </div>
         <div>
-          <div class="pos-stat-label">Unrealized PnL</div>
-          <div class="pos-stat-val" style="color:${pnlCol}">${pos.pnlPct>=0?'+':''}${(pos.pnlPct*100).toFixed(2)}%</div>
+          <div class="pos-stat-label">Unrealized PnL${pos.isPaper ? ' 〜' : ''}</div>
+          <div class="pos-stat-val" style="color:${pnlCol}">${pnlDisplay}</div>
         </div>
       </div>
       <div class="pos-time">opened ${pos.time}</div>
@@ -1119,26 +1432,120 @@ function renderPositions() {
   }).join('');
 }
 
-function closePosition(id) {
+// ── FIX #5: closePosition sends real order to Hyperliquid ──
+async function closePosition(id) {
   const pos = state.positions.find(p => p.id === id);
-  if (pos) {
-    log(`→ Closing ${pos.side} position on ${pos.coin} (PnL: ${(pos.pnlPct*100).toFixed(2)}%)`, 'info');
-    state.positions = state.positions.filter(p => p.id !== id);
-    renderPositions();
-    document.getElementById('posTab').textContent = `Positions (${state.positions.length})`;
-    log(`✓ Position closed`, 'ok');
+  if (!pos) return;
+
+  const walletKey = document.getElementById('walletKey').value.trim();
+  const isReal = walletKey && !pos.isPaper && pos.actualSz && pos.assetIndex >= 0;
+
+  const confirmed = await showConfirm({
+    title: isReal ? '⚠ Close Live Position' : 'Close Paper Position',
+    body: isReal
+      ? `This will send a market close order for your <strong>${pos.side} ${pos.coin}</strong> position to Hyperliquid.\n\nThe order is <em>reduce-only IOC</em> and will fill at the current market price.`
+      : `Remove this paper position from your tracking list.`,
+    rows: [
+      { key: 'Coin', val: pos.coin + '-PERP' },
+      { key: 'Side', val: pos.side },
+      { key: 'Size', val: pos.actualSz ? `${pos.actualSz} ${pos.coin}` : `${(pos.size * 100).toFixed(0)}% (paper)` },
+      { key: 'PnL', val: `${pos.pnlPct >= 0 ? '+' : ''}${(pos.pnlPct * 100).toFixed(2)}%` },
+    ],
+    confirmText: isReal ? 'CLOSE ON EXCHANGE' : 'REMOVE',
+    isLong: false,
+  });
+  if (!confirmed) return;
+
+  if (isReal) {
+    log(`→ Sending close order for ${pos.side} ${pos.coin} to Hyperliquid…`, 'warn');
+    try {
+      const wallet = new ethers.Wallet(walletKey);
+      // Fetch current mark price to set aggressive IOC limit
+      const meta = await hlInfo({ type: 'metaAndAssetCtxs' });
+      const ctx = (meta[1] || [])[pos.assetIndex] || {};
+      const markPx = parseFloat(ctx.markPx || pos.entry);
+      // For close: use 3% slippage so IOC definitely fills
+      const slippagedPx = pos.side === 'LONG'
+        ? markPx * 0.97   // closing LONG → sell, set price below market
+        : markPx * 1.03;  // closing SHORT → buy, set price above market
+      const pxStr = formatOrderPrice(slippagedPx, state.marketData?.assetMeta?.szDecimals ?? 3);
+      const closeNonce = Date.now();
+      const closeAction = {
+        type: 'order',
+        orders: [{
+          a: pos.assetIndex,
+          b: pos.side === 'SHORT', // close LONG = sell (false→true direction)
+          p: pxStr,
+          s: String(pos.actualSz),
+          r: true,                 // reduce-only
+          t: { limit: { tif: 'Ioc' } }, // IOC = immediate fill or cancel
+        }],
+        grouping: 'na',
+      };
+      const closeSig = await signL1Action(wallet, closeAction, closeNonce);
+      const closeResult = await hlExchange(closeAction, closeNonce, closeSig);
+      log(`✓ Close order sent: ${JSON.stringify(closeResult).slice(0, 120)}`, 'ok');
+    } catch (e) {
+      log(`✗ Close order failed: ${e.message}`, 'err');
+      return; // don't remove from list if order failed
+    }
+  } else {
+    log(`→ Removed paper position: ${pos.side} ${pos.coin} (PnL: ${(pos.pnlPct * 100).toFixed(2)}%)`, 'info');
   }
+
+  state.positions = state.positions.filter(p => p.id !== id);
+  renderPositions();
+  document.getElementById('posTab').textContent = `Positions (${state.positions.length})`;
+  stopPnLPolling();
+  log(`✓ Position closed`, 'ok');
+}
+
+// ─── CONFIRMATION MODAL ───────────────────────────────────────────────────────
+let _modalResolve = null;
+function showConfirm({ title, body, rows = [], confirmText = 'CONFIRM', isLong = true }) {
+  return new Promise(resolve => {
+    _modalResolve = resolve;
+    const modal = document.getElementById('confirmModal');
+    const bodyEl = document.getElementById('modalBody');
+    const rowsEl = document.getElementById('modalRows');
+    const btn = document.getElementById('modalConfirmBtn');
+    document.querySelector('.modal-title').textContent = title;
+    bodyEl.innerHTML = body;
+    rowsEl.innerHTML = rows.map(r =>
+      `<div class="modal-row"><span class="modal-key">${r.key}</span><span class="modal-val" style="color:${r.color||'var(--text)'}">${r.val}</span></div>`
+    ).join('');
+    btn.textContent = '✓ ' + confirmText;
+    btn.className = 'modal-confirm' + (isLong ? ' long-mode' : '');
+    modal.classList.add('open');
+  });
+}
+function modalAccept() {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (_modalResolve) { _modalResolve(true); _modalResolve = null; }
+}
+function modalReject() {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (_modalResolve) { _modalResolve(false); _modalResolve = null; }
 }
 
 // ─── MAIN ANALYSIS FLOW ───────────────────────────────────────────────────────
 async function runAnalysis() {
   const coin = document.getElementById('coinInput').value.trim().toUpperCase();
-  const geminiKey = document.getElementById('geminiKey').value.trim();
+  const groqKey = document.getElementById('geminiKey').value.trim(); // input ID kept for compat
 
   if (!coin) { showError('Enter a coin symbol (e.g. BTC, ETH, SOL)'); return; }
-  if (!geminiKey) { showError('Enter your Gemini API key in Config (⚙)'); return; }
+  if (!groqKey) { showError('Enter your Groq API key in Config (⚙)'); return; }  // FIX #10: correct name
 
-  state.coin = coin; state.geminiKey = geminiKey;
+  // ── FIX: Rate limit — prevent spam-clicking Analyze ──
+  const now_ms = Date.now();
+  if (now_ms - state.lastAnalyzeTime < ANALYZE_RATE_LIMIT_MS) {
+    const wait = Math.ceil((ANALYZE_RATE_LIMIT_MS - (now_ms - state.lastAnalyzeTime)) / 1000);
+    showError(`Rate limit: wait ${wait}s before analyzing again`);
+    return;
+  }
+  state.lastAnalyzeTime = now_ms;
+
+  state.coin = coin; state.groqKey = groqKey;
   state.walletKey = document.getElementById('walletKey').value.trim();
   hideError(); setLoading(true, coin, 'CONNECTING TO HYPERLIQUID…');
 
@@ -1149,6 +1556,11 @@ async function runAnalysis() {
     const data = await fetchMarketData(coin);
     state.marketData = data;
     updateSnapshot(data, coin);
+
+    if (data.assetIndex === -1) {
+      throw new Error(`"${coin}" not found on Hyperliquid. Check the symbol (e.g. BTC, ETH, SOL, HYPE).`);
+    }
+    log(`✓ Asset "${coin}" → index ${data.assetIndex} (szDecimals=${data.assetMeta?.szDecimals ?? '?'})`, 'ok');
 
     // Render book
     document.getElementById('emptyBook').style.display = 'none';
@@ -1164,8 +1576,10 @@ async function runAnalysis() {
 
     const lp = parseFloat(data.candles?.at(-1)?.[4] || 0);
     const candles = data.candles || [];
-    const ohlcv = candles.slice(-16).map(c => {
-      const ts = c[0] ? new Date(Number(c[0])).toISOString().slice(11,16) : '--:--';
+
+    // FIX: Send all 72 candles instead of just 16
+    const ohlcv = candles.slice(-72).map(c => {
+      const ts = c[0] ? new Date(Number(c[0])).toISOString().slice(11, 16) : '--:--';
       return `  ${ts} | O:${parseFloat(c[1]).toFixed(2)} H:${parseFloat(c[2]).toFixed(2)} L:${parseFloat(c[3]).toFixed(2)} C:${parseFloat(c[4]).toFixed(2)} V:${parseFloat(c[5]).toFixed(0)}`;
     }).join('\n');
 
@@ -1174,41 +1588,41 @@ async function runAnalysis() {
     const bookPx = l => l.px ?? l[0] ?? '?';
     const bookSz = l => parseFloat(l.sz ?? l[1] ?? 0);
     const recentFunding = (data.fundingHistory || []).slice(-12).map(f => {
-      const t = f.time ? new Date(Number(f.time)).toISOString().slice(11,16) : '--:--';
-      return `${t} ${(parseFloat(f.fundingRate)*100).toFixed(4)}%`;
+      const t = f.time ? new Date(Number(f.time)).toISOString().slice(11, 16) : '--:--';
+      return `${t} ${(parseFloat(f.fundingRate) * 100).toFixed(4)}%`;
     }).join(' | ');
 
     const c72 = candles.slice(-72);
-    const hi72 = Math.max(...c72.map(c=>parseFloat(c[2])));
-    const lo72 = Math.min(...c72.map(c=>parseFloat(c[3])));
-    const vol24 = candles.slice(-24).reduce((s,c)=>s+parseFloat(c[5])*parseFloat(c[4]),0);
+    const hi72 = Math.max(...c72.map(c => parseFloat(c[2])));
+    const lo72 = Math.min(...c72.map(c => parseFloat(c[3])));
+    const vol24 = candles.slice(-24).reduce((s, c) => s + parseFloat(c[5]) * parseFloat(c[4]), 0);
 
     const prompt = `
 INSTRUMENT: ${coin}/USDT Perpetual Futures — Hyperliquid DEX
 
 PRICE DATA:
   Last Price:    $${lp.toLocaleString()}
-  Mark Price:    $${parseFloat(data.assetCtx?.markPx||lp).toLocaleString()}
+  Mark Price:    $${parseFloat(data.assetCtx?.markPx || lp).toLocaleString()}
   72h High:      $${hi72.toLocaleString()}
   72h Low:       $${lo72.toLocaleString()}
   24h Volume:    ${fmtCompact(vol24)}
 
 DERIVATIVES DATA:
-  Open Interest: $${fmtCompact(parseFloat(data.assetCtx?.openInterest||0)*lp)}
-  Funding Rate:  ${(parseFloat(data.assetCtx?.funding||0)*100).toFixed(4)}% per hour
+  Open Interest: $${fmtCompact(parseFloat(data.assetCtx?.openInterest || 0) * lp)}
+  Funding Rate:  ${(parseFloat(data.assetCtx?.funding || 0) * 100).toFixed(4)}% per hour
   Funding 12h:   ${recentFunding}
 
 L2 ORDER BOOK (Top 8):
-  BIDS: ${bids.map(b=>`$${bookPx(b)}×${bookSz(b).toFixed(2)}`).join(' ')}
-  ASKS: ${asks.map(a=>`$${bookPx(a)}×${bookSz(a).toFixed(2)}`).join(' ')}
+  BIDS: ${bids.map(b => `$${bookPx(b)}×${bookSz(b).toFixed(2)}`).join(' ')}
+  ASKS: ${asks.map(a => `$${bookPx(a)}×${bookSz(a).toFixed(2)}`).join(' ')}
 
-OHLCV (Last 16 × 1h candles):
+OHLCV (Last 72 × 1h candles — full 3-day window):
 ${ohlcv}
 
 Provide your complete NEXUS analysis and trading plan. Be specific about price levels and rationale.`;
 
-    log('→ Sending context to Groq — Llama 3.3 70B…', 'info');
-    const raw = await askGemini(geminiKey, prompt);
+    log('→ Sending 72-candle context to Groq — Llama 3.3 70B…', 'info');  // FIX #10: "Groq" not "Gemini"
+    const raw = await askGroq(groqKey, prompt);   // FIX #10: askGroq not askGemini
     log('✓ NEXUS analysis received from Groq', 'ok');
 
     // PHASE 3: Parse + render
@@ -1218,7 +1632,7 @@ Provide your complete NEXUS analysis and trading plan. Be specific about price l
 
     if (analysis) {
       renderAnalysis(analysis, coin);
-      log(`✓ Signal: ${analysis.signal} | Confidence: ${analysis.confidence}% | Leverage: ${analysis.leverage}× | R/R: ${(analysis.riskReward||0).toFixed(2)}×`, 'ok');
+      log(`✓ Signal: ${analysis.signal} | Confidence: ${analysis.confidence}% | Leverage: ${analysis.leverage}× | R/R: ${(analysis.riskReward || 0).toFixed(2)}×`, 'ok');
       log(`✓ Entry: $${fmt(analysis.entry?.price)} | SL: $${fmt(analysis.stopLoss?.price)} | TP1: $${fmt(analysis.takeProfit?.[0]?.price)}`, 'ok');
     } else {
       log('⚠ Could not parse JSON — check Terminal for raw output', 'warn');
@@ -1226,32 +1640,55 @@ Provide your complete NEXUS analysis and trading plan. Be specific about price l
       document.getElementById('emptyAnalysis').innerHTML = `
         <div class="empty-icon">⚠</div>
         <div class="empty-title">Parse Error</div>
-        <div class="empty-sub">Gemini returned unstructured data. Check Terminal tab.</div>`;
+        <div class="empty-sub">Groq returned unstructured data. Check Terminal tab.</div>`;  // FIX #10
     }
 
-    // PHASE 4: Execute trade
+    // PHASE 4: Execute trade — with confirmation dialog
     if (state.autoTrade && state.walletKey && analysis && analysis.signal !== 'NEUTRAL') {
-      setStatus(true, 'EXECUTING');
-      setLoading(true, coin, 'EXECUTING TRADE…');
-      log(`→ Auto-trade enabled — placing ${analysis.signal.includes('LONG')?'LONG':'SHORT'} order…`, 'warn');
-      try {
-        await executeHyperliquidOrder(
-          state.walletKey, coin,
-          analysis.signal.includes('LONG'),
-          0.001, analysis.entry?.price, analysis.leverage
-        );
-        addPosition(coin, analysis);
-        log(`✓ Position opened — ${analysis.signal.includes('LONG')?'LONG':'SHORT'} ${coin} at ~$${fmt(analysis.entry?.price)}`, 'ok');
-        switchTab('positions', document.querySelectorAll('.tab')[1]);
-      } catch (e) {
-        log(`✗ Trade execution failed: ${e.message}`, 'err');
-        log('ℹ Note: Production requires @nktkas/hyperliquid SDK for correct signing', 'warn');
-        // Still add as paper position for demo
-        addPosition(coin, analysis);
+      const isLong = analysis.signal.includes('LONG');
+      const szDecimals = data.assetMeta?.szDecimals ?? 3;
+
+      // ── FIX #9: Show confirmation before executing ──
+      const confirmed = await showConfirm({
+        title: `${isLong ? '▲ LONG' : '▼ SHORT'} ${coin} — Confirm Live Order`,
+        body: `<span style="color:var(--orange);font-family:var(--mono);font-size:11px">⚠ This will place a REAL leveraged order on Hyperliquid using your private key. Review carefully.</span>`,
+        rows: [
+          { key: 'Signal', val: analysis.signal, color: isLong ? 'var(--green)' : 'var(--red)' },
+          { key: 'Entry', val: `$${fmt(analysis.entry?.price)}`, color: 'var(--blue)' },
+          { key: 'Leverage', val: `${analysis.leverage}×`, color: 'var(--blue)' },
+          { key: 'Position Size', val: `${(analysis.positionSize * 100).toFixed(0)}% of balance` },
+          { key: 'Stop Loss', val: `$${fmt(analysis.stopLoss?.price)}`, color: 'var(--red)' },
+          { key: 'Take Profit 1', val: `$${fmt(analysis.takeProfit?.[0]?.price)}`, color: 'var(--green)' },
+          { key: 'Confidence', val: `${analysis.confidence}%` },
+        ],
+        confirmText: `EXECUTE ${isLong ? 'LONG' : 'SHORT'}`,
+        isLong,
+      });
+
+      if (!confirmed) {
+        log('ℹ Trade cancelled by user — adding as paper position', 'warn');
+        if (analysis) addPosition(coin, analysis, {});
+      } else {
+        setStatus(true, 'EXECUTING');
+        setLoading(true, coin, 'EXECUTING TRADE…');
+        log(`→ Placing ${isLong ? 'LONG' : 'SHORT'} order with SL/TP on Hyperliquid…`, 'warn');
+        try {
+          const execData = await executeHyperliquidOrder(
+            state.walletKey, coin, isLong, analysis, data
+          );
+          addPosition(coin, analysis, execData);
+          log(`✓ Position opened — ${isLong ? 'LONG' : 'SHORT'} ${execData.sz} ${coin} @ ~$${fmt(analysis.entry?.price)}`, 'ok');
+          log(`✓ SL @ $${fmt(analysis.stopLoss?.price)} and TP1 @ $${fmt(analysis.takeProfit?.[0]?.price)} set on exchange`, 'ok');
+          switchTab('positions', document.querySelectorAll('.tab')[1]);
+        } catch (e) {
+          log(`✗ Trade execution failed: ${e.message}`, 'err');
+          log(`ℹ Adding as paper position for tracking`, 'warn');
+          addPosition(coin, analysis, {}); // fallback to paper
+        }
       }
     } else if (state.autoTrade && !state.walletKey) {
       log('⚠ Auto-trade on but no wallet key — paper position added', 'warn');
-      if (analysis) addPosition(coin, analysis);
+      if (analysis) addPosition(coin, analysis, {});
     } else {
       log('ℹ Auto-trade disabled — no order placed. Enable in Config to execute.', 'info');
     }
@@ -1333,14 +1770,19 @@ function hideError() {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  // Load saved keys from sessionStorage (not persistent, just for session)
-  const sk = sessionStorage.getItem('gk');
+  // Load saved Groq key from sessionStorage (session only — not persisted to disk)
+  const sk = sessionStorage.getItem('groqKey');
   if (sk) document.getElementById('geminiKey').value = sk;
-  document.getElementById('geminiKey').addEventListener('input', e => sessionStorage.setItem('gk', e.target.value));
+  document.getElementById('geminiKey').addEventListener('input', e => sessionStorage.setItem('groqKey', e.target.value));
 
-  // Default focus
+  // Close modal on overlay click
+  document.getElementById('confirmModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('confirmModal')) modalReject();
+  });
+
   document.getElementById('coinInput').focus();
-  log('NEXUS Trader v2.1 initialized — Groq Llama 3.3 70B × Hyperliquid', 'info');
+  log('NEXUS Trader v3.0 initialized — Groq Llama 3.3 70B × Hyperliquid', 'info');
+  log('Fixes applied: EIP-712 signing · dynamic asset index · real SL/TP · real PnL · size from balance', 'ok');
   log('Enter a coin symbol and your Groq API key in Config (⚙) to begin.', 'info');
 });
 </script>
