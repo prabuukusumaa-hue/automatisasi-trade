@@ -146,10 +146,13 @@ header {
   color: #000;
   border: none; cursor: pointer;
   font-family: 'Syne', sans-serif;
-  font-weight: 800; font-size: 11px;
-  letter-spacing: .1em; padding: 8px 16px;
+  font-weight: 800; font-size: 10px;
+  letter-spacing: .05em; padding: 8px 10px;
   text-transform: uppercase;
   transition: all .2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 80px;
 }
 .btn-analyze:hover { background: #33deff; transform: translateY(-1px); }
 .btn-analyze:disabled { opacity: .4; cursor: not-allowed; transform: none; }
@@ -517,6 +520,11 @@ footer {
     <div class="panel">
       <div class="panel-header"><div class="dot"></div>CONFIG</div>
       <div class="cfg-body">
+        <div class="cfg-row" style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.2);padding:8px 10px;">
+          <div class="cfg-label" style="color:var(--accent);margin-bottom:5px;">⚡ GROQ API KEY <span style="color:var(--bear);font-size:8px;">* WAJIB</span></div>
+          <input class="cfg-input" id="groqKey" type="password" placeholder="gsk_… (dapatkan di console.groq.com)" style="border-color:rgba(0,212,255,.3);font-size:10px;">
+          <div style="font-size:8px;color:var(--muted);margin-top:4px;">Gratis di: console.groq.com/keys</div>
+        </div>
         <div class="cfg-row">
           <div class="cfg-label">Hyperliquid Private Key</div>
           <input class="cfg-input" id="privKey" type="password" placeholder="0x… (untuk live trading)">
@@ -624,7 +632,7 @@ const state = {
   candles: []
 };
 
-const GROQ_KEY = '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'; // replace if needed
+function getGroqKey(){ return document.getElementById('groqKey').value.trim(); }
 const HL_BASE = 'https://api.hyperliquid.xyz';
 const HL_TEST = 'https://api.hyperliquid-testnet.xyz';
 
@@ -825,6 +833,8 @@ function renderOB(ob){
 
 // ─── AI SWING ANALYSIS ───────────────────────────────────────────────────────
 async function runAISwingAnalysis(marketData){
+  const key = getGroqKey();
+  if(!key) throw new Error("Groq API Key belum diisi. Masukkan di kolom Groq API Key pada Config.");
   const { price, funding, oi, change, candles, dayVol, coin } = marketData;
   const last20 = candles.slice(-20);
   const prices = last20.map(c=>`O:${c.o.toFixed(2)} H:${c.h.toFixed(2)} L:${c.l.toFixed(2)} C:${c.c.toFixed(2)}`).join('\n');
@@ -870,7 +880,7 @@ End with a JSON block exactly like:
 
   const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{role:'user',content:prompt}],
@@ -942,6 +952,20 @@ function updatePlanUI(plan){
 async function runAnalysis(){
   const coin = document.getElementById('coinInput').value.trim().toUpperCase();
   if(!coin){ log('Enter a coin symbol', 'warn'); return; }
+  if(!getGroqKey()){
+    log('⚠ Groq API Key belum diisi! Isi di Config → GROQ API KEY', 'err');
+    document.getElementById('analysisBox').innerHTML = `<div style="color:var(--bear);padding:16px;line-height:2">
+      ⚠ <strong>Groq API Key belum diisi.</strong><br><br>
+      1. Buka <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent)">console.groq.com/keys</a><br>
+      2. Login/daftar gratis → Create API Key<br>
+      3. Copy key (diawali <code style="color:var(--warn)">gsk_…</code>)<br>
+      4. Paste di <strong style="color:var(--accent)">Config → GROQ API KEY</strong><br>
+      5. Klik ANALYZE lagi
+    </div>`;
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('analyzeBtn').textContent = 'ANALYZE';
+    return;
+  }
   state.coin = coin;
 
   const btn = document.getElementById('analyzeBtn');
