@@ -3,1788 +3,1245 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEXUS — Groq × Hyperliquid Trader</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<title>NEXUS SWING — Groq × Hyperliquid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#03050a;--bg2:#070a12;--panel:rgba(7,10,18,0.92);
-  --g:rgba(0,255,159,0.12);--gt:rgba(0,255,159,0.28);
-  --green:#00ff9f;--blue:#2979ff;--red:#ff3b5c;--orange:#ff9500;
-  --text:#dce8f0;--muted:#5a7080;--dim:#1a2e3c;
-  --mono:'Space Mono',monospace;--sans:'Barlow',sans-serif;
+:root {
+  --bg: #05080f;
+  --surface: #0a0f1c;
+  --surface2: #111827;
+  --border: #1e2d45;
+  --accent: #00d4ff;
+  --accent2: #7c3aed;
+  --bull: #00e676;
+  --bear: #ff3d71;
+  --warn: #ffb300;
+  --text: #e2e8f0;
+  --muted: #4a5568;
+  --dim: #2d3748;
 }
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;
-  background-image:radial-gradient(ellipse 80% 40% at 10% 0%,rgba(0,255,159,0.055) 0%,transparent 100%),
-  radial-gradient(ellipse 60% 40% at 90% 100%,rgba(41,121,255,0.05) 0%,transparent 100%);
-  overflow-x:hidden}
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(0,255,159,0.18);border-radius:2px}
-input,button,select{font-family:inherit;outline:none}
-button{cursor:pointer}
 
-/* LAYOUT */
-#app{display:flex;flex-direction:column;min-height:100vh}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grid bg */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.scanline {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: .4;
+  animation: scan 4s linear infinite;
+  z-index: 10; pointer-events: none;
+}
+@keyframes scan { from{top:-2px} to{top:100vh} }
 
 /* HEADER */
-header{
-  position:sticky;top:0;z-index:100;height:58px;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 28px;
-  background:rgba(3,5,10,0.88);
-  border-bottom:1px solid rgba(0,255,159,0.1);
-  backdrop-filter:blur(24px);
+header {
+  position: relative; z-index: 5;
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(180deg, rgba(0,212,255,.05), transparent);
 }
-.logo{display:flex;align-items:center;gap:14px}
-.logo-icon{
-  width:34px;height:34px;border-radius:9px;
-  background:linear-gradient(135deg,#00ff9f 0%,#00b8ff 100%);
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--mono);font-weight:700;font-size:15px;color:#03050a;
-  box-shadow:0 0 20px rgba(0,255,159,0.35);
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon {
+  width: 36px; height: 36px;
+  border: 1.5px solid var(--accent);
+  display: grid; place-items: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 14px;
+  color: var(--accent);
+  position: relative;
+  animation: pulse-border 3s ease infinite;
 }
-.logo-text{line-height:1.1}
-.logo-name{font-size:15px;font-weight:700;letter-spacing:.5px}
-.logo-sub{font-size:9px;color:var(--green);font-family:var(--mono);letter-spacing:3px;margin-top:1px}
-.header-right{display:flex;align-items:center;gap:10px}
-.status-pill{
-  display:flex;align-items:center;gap:6px;
-  padding:4px 12px;border-radius:20px;
-  background:rgba(0,255,159,0.07);border:1px solid rgba(0,255,159,0.18);
-  font-size:10px;font-family:var(--mono);color:var(--green);letter-spacing:1.5px;
-  text-transform:uppercase;transition:opacity .3s;
+@keyframes pulse-border {
+  0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,.4)}
+  50%{box-shadow:0 0 0 6px rgba(0,212,255,0)}
 }
-.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.2s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-.btn-ghost{
-  background:transparent;border:1px solid rgba(255,255,255,0.1);
-  border-radius:8px;color:var(--muted);font-size:12px;
-  padding:6px 14px;font-family:var(--mono);transition:all .2s;
-  letter-spacing:.5px;
-}
-.btn-ghost:hover{border-color:rgba(0,255,159,0.3);color:var(--green)}
-
-/* MAIN */
-main{flex:1;max-width:1380px;width:100%;margin:0 auto;padding:24px 24px 40px}
-
-/* CONFIG PANEL */
-.config-panel{
-  background:var(--panel);border:1px solid var(--g);border-top:1px solid var(--gt);
-  border-radius:14px;padding:22px 24px;margin-bottom:20px;
-  backdrop-filter:blur(20px);display:none;
-  animation:slideDown .25s ease;
-}
-.config-panel.open{display:block}
-@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-.config-title{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:18px}
-.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.field-label{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:2px;margin-bottom:7px;text-transform:uppercase}
-.field-input{
-  width:100%;background:rgba(255,255,255,0.035);
-  border:1px solid rgba(255,255,255,0.09);border-radius:9px;
-  padding:11px 14px;color:var(--text);font-size:13px;font-family:var(--mono);
-  transition:border-color .2s;letter-spacing:.5px;
-}
-.field-input:focus{border-color:rgba(0,255,159,0.35);background:rgba(0,255,159,0.03)}
-.field-hint{font-size:10px;color:var(--dim);margin-top:5px;line-height:1.5}
-.field-hint a{color:var(--blue);text-decoration:none}
-.toggle-row{display:flex;align-items:center;gap:12px;margin-top:18px}
-.toggle{
-  width:46px;height:25px;border-radius:13px;cursor:pointer;
-  background:rgba(255,255,255,0.09);position:relative;transition:background .3s;flex-shrink:0;
-  border:1px solid rgba(255,255,255,0.1);
-}
-.toggle.on{background:var(--green);border-color:var(--green)}
-.toggle-knob{
-  position:absolute;top:3px;left:3px;width:17px;height:17px;
-  border-radius:50%;background:#fff;transition:left .3s;
-  box-shadow:0 1px 4px rgba(0,0,0,.5);
-}
-.toggle.on .toggle-knob{left:24px;background:#03050a}
-.toggle-label{font-size:12px;color:var(--muted);transition:color .3s}
-.toggle.on + .toggle-label{color:var(--green)}
-.warn-badge{
-  display:inline-flex;align-items:center;gap:6px;margin-top:8px;
-  padding:6px 12px;background:rgba(255,149,0,0.08);border:1px solid rgba(255,149,0,0.2);
-  border-radius:8px;font-size:11px;color:var(--orange);font-family:var(--mono);
+.logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: .1em; }
+.logo-sub { font-size: 9px; color: var(--muted); letter-spacing: .2em; margin-top: 2px; }
+.badge {
+  background: rgba(0,230,118,.1);
+  border: 1px solid rgba(0,230,118,.3);
+  color: var(--bull);
+  font-size: 9px; letter-spacing: .15em;
+  padding: 3px 10px;
+  text-transform: uppercase;
 }
 
-/* SEARCH BAR */
-.search-row{display:flex;gap:12px;margin-bottom:22px;align-items:stretch}
-.search-wrap{flex:1;position:relative}
-.search-prefix{
-  position:absolute;left:16px;top:50%;transform:translateY(-50%);
-  color:var(--green);font-family:var(--mono);font-size:18px;font-weight:700;
-  pointer-events:none;
-}
-.search-input{
-  width:100%;background:rgba(255,255,255,0.03);
-  border:1px solid rgba(0,255,159,0.18);border-radius:12px;
-  padding:15px 18px 15px 38px;color:var(--text);
-  font-size:20px;font-family:var(--mono);font-weight:700;
-  letter-spacing:5px;transition:all .2s;
-}
-.search-input:focus{border-color:rgba(0,255,159,0.45);background:rgba(0,255,159,0.025);box-shadow:0 0 30px rgba(0,255,159,0.06)}
-.search-input::placeholder{color:var(--dim);letter-spacing:3px;font-weight:400;font-size:16px}
-.btn-analyze{
-  padding:15px 36px;border-radius:12px;border:none;
-  background:linear-gradient(135deg,#00ff9f,#00d4aa);
-  color:#03050a;font-weight:700;font-size:14px;font-family:var(--mono);
-  letter-spacing:1.5px;min-width:160px;
-  box-shadow:0 0 40px rgba(0,255,159,0.28),inset 0 1px 0 rgba(255,255,255,0.3);
-  transition:all .25s;position:relative;overflow:hidden;
-}
-.btn-analyze:hover:not(:disabled){box-shadow:0 0 60px rgba(0,255,159,0.4)}
-.btn-analyze:disabled{background:rgba(0,255,159,0.2);color:rgba(0,0,0,0.4);box-shadow:none;cursor:not-allowed}
-.btn-analyze::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);transform:translateX(-100%)}
-.btn-analyze.loading::after{animation:shimmer 1.2s infinite}
-@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
-
-/* ERROR */
-.error-bar{
-  padding:12px 16px;margin-bottom:18px;
-  background:rgba(255,59,92,0.08);border:1px solid rgba(255,59,92,0.25);
-  border-radius:9px;color:var(--red);font-size:12px;font-family:var(--mono);display:none;
+/* LAYOUT */
+.app {
+  position: relative; z-index: 2;
+  max-width: 1400px; margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
 }
 
-/* MARKET SNAPSHOT */
-.snapshot{
-  background:var(--panel);border:1px solid var(--g);border-top:1px solid var(--gt);
-  border-radius:14px;padding:18px 22px;margin-bottom:20px;
-  display:none;backdrop-filter:blur(20px);
+/* PANELS */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
 }
-.snapshot.visible{display:block}
-.snapshot-inner{display:flex;align-items:center;gap:28px;flex-wrap:wrap}
-.snap-item{flex-shrink:0}
-.snap-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:4px}
-.snap-val{font-family:var(--mono);font-weight:700;font-size:19px;color:var(--green)}
-.snap-val.blue{color:var(--blue)}
-.snap-val.red{color:var(--red)}
-.snap-val.normal{font-size:15px;color:var(--text)}
-.snap-sub{font-size:10px;color:var(--dim);margin-top:2px}
-.snap-chart{flex:1;min-width:220px}
-#miniChart{width:100%;height:72px;display:block;border-radius:8px}
-.snap-divider{width:1px;height:40px;background:rgba(255,255,255,0.06);flex-shrink:0}
-
-/* TABS */
-.tab-bar{display:flex;gap:2px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:20px}
-.tab{
-  background:transparent;border:none;border-bottom:2px solid transparent;
-  color:var(--muted);font-family:var(--mono);font-size:11px;
-  padding:10px 22px;letter-spacing:2px;text-transform:uppercase;transition:all .2s;
-  margin-bottom:-1px;
+.panel-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px; letter-spacing: .2em; color: var(--accent);
+  display: flex; align-items: center; gap: 8px;
+  text-transform: uppercase;
+  background: rgba(0,212,255,.03);
 }
-.tab:hover{color:var(--text)}
-.tab.active{color:var(--green);border-bottom-color:var(--green)}
-
-/* CONTENT TABS */
-.tab-content{display:none}
-.tab-content.active{display:block}
-
-/* EMPTY STATE */
-.empty-state{text-align:center;padding:90px 0;color:var(--dim)}
-.empty-icon{font-size:48px;margin-bottom:18px;opacity:.5}
-.empty-title{font-family:var(--mono);font-size:13px;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px}
-.empty-sub{font-size:12px;color:var(--muted);opacity:.6}
-
-/* ANALYSIS GRID */
-.analysis-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
-.span2{grid-column:span 2}
-.span3{grid-column:span 3}
-
-/* GLASS PANEL */
-.glass{
-  background:var(--panel);border:1px solid var(--g);border-top:1px solid var(--gt);
-  border-radius:14px;padding:20px;backdrop-filter:blur(20px);
-  box-shadow:0 0 50px rgba(0,255,159,0.025),inset 0 1px 0 rgba(255,255,255,0.04);
+.panel-header .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  animation: blink 2s ease infinite;
 }
-.panel-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:18px}
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.2} }
 
-/* SIGNAL GAUGE */
-.gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:18px}
-#gaugeCanvas{display:block}
-.gauge-signal{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:2px}
-.gauge-conf{font-size:11px;color:var(--muted)}
+/* SIDEBAR */
+.sidebar { grid-row: 1 / -1; display: flex; flex-direction: column; gap: 12px; }
 
-/* BADGE ROW */
-.badge-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);
+/* INPUT ROW */
+.input-row {
+  display: flex; gap: 8px;
+  padding: 12px;
 }
-.badge-row:last-child{border-bottom:none}
-.badge-key{font-size:11px;font-family:var(--mono);color:var(--muted)}
-.badge-val{font-size:12px;font-family:var(--mono);font-weight:700}
+.input-row input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  padding: 8px 12px;
+  text-transform: uppercase;
+  outline: none;
+  transition: border-color .2s;
+}
+.input-row input:focus { border-color: var(--accent); }
+.btn-analyze {
+  background: var(--accent);
+  color: #000;
+  border: none; cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 11px;
+  letter-spacing: .1em; padding: 8px 16px;
+  text-transform: uppercase;
+  transition: all .2s;
+}
+.btn-analyze:hover { background: #33deff; transform: translateY(-1px); }
+.btn-analyze:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 
-/* LEVEL CARDS */
-.level-card{
-  padding:12px 14px;border-radius:10px;margin-bottom:10px;
+/* SWING TIMEFRAME */
+.tf-row {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: 6px; padding: 0 12px 12px;
 }
-.level-card.entry{background:rgba(41,121,255,0.07);border:1px solid rgba(41,121,255,0.2)}
-.level-card.sl{background:rgba(255,59,92,0.07);border:1px solid rgba(255,59,92,0.18)}
-.level-card.tp{background:rgba(0,255,159,0.05);border:1px solid rgba(0,255,159,0.15)}
-.level-type{font-size:9px;font-family:var(--mono);letter-spacing:2.5px;margin-bottom:6px;font-weight:700}
-.level-type.entry{color:var(--blue)}
-.level-type.sl{color:var(--red)}
-.level-type.tp{color:var(--green)}
-.level-price{font-size:19px;font-family:var(--mono);font-weight:700;margin-bottom:4px}
-.level-rat{font-size:11px;color:var(--muted);line-height:1.5}
+.tf-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: 10px; padding: 6px;
+  cursor: pointer; transition: all .15s;
+  text-align: center;
+}
+.tf-btn.active {
+  border-color: var(--accent); color: var(--accent);
+  background: rgba(0,212,255,.08);
+}
 
-/* TRADING PLAN */
-.trading-plan{font-size:13px;line-height:1.85;color:#b0bec5;white-space:pre-wrap}
-.tags-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.tag{
-  padding:4px 13px;border-radius:20px;font-size:11px;
-  background:rgba(41,121,255,0.1);border:1px solid rgba(41,121,255,0.22);color:var(--blue);
+/* METRICS */
+.metrics { padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.metric {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
 }
-.tag.risk{background:rgba(255,59,92,0.08);border-color:rgba(255,59,92,0.2);color:var(--red)}
-.risk-item{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
-.risk-ico{color:var(--red);font-size:12px;margin-top:2px;flex-shrink:0}
-.risk-text{font-size:12px;color:#9ca3af;line-height:1.6}
-.struct-box{
-  margin-top:16px;padding:14px;
-  background:rgba(255,255,255,0.025);border-radius:9px;
-  border:1px solid rgba(255,255,255,0.06);
-}
-.struct-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:2px;margin-bottom:8px}
-.struct-text{font-size:12px;color:#9ca3af;line-height:1.65}
-.liq-zone{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.liq-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);flex-shrink:0}
-.liq-price{font-family:var(--mono);font-size:12px}
+.metric-label { font-size: 8px; color: var(--muted); letter-spacing: .15em; text-transform: uppercase; margin-bottom: 4px; }
+.metric-val { font-size: 15px; font-weight: 700; color: var(--text); }
+.metric-val.bull { color: var(--bull); }
+.metric-val.bear { color: var(--bear); }
 
-/* POSITIONS */
-.pos-card{
-  background:var(--panel);border:1px solid var(--g);border-top:1px solid var(--gt);
-  border-radius:14px;padding:18px 20px;margin-bottom:12px;
-  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+/* SWING PLAN */
+.swing-plan { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.plan-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-size: 11px;
 }
-.pos-coin{font-family:var(--mono);font-weight:700;font-size:17px;min-width:70px}
-.pos-sub{font-size:10px;color:var(--muted);margin-top:2px}
-.side-badge{
-  padding:4px 16px;border-radius:20px;font-family:var(--mono);font-size:12px;font-weight:700;
+.plan-label { color: var(--muted); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.plan-val { font-weight: 700; }
+.plan-val.entry { color: var(--accent); }
+.plan-val.tp { color: var(--bull); }
+.plan-val.sl { color: var(--bear); }
+.plan-val.hold { color: var(--warn); }
+.rr-bar {
+  height: 4px;
+  background: var(--dim);
+  position: relative; overflow: hidden;
+  margin-top: 4px;
 }
-.side-badge.long{background:rgba(0,255,159,0.12);border:1px solid rgba(0,255,159,0.28);color:var(--green)}
-.side-badge.short{background:rgba(255,59,92,0.12);border:1px solid rgba(255,59,92,0.28);color:var(--red)}
-.pos-stats{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
-.pos-stat-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:2px;margin-bottom:4px}
-.pos-stat-val{font-family:var(--mono);font-size:13px;font-weight:700}
-.pos-time{font-size:10px;color:var(--dim);font-family:var(--mono);white-space:nowrap}
-.pos-close-btn{
-  background:rgba(255,59,92,0.1);border:1px solid rgba(255,59,92,0.22);
-  color:var(--red);padding:6px 14px;border-radius:8px;
-  font-size:11px;font-family:var(--mono);letter-spacing:1px;transition:all .2s;
+.rr-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg, var(--bull), var(--accent));
+  transition: width .8s ease;
 }
-.pos-close-btn:hover{background:rgba(255,59,92,0.2)}
+
+/* CONFIG */
+.cfg-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.cfg-row { display: flex; flex-direction: column; gap: 4px; }
+.cfg-label { font-size: 9px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+.cfg-input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px; padding: 7px 10px; outline: none;
+  width: 100%;
+  transition: border-color .2s;
+}
+.cfg-input:focus { border-color: var(--accent); }
+.cfg-toggle {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; padding: 8px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  transition: border-color .2s;
+}
+.cfg-toggle:hover { border-color: var(--accent); }
+.toggle-switch {
+  width: 32px; height: 17px;
+  background: var(--dim);
+  border-radius: 9px; position: relative;
+  transition: background .2s; flex-shrink: 0;
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute; left: 2px; top: 2px;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--muted);
+  transition: all .2s;
+}
+.cfg-toggle.active .toggle-switch { background: var(--accent); }
+.cfg-toggle.active .toggle-switch::after { left: 17px; background: #000; }
+.toggle-text { font-size: 10px; color: var(--muted); }
+.cfg-toggle.active .toggle-text { color: var(--accent); }
+
+/* LEVERAGE */
+.lev-slider { width: 100%; accent-color: var(--accent); }
+
+/* MAIN AREA */
+.main { display: flex; flex-direction: column; gap: 12px; }
+.top-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 /* TERMINAL */
-.terminal{
-  background:rgba(0,0,0,.45);border:1px solid var(--g);border-radius:14px;overflow:hidden;
+.terminal-body {
+  padding: 12px;
+  height: 260px;
+  overflow-y: auto;
+  font-size: 11px; line-height: 1.7;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
-.terminal-header{
-  padding:10px 18px;border-bottom:1px solid rgba(255,255,255,0.05);
-  display:flex;align-items:center;gap:8px;
+.log-line { margin-bottom: 2px; }
+.log-line .ts { color: var(--muted); margin-right: 6px; font-size: 10px; }
+.log-line.info .msg { color: var(--text); }
+.log-line.ok .msg { color: var(--bull); }
+.log-line.warn .msg { color: var(--warn); }
+.log-line.err .msg { color: var(--bear); }
+.log-line.accent .msg { color: var(--accent); }
+.log-line.dim .msg { color: var(--muted); }
+
+/* AI ANALYSIS */
+.analysis-body {
+  padding: 16px;
+  min-height: 200px;
+  font-size: 12px; line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
 }
-.term-dot{width:11px;height:11px;border-radius:50%}
-.term-title{font-size:11px;font-family:var(--mono);color:var(--dim);margin-left:8px;letter-spacing:1.5px}
-.terminal-body{height:440px;overflow-y:auto;padding:18px 20px}
-.log-line{
-  font-family:var(--mono);font-size:11px;line-height:1.9;
-  border-bottom:1px solid rgba(255,255,255,0.02);padding:1px 0;
+.analysis-body .loading {
+  color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
 }
-.log-time{color:var(--dim);margin-right:12px}
-.log-ok{color:var(--green)}
-.log-err{color:var(--red)}
-.log-info{color:#5a8090}
-.log-warn{color:var(--orange)}
-.log-cursor{animation:blink 1s step-end infinite;color:var(--green)}
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to{ transform: rotate(360deg); } }
+
+/* CHART AREA */
+.chart-body { padding: 12px; }
+.candle-chart {
+  width: 100%; height: 160px;
+  display: flex; align-items: flex-end; gap: 3px;
+  position: relative;
+}
+.candle-wrap {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 0; position: relative; height: 100%;
+  justify-content: flex-end;
+}
+.candle-wick { width: 1px; background: var(--muted); }
+.candle-body { width: 80%; min-height: 2px; }
+.candle-body.bull { background: var(--bull); }
+.candle-body.bear { background: var(--bear); }
+.price-line {
+  position: absolute; left: 0; right: 0; height: 1px;
+  border-top: 1px dashed rgba(0,212,255,.4);
+  pointer-events: none;
+}
 
 /* ORDER BOOK */
-.book-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;font-family:var(--mono);font-size:11px}
-.book-row{display:flex;justify-content:space-between;padding:3px 8px;border-radius:3px;position:relative;overflow:hidden}
-.book-bar{position:absolute;top:0;bottom:0;right:0;opacity:.15;border-radius:3px}
-.book-bar.bid{background:var(--green)}
-.book-bar.ask{background:var(--red)}
-.book-px{font-weight:700}
-.book-px.bid{color:var(--green)}
-.book-px.ask{color:var(--red)}
-.book-sz{color:var(--muted)}
-.book-header{font-size:9px;color:var(--muted);letter-spacing:2px;padding:2px 8px;margin-bottom:4px}
+.ob-body { padding: 8px 12px; }
+.ob-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  font-size: 10px; padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+}
+.ob-row.ask .price { color: var(--bear); }
+.ob-row.bid .price { color: var(--bull); }
+.ob-row .size, .ob-row .total { color: var(--muted); text-align: right; }
+.ob-spread {
+  text-align: center; font-size: 9px;
+  color: var(--accent); letter-spacing: .1em;
+  padding: 4px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  background: rgba(0,212,255,.03);
+}
+.ob-header { display: grid; grid-template-columns: 1fr 1fr 1fr; font-size: 8px; color: var(--muted); letter-spacing: .1em; padding-bottom: 4px; text-transform: uppercase; }
+.ob-header .right { text-align: right; }
 
-/* FOOTER */
-footer{text-align:center;padding:20px;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px;border-top:1px solid rgba(255,255,255,0.04)}
+/* POSITIONS */
+.pos-body { padding: 12px; }
+.pos-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 10px 12px; margin-bottom: 8px;
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 12px; align-items: center;
+}
+.pos-side {
+  font-size: 9px; letter-spacing: .1em; padding: 3px 8px;
+  font-weight: 700;
+}
+.pos-side.long { background: rgba(0,230,118,.15); color: var(--bull); border: 1px solid rgba(0,230,118,.3); }
+.pos-side.short { background: rgba(255,61,113,.15); color: var(--bear); border: 1px solid rgba(255,61,113,.3); }
+.pos-info { font-size: 11px; }
+.pos-pair { font-weight: 700; margin-bottom: 2px; }
+.pos-detail { font-size: 9px; color: var(--muted); }
+.pos-pnl { text-align: right; font-size: 13px; font-weight: 700; }
+.pos-pnl.pos { color: var(--bull); }
+.pos-pnl.neg { color: var(--bear); }
+.no-pos { color: var(--muted); font-size: 11px; text-align: center; padding: 20px; }
 
 /* CONFIRM MODAL */
-.modal-overlay{
-  position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
-  background:rgba(3,5,10,0.82);backdrop-filter:blur(12px);
-  opacity:0;pointer-events:none;transition:opacity .2s;
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,.85);
+  display: none; place-items: center;
+  backdrop-filter: blur(4px);
 }
-.modal-overlay.open{opacity:1;pointer-events:all}
-.modal-box{
-  background:rgba(7,10,18,0.98);border:1px solid rgba(0,255,159,0.22);
-  border-top:1px solid rgba(0,255,159,0.45);border-radius:16px;
-  padding:28px 32px;max-width:440px;width:90%;
-  box-shadow:0 0 80px rgba(0,255,159,0.08);
-  animation:slideDown .2s ease;
+.modal-overlay.open { display: grid; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px; width: 380px;
+  box-shadow: 0 0 60px rgba(0,212,255,.15);
 }
-.modal-title{font-family:var(--mono);font-size:11px;letter-spacing:3px;
-  text-transform:uppercase;color:var(--orange);margin-bottom:18px}
-.modal-body{font-size:13px;color:var(--text);line-height:1.7;margin-bottom:22px}
-.modal-row{display:flex;justify-content:space-between;align-items:center;
-  padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-family:var(--mono);font-size:11px}
-.modal-row:last-of-type{border-bottom:none}
-.modal-key{color:var(--muted)}
-.modal-val{font-weight:700}
-.modal-actions{display:flex;gap:10px;margin-top:22px}
-.modal-cancel{flex:1;padding:11px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);
-  background:transparent;color:var(--muted);font-family:var(--mono);font-size:12px;
-  letter-spacing:1px;transition:all .2s;cursor:pointer}
-.modal-cancel:hover{border-color:rgba(255,255,255,0.2);color:var(--text)}
-.modal-confirm{flex:1;padding:11px;border-radius:9px;border:none;
-  background:linear-gradient(135deg,#ff3b5c,#c0002a);
-  color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;
-  letter-spacing:1px;transition:all .2s;cursor:pointer}
-.modal-confirm:hover{box-shadow:0 0 30px rgba(255,59,92,0.3)}
-.modal-confirm.long-mode{background:linear-gradient(135deg,#00ff9f,#00c878);color:#03050a}
-.modal-confirm.long-mode:hover{box-shadow:0 0 30px rgba(0,255,159,0.3)}
-.paper-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;
-  background:rgba(255,149,0,0.1);border:1px solid rgba(255,149,0,0.25);
-  border-radius:6px;font-size:10px;color:var(--orange);font-family:var(--mono)}
+.modal-title {
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: 16px; margin-bottom: 16px;
+  color: var(--accent); letter-spacing: .05em;
+}
+.modal-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--dim); font-size: 11px; }
+.modal-row .k { color: var(--muted); }
+.modal-row .v { font-weight: 700; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.btn-cancel { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: 'Space Mono', monospace; font-size: 11px; padding: 10px; cursor: pointer; }
+.btn-cancel:hover { border-color: var(--bear); color: var(--bear); }
+.btn-exec { flex: 1; background: var(--bull); border: none; color: #000; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 12px; letter-spacing: .08em; padding: 10px; cursor: pointer; }
+.btn-exec:hover { background: #33ff8a; }
 
-/* LOADING INDICATOR */
-.loading-state{text-align:center;padding:70px 0}
-.loading-coin{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green);letter-spacing:6px;margin-bottom:12px}
-.loading-phase{
-  font-family:var(--mono);font-size:12px;letter-spacing:2.5px;text-transform:uppercase;
-  background:linear-gradient(90deg,var(--green),var(--blue),var(--green));
-  background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  animation:shimmer 1.8s linear infinite;margin-bottom:22px;
+/* SWING STATUS */
+.swing-status {
+  padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10px;
 }
-.loading-bar{width:240px;height:2px;background:rgba(255,255,255,0.06);border-radius:1px;margin:0 auto}
-.loading-fill{height:100%;border-radius:1px;background:var(--green);animation:load 1.5s ease-in-out infinite}
-@keyframes load{0%{width:5%}50%{width:75%}100%{width:95%}}
+.swing-badge {
+  padding: 2px 10px;
+  font-size: 8px; letter-spacing: .15em;
+  text-transform: uppercase; font-weight: 700;
+}
+.swing-badge.bull { background: rgba(0,230,118,.15); border: 1px solid rgba(0,230,118,.4); color: var(--bull); }
+.swing-badge.bear { background: rgba(255,61,113,.15); border: 1px solid rgba(255,61,113,.4); color: var(--bear); }
+.swing-badge.neutral { background: rgba(255,179,0,.1); border: 1px solid rgba(255,179,0,.3); color: var(--warn); }
 
-/* RESPONSIVE */
-@media(max-width:900px){
-  .analysis-grid{grid-template-columns:1fr 1fr}
-  .span2{grid-column:span 2}
-  .span3{grid-column:span 2}
-  .pos-stats{grid-template-columns:repeat(3,1fr)}
-  main{padding:16px}
+/* SIGNAL BARS */
+.signal-row { display: flex; gap: 3px; }
+.sig-bar { width: 12px; height: 20px; background: var(--dim); }
+.sig-bar.filled.bull { background: var(--bull); }
+.sig-bar.filled.bear { background: var(--bear); }
+
+/* FOOTER */
+footer {
+  text-align: center; padding: 12px;
+  font-size: 8px; color: var(--muted); letter-spacing: .15em;
+  border-top: 1px solid var(--border); margin-top: 8px;
+  position: relative; z-index: 2;
 }
-@media(max-width:600px){
-  .analysis-grid{grid-template-columns:1fr}
-  .span2,.span3{grid-column:span 1}
-  .config-grid{grid-template-columns:1fr}
-  .pos-stats{grid-template-columns:repeat(2,1fr)}
-  .search-input{font-size:16px;letter-spacing:3px}
-  .btn-analyze{min-width:120px;padding:15px 20px;font-size:12px}
+
+/* TABS */
+.tabs { display: flex; border-bottom: 1px solid var(--border); }
+.tab { padding: 8px 14px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: all .15s; }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+@media(max-width:900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { grid-row: auto; }
+  .top-row { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 <body>
-<div id="app">
 
-<!-- HEADER -->
+<div class="scanline"></div>
+
 <header>
   <div class="logo">
     <div class="logo-icon">N</div>
-    <div class="logo-text">
-      <div class="logo-name">NEXUS TRADER</div>
-      <div class="logo-sub">GROQ × HYPERLIQUID</div>
+    <div>
+      <div class="logo-text">NEXUS SWING</div>
+      <div class="logo-sub">GROQ × HYPERLIQUID • SWING TRADER</div>
     </div>
   </div>
-  <div class="header-right">
-    <div class="status-pill" id="statusPill" style="display:none">
-      <div class="status-dot"></div>
-      <span id="statusText">ANALYZING</span>
-    </div>
-    <button class="btn-ghost" onclick="toggleConfig()">⚙ CONFIG</button>
-  </div>
+  <div class="badge">● SWING MODE ACTIVE</div>
 </header>
 
-<!-- MAIN -->
-<main>
+<div class="app">
 
-  <!-- CONFIG -->
-  <div class="config-panel" id="configPanel">
-    <div class="config-title">Configuration</div>
-    <div class="config-grid">
-      <div>
-        <div class="field-label">Groq API Key <span style="color:var(--green);font-size:9px">— 100% FREE</span></div>
-        <input type="password" id="geminiKey" class="field-input" placeholder="gsk_…">
-        <div class="field-hint">Free key (no CC needed) at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> → Create API Key</div>
-      </div>
-      <div>
-        <div class="field-label">Hyperliquid Private Key <span style="color:var(--dim)">(optional)</span></div>
-        <input type="password" id="walletKey" class="field-input" placeholder="0x… (for live trade execution)">
-        <div class="field-hint">Your Ethereum wallet private key for signing orders on Hyperliquid</div>
-      </div>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle" id="autoToggle" onclick="toggleAutoTrade()"><div class="toggle-knob"></div></div>
-      <span class="toggle-label" id="autoLabel">Auto-trade disabled — analysis only</span>
-    </div>
-    <div class="warn-badge">
-      ⚠ Only use testnet/dedicated trading wallets. Never use your main wallet. Not financial advice.
-    </div>
-  </div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
 
-  <!-- SEARCH -->
-  <div class="search-row">
-    <div class="search-wrap">
-      <span class="search-prefix">$</span>
-      <input type="text" id="coinInput" class="search-input" placeholder="BTC   ETH   SOL   WIF   HYPE"
-        oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')runAnalysis()">
-    </div>
-    <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()">▶ ANALYZE</button>
-  </div>
-
-  <!-- ERROR -->
-  <div class="error-bar" id="errorBar"></div>
-
-  <!-- MARKET SNAPSHOT -->
-  <div class="snapshot" id="snapshot">
-    <div class="snapshot-inner">
-      <div class="snap-item">
-        <div class="snap-label">Mark Price</div>
-        <div class="snap-val" id="snapPrice">—</div>
+    <!-- Search -->
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div>INSTRUMENT</div>
+      <div class="input-row">
+        <input id="coinInput" type="text" value="BTC" placeholder="BTC, ETH, SOL…" maxlength="10">
+        <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()">ANALYZE</button>
       </div>
-      <div class="snap-divider"></div>
-      <div class="snap-item">
-        <div class="snap-label">24h Change</div>
-        <div class="snap-val" id="snapChange">—</div>
-      </div>
-      <div class="snap-divider"></div>
-      <div class="snap-item">
-        <div class="snap-label">Open Interest</div>
-        <div class="snap-val blue" id="snapOI">—</div>
-      </div>
-      <div class="snap-divider"></div>
-      <div class="snap-item">
-        <div class="snap-label">Funding / 1h</div>
-        <div class="snap-val" id="snapFunding">—</div>
-      </div>
-      <div class="snap-divider"></div>
-      <div class="snap-item">
-        <div class="snap-label">24h Volume</div>
-        <div class="snap-val normal" id="snapVol">—</div>
-      </div>
-      <div class="snap-divider"></div>
-      <div class="snap-chart">
-        <div class="snap-label">72h Price Action</div>
-        <canvas id="miniChart"></canvas>
-      </div>
-      <div class="snap-divider"></div>
-      <div class="snap-item">
-        <div class="snap-label">Instrument</div>
-        <div class="snap-val normal" id="snapInstr">—</div>
-        <div class="snap-sub">Hyperliquid Perp</div>
+      <div class="tf-row">
+        <button class="tf-btn" onclick="setTF(this,'1h')">1H</button>
+        <button class="tf-btn active" onclick="setTF(this,'4h')">4H</button>
+        <button class="tf-btn" onclick="setTF(this,'1d')">1D</button>
       </div>
     </div>
-  </div>
 
-  <!-- TABS -->
-  <div class="tab-bar">
-    <button class="tab active" onclick="switchTab('analysis',this)">Analysis</button>
-    <button class="tab" onclick="switchTab('positions',this)" id="posTab">Positions (0)</button>
-    <button class="tab" onclick="switchTab('orderbook',this)">Order Book</button>
-    <button class="tab" onclick="switchTab('terminal',this)">Terminal</button>
-  </div>
-
-  <!-- ANALYSIS TAB -->
-  <div class="tab-content active" id="tab-analysis">
-    <div class="empty-state" id="emptyAnalysis">
-      <div class="empty-icon">◈</div>
-      <div class="empty-title">Ready to Analyze</div>
-      <div class="empty-sub">Enter a coin symbol and press Analyze.<br>NEXUS will fetch Hyperliquid data and generate a complete trading plan.</div>
-    </div>
-    <div id="loadingState" style="display:none" class="loading-state">
-      <div class="loading-coin" id="loadingCoin">BTC</div>
-      <div class="loading-phase" id="loadingPhase">Fetching Market Data…</div>
-      <div class="loading-bar"><div class="loading-fill"></div></div>
-    </div>
-    <div class="analysis-grid" id="analysisGrid" style="display:none"></div>
-  </div>
-
-  <!-- POSITIONS TAB -->
-  <div class="tab-content" id="tab-positions">
-    <div class="empty-state" id="emptyPositions">
-      <div class="empty-icon">◎</div>
-      <div class="empty-title">No Open Positions</div>
-      <div class="empty-sub">Enable auto-trade in Config and run an analysis<br>to automatically open futures positions on Hyperliquid.</div>
-    </div>
-    <div id="positionsList"></div>
-  </div>
-
-  <!-- ORDER BOOK TAB -->
-  <div class="tab-content" id="tab-orderbook">
-    <div class="empty-state" id="emptyBook">
-      <div class="empty-icon">≡</div>
-      <div class="empty-title">No Data Yet</div>
-      <div class="empty-sub">Run an analysis first to load the order book.</div>
-    </div>
-    <div class="analysis-grid" id="bookGrid" style="display:none">
-      <div class="glass">
-        <div class="panel-label">L2 Order Book</div>
-        <div class="book-grid" id="bookContent"></div>
-      </div>
-      <div class="glass">
-        <div class="panel-label">Funding Rate History (24h)</div>
-        <canvas id="fundingChart" width="400" height="200" style="width:100%;height:200px"></canvas>
-      </div>
-      <div class="glass span1">
-        <div class="panel-label">Recent Candles (1h OHLCV)</div>
-        <div id="candleTable" style="font-family:var(--mono);font-size:11px"></div>
+    <!-- Market Data -->
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div>MARKET DATA</div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">Mark Price</div><div class="metric-val" id="mPrice">—</div></div>
+        <div class="metric"><div class="metric-label">24h Change</div><div class="metric-val" id="mChange">—</div></div>
+        <div class="metric"><div class="metric-label">Open Interest</div><div class="metric-val" id="mOI">—</div></div>
+        <div class="metric"><div class="metric-label">Funding/1h</div><div class="metric-val" id="mFunding">—</div></div>
+        <div class="metric"><div class="metric-label">24h Volume</div><div class="metric-val" id="mVol">—</div></div>
+        <div class="metric"><div class="metric-label">Swing Bias</div>
+          <div id="mBias" class="swing-status" style="padding:0">
+            <span class="swing-badge neutral" id="biasBadge">—</span>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- TERMINAL TAB -->
-  <div class="tab-content" id="tab-terminal">
-    <div class="terminal">
-      <div class="terminal-header">
-        <div class="term-dot" style="background:#ff3b5c"></div>
-        <div class="term-dot" style="background:#ff9500"></div>
-        <div class="term-dot" style="background:#00ff9f"></div>
-        <div class="term-title">NEXUS EXECUTION LOG — GROQ × HYPERLIQUID</div>
-      </div>
-      <div class="terminal-body" id="terminalBody">
-        <div class="log-line"><span class="log-info">System initialized. NEXUS Trader v2.1 ready.</span></div>
-        <div class="log-line"><span class="log-info">Hyperliquid endpoint: api.hyperliquid.xyz</span></div>
-        <div class="log-line"><span class="log-info">AI model: Groq — Llama 3.3 70B Versatile (FREE)</span></div>
-        <div class="log-line"><span class="log-info">Awaiting user input…</span> <span class="log-cursor">█</span></div>
+    <!-- Swing Plan -->
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div>SWING PLAN</div>
+      <div class="swing-plan">
+        <div class="plan-row">
+          <div><div class="plan-label">Entry Zone</div><div class="plan-val entry" id="planEntry">—</div></div>
+          <div><div class="plan-label">Direction</div><div class="plan-val" id="planDir">—</div></div>
+        </div>
+        <div class="plan-row">
+          <div><div class="plan-label">Take Profit</div><div class="plan-val tp" id="planTP">—</div></div>
+          <div><div class="plan-label">TP %</div><div class="plan-val tp" id="planTPpct">—</div></div>
+        </div>
+        <div class="plan-row">
+          <div><div class="plan-label">Stop Loss</div><div class="plan-val sl" id="planSL">—</div></div>
+          <div><div class="plan-label">SL %</div><div class="plan-val sl" id="planSLpct">—</div></div>
+        </div>
+        <div class="plan-row">
+          <div><div class="plan-label">Hold Period</div><div class="plan-val hold" id="planHold">—</div></div>
+          <div><div class="plan-label">R:R Ratio</div><div class="plan-val" id="planRR">—</div></div>
+        </div>
+        <div class="rr-bar"><div class="rr-fill" id="rrFill" style="width:0%"></div></div>
+
+        <!-- Execute Button -->
+        <button id="execBtn" style="display:none;margin-top:4px;width:100%;background:var(--bull);border:none;color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;letter-spacing:.08em;padding:10px;cursor:pointer;" onclick="showConfirm()">
+          ▶ EXECUTE SWING TRADE
+        </button>
       </div>
     </div>
-  </div>
 
-</main>
-<footer>NEXUS TRADER &nbsp;•&nbsp; GROQ AI × HYPERLIQUID &nbsp;•&nbsp; FOR EDUCATIONAL PURPOSES ONLY &nbsp;•&nbsp; NOT FINANCIAL ADVICE</footer>
+    <!-- Config -->
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div>CONFIG</div>
+      <div class="cfg-body">
+        <div class="cfg-row">
+          <div class="cfg-label">Hyperliquid Private Key</div>
+          <input class="cfg-input" id="privKey" type="password" placeholder="0x… (untuk live trading)">
+        </div>
+        <div class="cfg-row">
+          <div class="cfg-label">Leverage: <span id="levVal">3</span>x</div>
+          <input type="range" class="lev-slider" id="levSlider" min="1" max="10" value="3"
+            oninput="document.getElementById('levVal').textContent=this.value">
+        </div>
+        <div class="cfg-row">
+          <div class="cfg-label">Order Size (USD)</div>
+          <input class="cfg-input" id="orderSize" type="number" value="100" min="10" step="10">
+        </div>
+        <div class="cfg-toggle" id="autoToggle" onclick="toggleAuto()">
+          <div class="toggle-switch"></div>
+          <div class="toggle-text" id="autoTxt">Auto-trade OFF — Analysis only</div>
+        </div>
+        <div class="cfg-toggle" id="testnetToggle" onclick="toggleTestnet()" style="background:rgba(255,179,0,.05);border-color:rgba(255,179,0,.2)">
+          <div class="toggle-switch" style="background:var(--warn)"><div style="position:absolute;left:17px;top:2px;width:13px;height:13px;border-radius:50%;background:#000;transition:all .2s"></div></div>
+          <div class="toggle-text" style="color:var(--warn)">⚠ Testnet Mode ON</div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Top Row: Chart + Order Book -->
+    <div class="top-row">
+      <div class="panel">
+        <div class="panel-header"><div class="dot"></div><span id="chartLabel">4H CANDLES — BTC</span></div>
+        <div class="chart-body">
+          <canvas id="priceCanvas" width="100%" height="160" style="width:100%;height:160px;display:block;"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><div class="dot"></div>L2 ORDER BOOK</div>
+        <div class="ob-body">
+          <div class="ob-header"><span>Price</span><span class="right">Size</span><span class="right">Total</span></div>
+          <div id="obAsks"></div>
+          <div class="ob-spread" id="obSpread">— SPREAD —</div>
+          <div id="obBids"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analysis -->
+    <div class="panel">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'analysis')">AI SWING ANALYSIS</div>
+        <div class="tab" onclick="switchTab(this,'positions')">POSITIONS (<span id="posCount">0</span>)</div>
+        <div class="tab" onclick="switchTab(this,'terminal')">EXECUTION LOG</div>
+      </div>
+      <div id="tab-analysis" class="tab-content active">
+        <div class="analysis-body" id="analysisBox">
+          <div style="color:var(--muted)">
+            Enter a coin symbol and click ANALYZE.<br>
+            NEXUS will fetch Hyperliquid data and generate a <strong style="color:var(--accent)">swing trading plan</strong> (hold 1–7 days, 4H/1D timeframe).
+          </div>
+        </div>
+      </div>
+      <div id="tab-positions" class="tab-content">
+        <div class="pos-body" id="posBox"><div class="no-pos">No open positions</div></div>
+      </div>
+      <div id="tab-terminal" class="tab-content">
+        <div class="terminal-body" id="terminal"></div>
+      </div>
+    </div>
+
+  </main>
 </div>
 
-<!-- CONFIRM MODAL -->
+<!-- Confirm Modal -->
 <div class="modal-overlay" id="confirmModal">
-  <div class="modal-box">
-    <div class="modal-title">⚠ Confirm Order Execution</div>
-    <div class="modal-body" id="modalBody"></div>
+  <div class="modal">
+    <div class="modal-title">⚠ CONFIRM SWING ORDER</div>
     <div id="modalRows"></div>
+    <div style="font-size:9px;color:var(--warn);margin-top:12px;line-height:1.6;">
+      ⚠ This will place a real order on Hyperliquid.<br>
+      Swing trades may be held for 1–7 days.<br>
+      NOT financial advice. Trade at your own risk.
+    </div>
     <div class="modal-actions">
-      <button class="modal-cancel" onclick="modalReject()">✕ CANCEL</button>
-      <button class="modal-confirm" id="modalConfirmBtn" onclick="modalAccept()">✓ EXECUTE</button>
+      <button class="btn-cancel" onclick="closeConfirm()">✕ CANCEL</button>
+      <button class="btn-exec" id="execConfirmBtn" onclick="executeSwingTrade()">✓ EXECUTE</button>
     </div>
   </div>
 </div>
+
+<footer>NEXUS SWING TRADER • GROQ AI × HYPERLIQUID • SWING MODE (4H/1D) • FOR EDUCATIONAL PURPOSES ONLY • NOT FINANCIAL ADVICE</footer>
 
 <script>
-'use strict';
-
 // ─── STATE ───────────────────────────────────────────────────────────────────
 const state = {
-  groqKey: '',        // was: geminiKey (renamed - this is Groq, not Gemini)
-  walletKey: '',
+  tf: '4h',
+  coin: 'BTC',
   autoTrade: false,
-  loading: false,
-  phase: null,
-  marketData: null,
-  analysis: null,
+  testnet: true,
   positions: [],
-  logs: [],
-  coin: '',
-  lastAnalyzeTime: 0,  // rate-limiter
-  pnlInterval: null,   // real PnL polling interval
+  plan: null,
+  marketData: null,
+  candles: []
 };
 
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const HL_INFO = 'https://api.hyperliquid.xyz/info';
-const HL_EXCHANGE = 'https://api.hyperliquid.xyz/exchange';
-const HL_EIP712_CHAIN_ID = 1337; // Hyperliquid uses 1337 for EIP-712 domain regardless of network
-const HL_VERIFYING_CONTRACT = '0x0000000000000000000000000000000000000000';
-const ANALYZE_RATE_LIMIT_MS = 10000; // 10s minimum between analyses
+const GROQ_KEY = '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'; // replace if needed
+const HL_BASE = 'https://api.hyperliquid.xyz';
+const HL_TEST = 'https://api.hyperliquid-testnet.xyz';
 
-const GEMINI_SYSTEM = `You are NEXUS — an elite quantitative derivatives trader with 20+ years experience in traditional finance and DeFi. Your specializations:
-• Perpetual futures trading on decentralized exchanges (Hyperliquid, dYdX, GMX)
-• Technical analysis: Elliott Wave, Wyckoff Method, market microstructure
-• On-chain analytics, funding rate arbitrage, liquidation cascade analysis
-• Risk management: Kelly Criterion, portfolio heat management, correlation analysis
-• Options-derived metrics applied to perpetuals (delta, gamma exposure, implied vol surfaces)
-
-PERSONALITY: You are direct, data-driven, and extremely precise. You never sugarcoat risks. You think in probabilities and risk/reward ratios.
-
-When given market data, respond ONLY with a valid JSON object inside a markdown code block. Zero prose outside the JSON.
-
-Required JSON schema (all fields mandatory):
-{
-  "sentiment": "BULLISH" | "BEARISH" | "NEUTRAL",
-  "confidence": <integer 0-100>,
-  "signal": "STRONG_LONG" | "LONG" | "NEUTRAL" | "SHORT" | "STRONG_SHORT",
-  "entry": { "price": <number>, "rationale": <string> },
-  "stopLoss": { "price": <number>, "pct": <number>, "rationale": <string> },
-  "takeProfit": [
-    { "price": <number>, "pct": <number>, "label": "TP1", "rationale": <string> },
-    { "price": <number>, "pct": <number>, "label": "TP2", "rationale": <string> },
-    { "price": <number>, "pct": <number>, "label": "TP3", "rationale": <string> }
-  ],
-  "leverage": <integer 1-20>,
-  "positionSize": <float 0.01-1.0>,
-  "riskReward": <float>,
-  "tradingPlan": <detailed multi-line string>,
-  "keyRisks": [<string>, <string>, <string>],
-  "technicalSummary": {
-    "trend": <string>,
-    "support": <number>,
-    "resistance": <number>,
-    "rsi": <number>,
-    "macdSignal": "BULLISH_CROSS" | "BEARISH_CROSS" | "BULLISH" | "BEARISH" | "NEUTRAL",
-    "volumeAnalysis": <string>,
-    "fundingBias": "LONG_HEAVY" | "SHORT_HEAVY" | "NEUTRAL",
-    "liquidityZones": [<number>, <number>, <number>]
-  },
-  "marketStructure": <string>,
-  "catalysts": [<string>, <string>, <string>]
-}`;
-
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-function fmt(n, d = 2) {
-  if (typeof n !== 'number' || isNaN(n)) return '—';
-  return n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
-}
-function fmtCompact(n) {
-  if (!n) return '—';
-  n = parseFloat(n);
-  if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
-  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return '$' + (n / 1e3).toFixed(2) + 'K';
-  return '$' + n.toFixed(2);
-}
-function now() { return new Date().toLocaleTimeString('en-US', { hour12: false }); }
-
-function parseAnalysis(raw) {
-  try {
-    const m = raw.match(/```json\s*([\s\S]*?)```/);
-    const jsonStr = m ? m[1] : raw.trim();
-    return JSON.parse(jsonStr);
-  } catch (e) {
-    try {
-      const start = raw.indexOf('{'), end = raw.lastIndexOf('}');
-      if (start !== -1 && end !== -1) return JSON.parse(raw.slice(start, end + 1));
-    } catch {}
-    return null;
-  }
-}
+function hlBase(){ return state.testnet ? HL_TEST : HL_BASE; }
 
 // ─── LOGGING ─────────────────────────────────────────────────────────────────
-function log(msg, type = 'info') {
-  state.logs.push({ msg, type, time: now() });
-  const body = document.getElementById('terminalBody');
-  const cls = { ok: 'log-ok', err: 'log-err', info: 'log-info', warn: 'log-warn' }[type] || 'log-info';
-  const div = document.createElement('div');
-  div.className = 'log-line';
-  div.innerHTML = `<span class="log-time">${now()}</span><span class="${cls}">${msg}</span>`;
-  body.appendChild(div);
-  body.scrollTop = body.scrollHeight;
+function log(msg, type='info'){
+  const el = document.getElementById('terminal');
+  const ts = new Date().toTimeString().slice(0,8);
+  const d = document.createElement('div');
+  d.className = `log-line ${type}`;
+  d.innerHTML = `<span class="ts">[${ts}]</span><span class="msg">${msg}</span>`;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
 }
 
-// ─── HYPERLIQUID API ──────────────────────────────────────────────────────────
-async function hlInfo(payload) {
-  const r = await fetch(HL_INFO, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!r.ok) throw new Error(`Hyperliquid API error: ${r.status}`);
-  return r.json();
+// ─── TIMEFRAME ───────────────────────────────────────────────────────────────
+function setTF(btn, tf){
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  state.tf = tf;
+  log(`Timeframe set to ${tf.toUpperCase()} (Swing mode)`, 'accent');
 }
 
-async function fetchMarketData(coin) {
-  const now = Date.now();
-  const start72h = now - 72 * 3600000;
-  const start24h = now - 24 * 3600000;
+// ─── CONFIG TOGGLES ──────────────────────────────────────────────────────────
+function toggleAuto(){
+  state.autoTrade = !state.autoTrade;
+  const el = document.getElementById('autoToggle');
+  el.classList.toggle('active', state.autoTrade);
+  document.getElementById('autoTxt').textContent = state.autoTrade
+    ? 'Auto-trade ON — will execute'
+    : 'Auto-trade OFF — Analysis only';
+  log(`Auto-trade: ${state.autoTrade ? 'ENABLED' : 'DISABLED'}`, state.autoTrade ? 'ok' : 'warn');
+}
 
-  log(`→ Connecting to Hyperliquid for ${coin}-PERP…`, 'info');
+let testnetOn = true;
+function toggleTestnet(){
+  testnetOn = !testnetOn;
+  state.testnet = testnetOn;
+  const el = document.getElementById('testnetToggle');
+  el.querySelector('.toggle-text').textContent = testnetOn ? '⚠ Testnet Mode ON' : '🔴 MAINNET MODE';
+  el.querySelector('.toggle-text').style.color = testnetOn ? 'var(--warn)' : 'var(--bear)';
+  log(`Mode: ${testnetOn ? 'TESTNET' : '⚠ MAINNET — real funds'}`, testnetOn ? 'warn' : 'err');
+}
 
-  const [candles, book, metaCtx, funding] = await Promise.all([
-    hlInfo({ type: 'candleSnapshot', req: { coin, interval: '1h', startTime: start72h, endTime: now } }),
-    hlInfo({ type: 'l2Book', coin, nSigFigs: 5 }),
-    hlInfo({ type: 'metaAndAssetCtxs' }),
-    hlInfo({ type: 'fundingHistory', coin, startTime: start24h }),
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(btn, name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ─── FETCH MARKET DATA ────────────────────────────────────────────────────────
+async function fetchMarketData(coin){
+  log(`Fetching Hyperliquid data for ${coin}…`, 'info');
+  const [metaR, oiR] = await Promise.all([
+    fetch(`${hlBase()}/info`, {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({type:'metaAndAssetCtxs'})}),
+    fetch(`${hlBase()}/info`, {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({type:'openInterest'})})
   ]);
+  const metaData = await metaR.json();
+  const universe = metaData[0].universe;
+  const ctxs = metaData[1];
+  const idx = universe.findIndex(u => u.name === coin.toUpperCase());
+  if(idx === -1) throw new Error(`${coin} not found on Hyperliquid`);
 
-  const universe = metaCtx[0]?.universe || [];
-  const ctxs = metaCtx[1] || [];
-  const idx = universe.findIndex(a => a.name === coin);
-  const assetMeta = universe[idx] || {};
-  const assetCtx = ctxs[idx] || {};
+  const ctx = ctxs[idx];
+  const price = parseFloat(ctx.markPx);
+  const funding = parseFloat(ctx.funding);
+  const oi = parseFloat(ctx.openInterest) * price;
+  const prevDay = parseFloat(ctx.prevDayPx || ctx.markPx);
+  const change = ((price - prevDay) / prevDay * 100);
 
-  // ── FIX: Hyperliquid returns candles as objects {t,o,h,l,c,v}, normalize to arrays ──
-  const normCandle = c => Array.isArray(c)
-    ? c
-    : [c.t, c.o, c.h, c.l, c.c, c.v];
-  const normalizedCandles = (Array.isArray(candles) ? candles : []).map(normCandle);
+  // Candles
+  const tfMap = {'1h':60,'4h':240,'1d':1440};
+  const interval = tfMap[state.tf] || 240;
+  const end = Date.now();
+  const start = end - interval * 60 * 1000 * 60; // ~60 candles
 
-  log(`✓ Received ${normalizedCandles.length} hourly candles`, 'ok');
-  log(`✓ L2 book: ${book?.levels?.[0]?.length || 0} bid levels, ${book?.levels?.[1]?.length || 0} ask levels`, 'ok');
-  log(`✓ Funding history: ${funding?.length || 0} data points`, 'ok');
-  log(`✓ Mark price: $${parseFloat(assetCtx.markPx || 0).toLocaleString()}`, 'ok');
-
-  return { candles: normalizedCandles, book, assetMeta, assetCtx, fundingHistory: funding, assetIndex: idx };
-}
-
-// ─── GROQ API ─────────────────────────────────────────────────────────────────
-// Renamed from askGemini → askGroq (this is Groq, not Gemini)
-async function askGroq(key, userPrompt) {
-  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: GEMINI_SYSTEM },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.25,
-      max_tokens: 3072,
-    }),
+  const candleR = await fetch(`${hlBase()}/info`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({type:'candleSnapshot', req:{coin: coin.toUpperCase(), interval: state.tf+'min'? state.tf : '4h', startTime: start, endTime: end}})
   });
-  const data = await r.json();
-  if (data.error) throw new Error(`Groq: ${data.error.message}`);
-  return data.choices?.[0]?.message?.content || '';
-}
 
-// ─── TRADE EXECUTION ──────────────────────────────────────────────────────────
+  let candles = [];
+  try {
+    const raw = await candleR.json();
+    if(Array.isArray(raw)) candles = raw.slice(-48).map(c=>({
+      o: parseFloat(c.o), h: parseFloat(c.h), l: parseFloat(c.l), c: parseFloat(c.c),
+      v: parseFloat(c.v), t: c.t
+    }));
+  } catch(e){ log('Candle parse error, using synthetic', 'warn'); }
 
-// ── Minimal MsgPack encoder (required for Hyperliquid EIP-712 action hashing) ──
-function msgpackEncode(value) {
-  const chunks = [];
-  function enc(v) {
-    if (v === null || v === undefined) {
-      chunks.push(new Uint8Array([0xc0]));
-    } else if (typeof v === 'boolean') {
-      chunks.push(new Uint8Array([v ? 0xc3 : 0xc2]));
-    } else if (typeof v === 'number' && Number.isInteger(v)) {
-      if (v >= 0 && v <= 0x7f) {
-        chunks.push(new Uint8Array([v]));
-      } else if (v >= 0 && v <= 0xff) {
-        chunks.push(new Uint8Array([0xcc, v]));
-      } else if (v >= 0 && v <= 0xffff) {
-        const b = new Uint8Array(3); b[0] = 0xcd;
-        new DataView(b.buffer).setUint16(1, v); chunks.push(b);
-      } else if (v >= 0 && v <= 0xffffffff) {
-        const b = new Uint8Array(5); b[0] = 0xce;
-        new DataView(b.buffer).setUint32(1, v); chunks.push(b);
-      } else {
-        const b = new Uint8Array(9); b[0] = 0xcf;
-        const dv = new DataView(b.buffer);
-        dv.setUint32(1, Math.floor(v / 0x100000000));
-        dv.setUint32(5, v % 0x100000000); chunks.push(b);
-      }
-    } else if (typeof v === 'string') {
-      const bytes = new TextEncoder().encode(v);
-      const len = bytes.length;
-      if (len <= 31) chunks.push(new Uint8Array([0xa0 | len]));
-      else if (len <= 0xff) chunks.push(new Uint8Array([0xd9, len]));
-      else { const b = new Uint8Array(3); b[0] = 0xda; new DataView(b.buffer).setUint16(1, len); chunks.push(b); }
-      chunks.push(bytes);
-    } else if (Array.isArray(v)) {
-      const len = v.length;
-      if (len <= 15) chunks.push(new Uint8Array([0x90 | len]));
-      else { const b = new Uint8Array(3); b[0] = 0xdc; new DataView(b.buffer).setUint16(1, len); chunks.push(b); }
-      v.forEach(enc);
-    } else if (typeof v === 'object') {
-      const keys = Object.keys(v);
-      const len = keys.length;
-      if (len <= 15) chunks.push(new Uint8Array([0x80 | len]));
-      else { const b = new Uint8Array(3); b[0] = 0xde; new DataView(b.buffer).setUint16(1, len); chunks.push(b); }
-      keys.forEach(k => { enc(k); enc(v[k]); });
-    }
-  }
-  enc(value);
-  const total = chunks.reduce((s, c) => s + c.length, 0);
-  const out = new Uint8Array(total);
-  let off = 0;
-  chunks.forEach(c => { out.set(c, off); off += c.length; });
-  return out;
-}
-
-// ── EIP-712 Hyperliquid L1 Action Signing ──
-// Implements the exact signing spec from hyperliquid-python-sdk:
-// connectionId = keccak256(msgpack(action) + \x00 + nonce_uint64_be)
-// Then sign EIP-712 Agent { source: "a", connectionId } over domain Exchange/1337
-async function signL1Action(wallet, action, nonce, vaultAddress = null) {
-  // Step 1: msgpack-encode the action
-  const actionBytes = msgpackEncode(action);
-
-  // Step 2: vault prefix byte (0x00 = no vault, 0x01 + 20 bytes = vault)
-  let vaultBytes;
-  if (vaultAddress) {
-    const addrHex = vaultAddress.replace(/^0x/, '');
-    const addrBytes = new Uint8Array(addrHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    vaultBytes = new Uint8Array([0x01, ...addrBytes]);
-  } else {
-    vaultBytes = new Uint8Array([0x00]);
+  // Synthetic candles if API returns nothing
+  if(candles.length < 8){
+    candles = generateSyntheticCandles(price, 48);
+    log('Using synthetic candle data for chart', 'warn');
   }
 
-  // Step 3: nonce as big-endian uint64 (8 bytes)
-  const nonceBytes = new Uint8Array(8);
-  const dv = new DataView(nonceBytes.buffer);
-  dv.setUint32(0, Math.floor(nonce / 0x100000000));
-  dv.setUint32(4, nonce % 0x100000000);
+  // Order book
+  const obR = await fetch(`${hlBase()}/info`, {method:'POST',headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({type:'l2Book', coin: coin.toUpperCase()})});
+  const ob = await obR.json();
 
-  // Step 4: concatenate and keccak256 → connectionId
-  const all = new Uint8Array(actionBytes.length + vaultBytes.length + 8);
-  all.set(actionBytes, 0);
-  all.set(vaultBytes, actionBytes.length);
-  all.set(nonceBytes, actionBytes.length + vaultBytes.length);
-  const connectionId = ethers.utils.keccak256(all);
+  // Volume (estimate)
+  const dayVol = parseFloat(ctx.dayNtlVlm || '0');
 
-  // Step 5: EIP-712 typed data sign
-  const domain = {
-    name: 'Exchange',
-    version: '1',
-    chainId: HL_EIP712_CHAIN_ID,
-    verifyingContract: HL_VERIFYING_CONTRACT,
-  };
-  const types = {
-    Agent: [
-      { name: 'source', type: 'string' },
-      { name: 'connectionId', type: 'bytes32' },
-    ],
-  };
-  const message = { source: 'a', connectionId }; // 'a' = mainnet
-
-  return wallet._signTypedData(domain, types, message);
+  return { price, funding, oi, change, candles, ob, dayVol, universe, idx, coin };
 }
 
-// ── Parse ethers signature → Hyperliquid {r,s,v} format ──
-function parseSig(sig) {
-  return {
-    r: sig.slice(0, 66),
-    s: '0x' + sig.slice(66, 130),
-    v: parseInt(sig.slice(130, 132), 16),
-  };
-}
-
-// ── Send signed action to HL Exchange endpoint ──
-async function hlExchange(action, nonce, sig) {
-  const res = await fetch(HL_EXCHANGE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, nonce, signature: parseSig(sig) }),
-  });
-  if (!res.ok) throw new Error(`HL Exchange HTTP ${res.status}`);
-  const json = await res.json();
-  if (json.status === 'err') throw new Error(`HL Exchange: ${json.response}`);
-  return json;
-}
-
-// ── Smart price formatting based on asset price magnitude ──
-function formatOrderPrice(price, szDecimals) {
-  // Use more precision for cheaper assets
-  if (price >= 10000) return parseFloat(price).toFixed(1);
-  if (price >= 1000)  return parseFloat(price).toFixed(2);
-  if (price >= 100)   return parseFloat(price).toFixed(3);
-  if (price >= 10)    return parseFloat(price).toFixed(4);
-  if (price >= 1)     return parseFloat(price).toFixed(5);
-  return parseFloat(price).toFixed(6);
-}
-
-// ── Small async delay helper ──
-const delay = ms => new Promise(r => setTimeout(r, ms));
-
-// ── Main order execution: dynamic index, correct leverage, real size, SL/TP ──
-async function executeHyperliquidOrder(walletKey, coin, isBuy, analysis, marketData) {
-  if (!ethers) throw new Error('ethers.js not loaded');
-  const wallet = new ethers.Wallet(walletKey);
-  log(`→ Wallet: ${wallet.address.slice(0, 10)}…${wallet.address.slice(-6)}`, 'info');
-
-  // ── FIX #1: Dynamic asset index lookup ──
-  const assetIndex = marketData.assetIndex;
-  const assetMeta  = marketData.assetMeta;
-  const szDecimals = assetMeta?.szDecimals ?? 3;
-  if (assetIndex === -1) throw new Error(`Asset "${coin}" not found in Hyperliquid universe`);
-  log(`→ Asset index for ${coin}: ${assetIndex} (szDecimals=${szDecimals})`, 'info');
-
-  // ── FIX #3: Calculate size from real account balance ──
-  log(`→ Fetching account balance…`, 'info');
-  const accountState = await hlInfo({ type: 'clearinghouseState', user: wallet.address });
-  const accountValue = parseFloat(accountState.marginSummary?.accountValue || 0);
-  log(`→ Account value: $${accountValue.toFixed(2)} USDC`, 'info');
-  if (accountValue < 5) throw new Error(`Insufficient balance: $${accountValue.toFixed(2)} (need ≥$5)`);
-
-  const leverage = analysis.leverage || 5;
-  const positionFraction = Math.min(analysis.positionSize || 0.1, 1.0);
-  const entryPrice = analysis.entry?.price;
-  if (!entryPrice || entryPrice <= 0) throw new Error('Invalid entry price from AI analysis');
-
-  const targetCapital = accountValue * positionFraction;
-  const rawSz = (targetCapital * leverage) / entryPrice;
-  const factor = Math.pow(10, szDecimals);
-  const sz = Math.floor(rawSz * factor) / factor; // floor to szDecimals
-  const minSz = 1 / factor;
-  if (sz < minSz) throw new Error(`Computed size ${sz} < minimum ${minSz} for ${coin}`);
-  log(`→ Size: ${(positionFraction*100).toFixed(0)}% × $${accountValue.toFixed(0)} × ${leverage}× ÷ $${entryPrice.toLocaleString()} = ${sz} ${coin}`, 'info');
-
-  // ── FIX #4: Set leverage FIRST via updateLeverage action ──
-  log(`→ Setting isolated ${leverage}× leverage on ${coin}…`, 'info');
-  const levNonce = Date.now();
-  const levAction = { type: 'updateLeverage', asset: assetIndex, isCross: false, leverage };
-  const levSig = await signL1Action(wallet, levAction, levNonce);
-  await hlExchange(levAction, levNonce, levSig);
-  log(`✓ Leverage set: ${leverage}× isolated`, 'ok');
-
-  await delay(300);
-
-  // ── FIX #2: Correct EIP-712 signing for main order ──
-  const pxStr = formatOrderPrice(entryPrice, szDecimals);
-  const orderNonce = Date.now();
-  const mainOrder = {
-    a: assetIndex,
-    b: isBuy,
-    p: pxStr,
-    s: String(sz),
-    r: false,
-    t: { limit: { tif: 'Gtc' } },
-  };
-  const mainAction = { type: 'order', orders: [mainOrder], grouping: 'na' };
-  const mainSig = await signL1Action(wallet, mainAction, orderNonce);
-  log(`→ Placing ${isBuy ? '▲ LONG' : '▼ SHORT'} ${sz} ${coin} @ $${pxStr}…`, 'info');
-  const mainResult = await hlExchange(mainAction, orderNonce, mainSig);
-  log(`✓ Main order accepted: ${JSON.stringify(mainResult).slice(0, 120)}`, 'ok');
-
-  // ── FIX #8: Place SL order on exchange ──
-  if (analysis.stopLoss?.price) {
-    await delay(400);
-    const slPx = formatOrderPrice(analysis.stopLoss.price, szDecimals);
-    const slNonce = Date.now();
-    const slOrder = {
-      a: assetIndex,
-      b: !isBuy,         // opposite side
-      p: slPx,
-      s: String(sz),
-      r: true,           // reduce-only
-      t: { trigger: { triggerPx: slPx, isMarket: true, tpsl: 'sl' } },
-    };
-    const slAction = { type: 'order', orders: [slOrder], grouping: 'na' };
-    const slSig = await signL1Action(wallet, slAction, slNonce);
-    const slResult = await hlExchange(slAction, slNonce, slSig);
-    log(`✓ Stop-loss @ $${slPx} placed: ${JSON.stringify(slResult).slice(0, 80)}`, 'ok');
+function generateSyntheticCandles(price, n){
+  const candles = [];
+  let cur = price * (1 + (Math.random()-.5)*.1);
+  for(let i=0;i<n;i++){
+    const vol = (Math.random()-.48) * cur * .015;
+    const o = cur;
+    const c = cur + vol;
+    const h = Math.max(o,c) * (1 + Math.random()*.008);
+    const l = Math.min(o,c) * (1 - Math.random()*.008);
+    candles.push({o,h,l,c,v:Math.random()*1e6});
+    cur = c;
   }
-
-  // ── FIX #8: Place TP1 order on exchange ──
-  if (analysis.takeProfit?.[0]?.price) {
-    await delay(400);
-    const tp1Px = formatOrderPrice(analysis.takeProfit[0].price, szDecimals);
-    const tp1Nonce = Date.now();
-    const tp1Order = {
-      a: assetIndex,
-      b: !isBuy,
-      p: tp1Px,
-      s: String(sz),
-      r: true,
-      t: { trigger: { triggerPx: tp1Px, isMarket: false, tpsl: 'tp' } },
-    };
-    const tp1Action = { type: 'order', orders: [tp1Order], grouping: 'na' };
-    const tp1Sig = await signL1Action(wallet, tp1Action, tp1Nonce);
-    const tp1Result = await hlExchange(tp1Action, tp1Nonce, tp1Sig);
-    log(`✓ Take-profit @ $${tp1Px} placed: ${JSON.stringify(tp1Result).slice(0, 80)}`, 'ok');
-  }
-
-  return { sz, assetIndex };
+  return candles;
 }
 
-// ─── MINI CHART ───────────────────────────────────────────────────────────────
-function drawMiniChart(candles) {
-  const canvas = document.getElementById('miniChart');
-  if (!canvas || !candles?.length) return;
+// ─── DRAW CHART ───────────────────────────────────────────────────────────────
+function drawChart(candles, plan){
+  const canvas = document.getElementById('priceCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth, H = 160;
+  canvas.width = W * dpr; canvas.height = H * dpr;
   const ctx = canvas.getContext('2d');
-  canvas.width = canvas.offsetWidth * window.devicePixelRatio || 300;
-  canvas.height = 72 * window.devicePixelRatio || 72;
-  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-  const W = canvas.offsetWidth || 300, H = 72;
+  ctx.scale(dpr, dpr);
+  if(!candles.length) return;
 
-  const closes = candles.slice(-48).map(c => parseFloat(c[4]));
-  if (!closes.length) return;
-  const min = Math.min(...closes), max = Math.max(...closes), range = max - min || 1;
-  const isUp = closes[closes.length - 1] >= closes[0];
-  const col = isUp ? '#00ff9f' : '#ff3b5c';
+  const highs = candles.map(c=>c.h), lows = candles.map(c=>c.l);
+  const maxP = Math.max(...highs)*1.001, minP = Math.min(...lows)*.999;
+  const range = maxP - minP;
+  const px = v => H - ((v - minP) / range) * H * .9 - H*.05;
+  const barW = W / candles.length;
 
-  const pts = closes.map((v, i) => ({
-    x: (i / (closes.length - 1)) * W,
-    y: H * 0.9 - ((v - min) / range) * H * 0.8,
-  }));
+  ctx.clearRect(0,0,W,H);
 
-  // Gradient fill
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, isUp ? 'rgba(0,255,159,0.25)' : 'rgba(255,59,92,0.22)');
-  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,.04)';
+  ctx.lineWidth = 1;
+  for(let i=1;i<5;i++){
+    const y = H * i/5;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
 
-  ctx.beginPath();
-  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-  ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke();
+  // Plan lines
+  if(plan){
+    const drawLine = (price, color, label) => {
+      const y = px(price);
+      ctx.strokeStyle = color; ctx.setLineDash([4,4]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = color; ctx.font = '9px Space Mono'; ctx.textAlign = 'right';
+      ctx.fillText(label, W-4, y-3);
+    };
+    if(plan.tp) drawLine(plan.tp, 'rgba(0,230,118,.7)', `TP $${fmt(plan.tp)}`);
+    if(plan.sl) drawLine(plan.sl, 'rgba(255,61,113,.7)', `SL $${fmt(plan.sl)}`);
+    if(plan.entry) drawLine(plan.entry, 'rgba(0,212,255,.7)', `Entry $${fmt(plan.entry)}`);
+  }
 
-  ctx.lineTo(pts[pts.length - 1].x, H);
-  ctx.lineTo(0, H); ctx.closePath();
-  ctx.fillStyle = grad; ctx.fill();
-}
-
-function drawFundingChart(funding) {
-  const canvas = document.getElementById('fundingChart');
-  if (!canvas || !funding?.length) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.offsetWidth, H = 200;
-  canvas.width = W; canvas.height = H;
-
-  const rates = funding.slice(-24).map(f => parseFloat(f.fundingRate) * 100);
-  if (!rates.length) return;
-  const maxAbs = Math.max(...rates.map(Math.abs), 0.001);
-  const midY = H / 2;
-
-  // Zero line
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
-
-  // Bars
-  const barW = W / rates.length - 2;
-  rates.forEach((r, i) => {
-    const x = i * (W / rates.length) + 1;
-    const h = Math.abs(r / maxAbs) * (midY - 10);
-    const y = r >= 0 ? midY - h : midY;
-    ctx.fillStyle = r >= 0 ? 'rgba(255,59,92,0.7)' : 'rgba(0,255,159,0.7)';
-    ctx.fillRect(x, y, barW, h);
+  // Candles
+  candles.forEach((c, i) => {
+    const x = i * barW + barW/2;
+    const bull = c.c >= c.o;
+    const col = bull ? '#00e676' : '#ff3d71';
+    ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x, px(c.h)); ctx.lineTo(x, px(c.l)); ctx.stroke();
+    const top = px(Math.max(c.o,c.c));
+    const bot = px(Math.min(c.o,c.c));
+    const bh = Math.max(bot-top, 1);
+    ctx.fillStyle = bull ? 'rgba(0,230,118,.85)' : 'rgba(255,61,113,.85)';
+    ctx.fillRect(x - barW*.35, top, barW*.7, bh);
   });
-
-  // Label
-  ctx.fillStyle = 'rgba(90,112,128,0.9)'; ctx.font = '9px Space Mono';
-  ctx.fillText('POSITIVE (longs pay)', 8, 14);
-  ctx.fillText('NEGATIVE (shorts pay)', 8, H - 6);
 }
 
 // ─── ORDER BOOK RENDER ────────────────────────────────────────────────────────
-function renderOrderBook(book) {
-  const el = document.getElementById('bookContent');
-  if (!el || !book?.levels) return;
-  const bids = book.levels[0]?.slice(0, 10) || [];
-  const asks = book.levels[1]?.slice(0, 10) || [];
-
-  // Hyperliquid returns {px, sz, n} objects — normalize helper
-  const px = l => parseFloat(l.px ?? l[0] ?? 0);
-  const sz = l => parseFloat(l.sz ?? l[1] ?? 0);
-
-  const maxSz = Math.max(...[...bids, ...asks].map(l => sz(l)), 1);
-
-  let html = `
-    <div class="book-header" style="color:var(--green)">BIDS &nbsp;Price / Size</div>
-    <div class="book-header" style="color:var(--red)">ASKS &nbsp;Price / Size</div>
-  `;
-  const rows = Math.max(bids.length, asks.length);
-  for (let i = 0; i < rows; i++) {
-    const bid = bids[i], ask = asks[i];
-    const bidPct = bid ? (sz(bid) / maxSz * 100) : 0;
-    const askPct = ask ? (sz(ask) / maxSz * 100) : 0;
-    html += `
-      <div class="book-row">
-        <div class="book-bar bid" style="width:${bidPct}%"></div>
-        ${bid ? `<span class="book-px bid">$${px(bid).toLocaleString('en-US',{minimumFractionDigits:1})}</span><span class="book-sz">${sz(bid).toFixed(3)}</span>` : '<span></span><span></span>'}
-      </div>
-      <div class="book-row">
-        <div class="book-bar ask" style="width:${askPct}%"></div>
-        ${ask ? `<span class="book-px ask">$${px(ask).toLocaleString('en-US',{minimumFractionDigits:1})}</span><span class="book-sz">${sz(ask).toFixed(3)}</span>` : '<span></span><span></span>'}
-      </div>
-    `;
+function renderOB(ob){
+  const asks = (ob?.levels?.[1] || []).slice(0,6).reverse();
+  const bids = (ob?.levels?.[0] || []).slice(0,6);
+  let askHtml='', bidHtml='', askTotal=0, bidTotal=0;
+  asks.forEach(a=>{ askTotal+=parseFloat(a.sz); askHtml+=`<div class="ob-row ask"><span class="price">${fmt(parseFloat(a.px))}</span><span class="size">${parseFloat(a.sz).toFixed(4)}</span><span class="total">${fmt(parseFloat(a.px)*parseFloat(a.sz))}</span></div>`; });
+  bids.forEach(b=>{ bidTotal+=parseFloat(b.sz); bidHtml+=`<div class="ob-row bid"><span class="price">${fmt(parseFloat(b.px))}</span><span class="size">${parseFloat(b.sz).toFixed(4)}</span><span class="total">${fmt(parseFloat(b.px)*parseFloat(b.sz))}</span></div>`; });
+  document.getElementById('obAsks').innerHTML=askHtml;
+  document.getElementById('obBids').innerHTML=bidHtml;
+  if(asks.length && bids.length){
+    const sp = parseFloat(asks[asks.length-1].px) - parseFloat(bids[0].px);
+    document.getElementById('obSpread').textContent=`SPREAD ${sp.toFixed(2)}`;
   }
-  el.innerHTML = html;
 }
 
-function renderCandleTable(candles) {
-  const el = document.getElementById('candleTable');
-  if (!el || !candles?.length) return;
-  const recent = candles.slice(-15);
-  let html = `<table style="width:100%;border-collapse:collapse">
-    <tr style="color:var(--muted);font-size:9px;letter-spacing:1.5px">
-      <th style="text-align:left;padding:4px 6px">TIME</th>
-      <th style="padding:4px 6px">OPEN</th>
-      <th style="padding:4px 6px">HIGH</th>
-      <th style="padding:4px 6px">LOW</th>
-      <th style="padding:4px 6px">CLOSE</th>
-      <th style="padding:4px 6px">VOLUME</th>
-    </tr>`;
-  recent.reverse().forEach(c => {
-    const o = parseFloat(c[1]), cl = parseFloat(c[4]);
-    const isUp = cl >= o;
-    const t = c[0] ? new Date(Number(c[0])).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}) : '--:--';
-    html += `<tr style="border-top:1px solid rgba(255,255,255,0.04);color:${isUp?'var(--green)':'var(--red)'}">
-      <td style="padding:4px 6px;color:var(--muted);font-size:10px">${t}</td>
-      <td style="text-align:center;padding:4px 6px">$${o.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
-      <td style="text-align:center;padding:4px 6px">$${parseFloat(c[2]).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
-      <td style="text-align:center;padding:4px 6px">$${parseFloat(c[3]).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
-      <td style="text-align:center;padding:4px 6px;font-weight:700">$${cl.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})}</td>
-      <td style="text-align:center;padding:4px 6px;color:var(--muted)">${fmtCompact(parseFloat(c[5])*cl)}</td>
-    </tr>`;
+// ─── AI SWING ANALYSIS ───────────────────────────────────────────────────────
+async function runAISwingAnalysis(marketData){
+  const { price, funding, oi, change, candles, dayVol, coin } = marketData;
+  const last20 = candles.slice(-20);
+  const prices = last20.map(c=>`O:${c.o.toFixed(2)} H:${c.h.toFixed(2)} L:${c.l.toFixed(2)} C:${c.c.toFixed(2)}`).join('\n');
+
+  const prompt = `You are a professional swing trader analyzing crypto perpetual futures on Hyperliquid DEX.
+Timeframe: ${state.tf.toUpperCase()} — SWING TRADING (hold 1–7 days, NOT scalping)
+
+MARKET DATA:
+- Asset: ${coin}-PERP
+- Current Price: $${price.toFixed(2)}
+- 24h Change: ${change.toFixed(2)}%
+- Funding Rate: ${(funding*100).toFixed(4)}%/1h
+- Open Interest: $${(oi/1e6).toFixed(1)}M
+- 24h Volume: $${(dayVol/1e6).toFixed(1)}M
+
+LAST 20 ${state.tf.toUpperCase()} CANDLES (OHLC):
+${prices}
+
+Provide a SWING TRADE analysis. Your response MUST include:
+
+1. **MARKET STRUCTURE** — trend on ${state.tf} (HH/HL bullish or LL/LH bearish), key S/R levels
+2. **SWING BIAS** — LONG or SHORT with conviction (High/Medium/Low)
+3. **ENTRY ZONE** — price range to enter (limit order recommended)
+4. **TAKE PROFIT** — realistic swing target (5–15% move, not 0.5%)
+5. **STOP LOSS** — swing stop (2–5% away, not 0.1%)
+6. **HOLD PERIOD** — estimated 1–7 days
+7. **RISK:REWARD** — must be ≥ 2:1
+8. **INDICATORS USED** — EMA trend, RSI overbought/oversold, volume confirmation
+9. **INVALIDATION** — what price action invalidates this setup
+10. **EXECUTION** — entry: LIMIT or MARKET? leverage: 2–5x max (swing)
+
+SWING RULES: 
+- Target 5-15% profit, NOT 0.5-2% scalp targets
+- Stop loss 2-5%, NOT 0.1-0.5%
+- Leverage max 5x (swing trades need room to breathe)
+- Look for momentum continuation or mean reversion setups
+- Consider funding rate impact on multi-day holds
+
+End with a JSON block exactly like:
+\`\`\`json
+{"direction":"LONG","entry":${price.toFixed(2)},"tp":0,"sl":0,"hold":"2-3 days","rr":"2.5:1","conviction":"Medium","leverage":3}
+\`\`\``;
+
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{role:'user',content:prompt}],
+      temperature: 0.4,
+      max_tokens: 1200
+    })
   });
-  html += '</table>';
-  el.innerHTML = html;
+
+  if(!resp.ok){
+    const err = await resp.json().catch(()=>({}));
+    throw new Error(`Groq error: ${err?.error?.message || resp.status}`);
+  }
+
+  const data = await resp.json();
+  return data.choices[0].message.content;
 }
 
-// ─── GAUGE DRAWING ────────────────────────────────────────────────────────────
-function drawGauge(canvasId, confidence, signal) {
-  const sigColors = {
-    STRONG_LONG: '#00ff9f', LONG: '#5effca',
-    NEUTRAL: '#6b7280',
-    SHORT: '#ff9f7f', STRONG_SHORT: '#ff3b5c',
-  };
-  const col = sigColors[signal] || '#6b7280';
-  const el = document.getElementById(canvasId);
-  if (!el) return;
-  const ctx = el.getContext('2d');
-  const W = el.width, H = el.height;
-  ctx.clearRect(0, 0, W, H);
-  const cx = W / 2, cy = H * 0.72, r = Math.min(W, H) * 0.56;
-
-  // Background arc
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 0, false);
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.stroke();
-
-  // Colored arc
-  const angle = Math.PI + (confidence / 100) * Math.PI;
-  const grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
-  grad.addColorStop(0, '#ff3b5c'); grad.addColorStop(0.5, '#ff9500'); grad.addColorStop(1, '#00ff9f');
-  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, angle, false);
-  ctx.strokeStyle = col; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.stroke();
-
-  // Needle
-  const needleAngle = Math.PI + (confidence / 100) * Math.PI;
-  const nx = cx + (r - 4) * Math.cos(needleAngle), ny = cy + (r - 4) * Math.sin(needleAngle);
-  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, ny);
-  ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-  ctx.fillStyle = col; ctx.fill();
-
-  // Confidence text
-  ctx.fillStyle = col; ctx.font = `bold 18px Space Mono`;
-  ctx.textAlign = 'center'; ctx.fillText(confidence + '%', cx, cy - r * 0.3);
-  ctx.fillStyle = 'rgba(90,112,128,0.8)'; ctx.font = '10px Space Mono';
-  ctx.fillText('CONFIDENCE', cx, cy - r * 0.1);
+// ─── PARSE PLAN FROM AI ───────────────────────────────────────────────────────
+function parsePlan(aiText, fallbackPrice){
+  const match = aiText.match(/```json\s*([\s\S]*?)```/);
+  if(!match) return null;
+  try {
+    const p = JSON.parse(match[1]);
+    // If tp/sl are 0 or missing, compute defaults
+    const ep = parseFloat(p.entry) || fallbackPrice;
+    const dir = (p.direction||'LONG').toUpperCase();
+    if(!p.tp || p.tp===0) p.tp = dir==='LONG' ? ep*1.08 : ep*0.92;
+    if(!p.sl || p.sl===0) p.sl = dir==='LONG' ? ep*0.96 : ep*1.04;
+    p.entry = ep;
+    return p;
+  } catch(e){ return null; }
 }
 
-// ─── ANALYSIS RENDER ──────────────────────────────────────────────────────────
-function renderAnalysis(a, coin) {
-  const grid = document.getElementById('analysisGrid');
-  const sigColors = {
-    STRONG_LONG: '#00ff9f', LONG: '#5effca',
-    NEUTRAL: '#6b7280',
-    SHORT: '#ff9f7f', STRONG_SHORT: '#ff3b5c',
-  };
-  const col = sigColors[a.signal] || '#6b7280';
-  const sentCol = { BULLISH: 'var(--green)', BEARISH: 'var(--red)', NEUTRAL: 'var(--muted)' }[a.sentiment] || 'var(--muted)';
-  const macdCol = a.technicalSummary?.macdSignal?.startsWith('BULLISH') ? 'var(--green)' : a.technicalSummary?.macdSignal?.startsWith('BEARISH') ? 'var(--red)' : 'var(--muted)';
-  const fundingCol = a.technicalSummary?.fundingBias === 'LONG_HEAVY' ? 'var(--red)' : a.technicalSummary?.fundingBias === 'SHORT_HEAVY' ? 'var(--green)' : 'var(--muted)';
+// ─── UPDATE PLAN UI ───────────────────────────────────────────────────────────
+function updatePlanUI(plan){
+  if(!plan) return;
+  const dir = (plan.direction||'LONG').toUpperCase();
+  document.getElementById('planEntry').textContent = `$${fmt(plan.entry)}`;
+  document.getElementById('planDir').textContent = dir;
+  document.getElementById('planDir').style.color = dir==='LONG' ? 'var(--bull)' : 'var(--bear)';
+  document.getElementById('planTP').textContent = `$${fmt(plan.tp)}`;
+  document.getElementById('planSL').textContent = `$${fmt(plan.sl)}`;
+  document.getElementById('planHold').textContent = plan.hold || '2-4 days';
+  document.getElementById('planRR').textContent = plan.rr || '—';
 
-  grid.innerHTML = `
-  <!-- SIGNAL PANEL -->
-  <div class="glass">
-    <div class="panel-label">Trading Signal</div>
-    <div class="gauge-wrap">
-      <canvas id="signalGauge" width="200" height="120"></canvas>
-      <div class="gauge-signal" style="color:${col}">${(a.signal || '').replace('_', ' ')}</div>
-      <div class="gauge-conf">${coin}-PERP &nbsp;·&nbsp; ${a.leverage}× leverage</div>
-    </div>
-    <div class="badge-row"><span class="badge-key">Sentiment</span><span class="badge-val" style="color:${sentCol}">${a.sentiment}</span></div>
-    <div class="badge-row"><span class="badge-key">Confidence</span><span class="badge-val" style="color:${col}">${a.confidence}%</span></div>
-    <div class="badge-row"><span class="badge-key">Leverage</span><span class="badge-val" style="color:var(--blue)">${a.leverage}×</span></div>
-    <div class="badge-row"><span class="badge-key">Position Size</span><span class="badge-val">${(a.positionSize * 100).toFixed(0)}% of capital</span></div>
-    <div class="badge-row"><span class="badge-key">Risk / Reward</span><span class="badge-val" style="color:${(a.riskReward||0)>=2?'var(--green)':'var(--orange)'}">${(a.riskReward||0).toFixed(2)}×</span></div>
-  </div>
+  const tpPct = ((plan.tp - plan.entry) / plan.entry * 100);
+  const slPct = ((plan.sl - plan.entry) / plan.entry * 100);
+  document.getElementById('planTPpct').textContent = `${tpPct>=0?'+':''}${tpPct.toFixed(1)}%`;
+  document.getElementById('planSLpct').textContent = `${slPct>=0?'+':''}${slPct.toFixed(1)}%`;
 
-  <!-- EXECUTION LEVELS -->
-  <div class="glass">
-    <div class="panel-label">Execution Levels</div>
-    <div class="level-card entry">
-      <div class="level-type entry">ENTRY ZONE</div>
-      <div class="level-price" style="color:var(--blue)">$${fmt(a.entry?.price)}</div>
-      <div class="level-rat">${a.entry?.rationale || ''}</div>
-    </div>
-    <div class="level-card sl">
-      <div class="level-type sl">⛔ STOP LOSS &nbsp;(${a.stopLoss?.pct?.toFixed(1) || '?'}% loss)</div>
-      <div class="level-price" style="color:var(--red)">$${fmt(a.stopLoss?.price)}</div>
-      <div class="level-rat">${a.stopLoss?.rationale || ''}</div>
-    </div>
-    ${(a.takeProfit || []).map(tp => `
-    <div class="level-card tp">
-      <div class="level-type tp">✅ ${tp.label} &nbsp;(+${tp.pct?.toFixed(1) || '?'}%)</div>
-      <div class="level-price" style="color:var(--green);font-size:16px">$${fmt(tp.price)}</div>
-      <div class="level-rat">${tp.rationale || ''}</div>
-    </div>`).join('')}
-  </div>
+  // R:R bar
+  const rrNum = parseFloat(plan.rr) || 2;
+  const rrPct = Math.min((rrNum/5)*100, 100);
+  document.getElementById('rrFill').style.width = rrPct+'%';
 
-  <!-- TECHNICAL SUMMARY -->
-  <div class="glass">
-    <div class="panel-label">Technical Summary</div>
-    ${a.technicalSummary ? `
-    <div class="badge-row"><span class="badge-key">Trend</span><span class="badge-val">${a.technicalSummary.trend}</span></div>
-    <div class="badge-row"><span class="badge-key">Support</span><span class="badge-val" style="color:var(--green)">$${fmt(a.technicalSummary.support)}</span></div>
-    <div class="badge-row"><span class="badge-key">Resistance</span><span class="badge-val" style="color:var(--red)">$${fmt(a.technicalSummary.resistance)}</span></div>
-    <div class="badge-row"><span class="badge-key">RSI (14)</span><span class="badge-val" style="color:${a.technicalSummary.rsi>70?'var(--red)':a.technicalSummary.rsi<30?'var(--green)':'var(--text)'}">${a.technicalSummary.rsi?.toFixed(1)}</span></div>
-    <div class="badge-row"><span class="badge-key">MACD</span><span class="badge-val" style="color:${macdCol}">${(a.technicalSummary.macdSignal||'').replace('_',' ')}</span></div>
-    <div class="badge-row"><span class="badge-key">Funding Bias</span><span class="badge-val" style="color:${fundingCol}">${(a.technicalSummary.fundingBias||'').replace('_',' ')}</span></div>
-    <div style="margin-top:16px">
-      <div class="panel-label" style="margin-bottom:10px">Liquidity Zones</div>
-      ${(a.technicalSummary.liquidityZones||[]).map(z=>`
-      <div class="liq-zone">
-        <div class="liq-dot"></div>
-        <span class="liq-price">$${z?.toLocaleString('en-US',{minimumFractionDigits:1})}</span>
-      </div>`).join('')}
-    </div>
-    <div class="badge-row" style="margin-top:8px"><span class="badge-key">Volume</span><span class="badge-val" style="font-size:10px;max-width:200px;text-align:right;line-height:1.4">${a.technicalSummary.volumeAnalysis||''}</span></div>
-    ` : '<div style="color:var(--muted);font-size:12px">No technical data</div>'}
-  </div>
+  // Bias badge
+  const badge = document.getElementById('biasBadge');
+  badge.textContent = dir;
+  badge.className = 'swing-badge ' + (dir==='LONG'?'bull':'bear');
 
-  <!-- TRADING PLAN -->
-  <div class="glass span2">
-    <div class="panel-label">NEXUS Trading Plan</div>
-    <div class="trading-plan">${a.tradingPlan || ''}</div>
-    <div style="margin-top:18px">
-      <div class="panel-label" style="margin-bottom:10px">Market Catalysts</div>
-      <div class="tags-row">
-        ${(a.catalysts||[]).map(c=>`<span class="tag">${c}</span>`).join('')}
-      </div>
-    </div>
-  </div>
+  // Show exec button if auto-trade and private key
+  const pk = document.getElementById('privKey').value;
+  document.getElementById('execBtn').style.display = 'block';
 
-  <!-- RISKS + STRUCTURE -->
-  <div class="glass">
-    <div class="panel-label">Key Risks</div>
-    ${(a.keyRisks||[]).map(r=>`
-    <div class="risk-item">
-      <span class="risk-ico">⚠</span>
-      <span class="risk-text">${r}</span>
-    </div>`).join('')}
-    <div class="struct-box">
-      <div class="struct-label">Market Structure</div>
-      <div class="struct-text">${a.marketStructure||''}</div>
-    </div>
-  </div>
-  `;
-
-  grid.style.display = 'grid';
-  document.getElementById('emptyAnalysis').style.display = 'none';
-  document.getElementById('loadingState').style.display = 'none';
-
-  // Draw gauge
-  requestAnimationFrame(() => drawGauge('signalGauge', a.confidence, a.signal));
+  state.plan = plan;
 }
 
-// ─── SNAPSHOT BAR ─────────────────────────────────────────────────────────────
-function updateSnapshot(data, coin) {
-  const lp = parseFloat(data.candles?.at(-1)?.[4] || 0);
-  const fp = parseFloat(data.candles?.[0]?.[4] || lp);
-  const chg = fp ? ((lp - fp) / fp * 100) : 0;
-  const funding = parseFloat(data.assetCtx?.funding || 0) * 100;
-  const oi = parseFloat(data.assetCtx?.openInterest || 0) * lp;
-  const vol24 = data.candles?.slice(-24).reduce((s, c) => s + parseFloat(c[5]) * parseFloat(c[4]), 0) || 0;
+// ─── MAIN ANALYSIS ────────────────────────────────────────────────────────────
+async function runAnalysis(){
+  const coin = document.getElementById('coinInput').value.trim().toUpperCase();
+  if(!coin){ log('Enter a coin symbol', 'warn'); return; }
+  state.coin = coin;
 
-  document.getElementById('snapPrice').textContent = '$' + lp.toLocaleString('en-US', { minimumFractionDigits: 2 });
-  const chgEl = document.getElementById('snapChange');
-  chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
-  chgEl.className = 'snap-val ' + (chg >= 0 ? 'green' : 'red');
-  document.getElementById('snapOI').textContent = fmtCompact(oi);
-  const fundEl = document.getElementById('snapFunding');
-  fundEl.textContent = (funding >= 0 ? '+' : '') + funding.toFixed(4) + '%';
-  fundEl.className = 'snap-val ' + (funding > 0 ? 'red' : 'green');
-  document.getElementById('snapVol').textContent = fmtCompact(vol24);
-  document.getElementById('snapInstr').textContent = coin + '-PERP';
-
-  document.getElementById('snapshot').classList.add('visible');
-  requestAnimationFrame(() => drawMiniChart(data.candles));
-}
-
-// ─── POSITION MANAGEMENT ──────────────────────────────────────────────────────
-function addPosition(coin, analysis, executionData = {}) {
-  // FIX #6: No more random PnL — real PnL fetched from Hyperliquid
-  // executionData: { sz, assetIndex } from real order, or empty for paper positions
-  const pos = {
-    id: Date.now(),
-    coin,
-    side: analysis.signal.includes('LONG') ? 'LONG' : 'SHORT',
-    entry: analysis.entry?.price,
-    sl: analysis.stopLoss?.price,
-    tp1: analysis.takeProfit?.[0]?.price,
-    size: analysis.positionSize,
-    leverage: analysis.leverage,
-    actualSz: executionData.sz || null,        // real size from exchange
-    assetIndex: executionData.assetIndex ?? -1,
-    isPaper: !executionData.sz,                 // paper if no real order sent
-    pnlPct: 0,
-    pnlUsd: 0,
-    time: now(),
-    signal: analysis.signal,
-    confidence: analysis.confidence,
-  };
-  state.positions.unshift(pos);
-  renderPositions();
-  document.getElementById('posTab').textContent = `Positions (${state.positions.length})`;
-
-  // Start PnL refresh — real data if wallet key exists, simulated for paper
-  startPnLPolling();
-}
-
-// ── FIX #6: Fetch real unrealized PnL from Hyperliquid ──
-async function fetchRealPnL() {
-  const walletKey = document.getElementById('walletKey').value.trim();
-  if (!walletKey || !state.positions.length) return;
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.textContent = '…';
+  document.getElementById('analysisBox').innerHTML = `<div class="loading"><div class="spinner"></div> Fetching ${coin} data from Hyperliquid…</div>`;
+  document.getElementById('chartLabel').textContent = `${state.tf.toUpperCase()} CANDLES — ${coin}`;
 
   try {
-    const wallet = new ethers.Wallet(walletKey);
-    const accountState = await hlInfo({ type: 'clearinghouseState', user: wallet.address });
-    const hlPositions = accountState.assetPositions || [];
+    log(`▶ NEXUS SWING analysis for ${coin} [${state.tf.toUpperCase()}]`, 'accent');
 
-    let updated = false;
-    state.positions.forEach(pos => {
-      if (pos.isPaper) return; // paper positions skip
-      const hlPos = hlPositions.find(p => p.position?.coin === pos.coin);
-      if (hlPos?.position) {
-        const unrealPnl = parseFloat(hlPos.position.unrealizedPnl || 0);
-        const posValue = Math.abs(parseFloat(hlPos.position.positionValue || 1));
-        pos.pnlUsd = unrealPnl;
-        pos.pnlPct = posValue > 0 ? unrealPnl / posValue : 0;
-        updated = true;
+    // 1. Market data
+    const md = await fetchMarketData(coin);
+    state.marketData = md;
+    log(`Market data OK — Price: $${fmt(md.price)} | Change: ${md.change.toFixed(2)}%`, 'ok');
+
+    // 2. Update metrics
+    document.getElementById('mPrice').textContent = `$${fmt(md.price)}`;
+    const chEl = document.getElementById('mChange');
+    chEl.textContent = `${md.change>=0?'+':''}${md.change.toFixed(2)}%`;
+    chEl.className = 'metric-val ' + (md.change>=0?'bull':'bear');
+    document.getElementById('mOI').textContent = `$${(md.oi/1e6).toFixed(1)}M`;
+    document.getElementById('mFunding').textContent = `${(md.funding*100).toFixed(4)}%`;
+    document.getElementById('mVol').textContent = `$${(md.dayVol/1e6).toFixed(1)}M`;
+
+    // 3. Chart
+    drawChart(md.candles, null);
+    log(`Chart rendered — ${md.candles.length} ${state.tf.toUpperCase()} candles`, 'info');
+
+    // 4. Order book
+    renderOB(md.ob);
+    log('Order book loaded', 'info');
+
+    // 5. AI Analysis
+    log('Querying Groq AI for swing analysis…', 'info');
+    document.getElementById('analysisBox').innerHTML = `<div class="loading"><div class="spinner"></div> Groq AI generating swing trade plan…</div>`;
+
+    const aiText = await runAISwingAnalysis(md);
+    log('Groq AI response received', 'ok');
+
+    // 6. Render analysis
+    document.getElementById('analysisBox').textContent = aiText;
+
+    // 7. Parse & display plan
+    const plan = parsePlan(aiText, md.price);
+    if(plan){
+      updatePlanUI(plan);
+      drawChart(md.candles, plan);
+      log(`Swing plan parsed — Dir: ${plan.direction} | Entry: $${fmt(plan.entry)} | TP: $${fmt(plan.tp)} | SL: $${fmt(plan.sl)} | Hold: ${plan.hold}`, 'ok');
+
+      // Auto-execute?
+      if(state.autoTrade && document.getElementById('privKey').value){
+        log('Auto-trade ON — opening confirm dialog', 'warn');
+        showConfirm();
       }
-    });
+    } else {
+      log('Could not parse JSON plan from AI response', 'warn');
+    }
 
-    // Simulate PnL for paper positions (clearly marked)
-    state.positions.forEach(pos => {
-      if (!pos.isPaper) return;
-      const drift = (Math.random() - 0.499) * 0.0015;
-      pos.pnlPct = (pos.pnlPct || 0) + drift;
-      pos.pnlUsd = null; // unknown for paper
-    });
+    // Fetch positions
+    await fetchPositions();
 
-    if (updated || state.positions.some(p => p.isPaper)) renderPositions();
-  } catch (e) {
-    // Silently handle PnL fetch errors — still simulate paper positions
-    state.positions.forEach(pos => {
-      if (!pos.isPaper) return;
-      pos.pnlPct = (pos.pnlPct || 0) + (Math.random() - 0.499) * 0.0015;
+  } catch(e){
+    log(`ERROR: ${e.message}`, 'err');
+    document.getElementById('analysisBox').innerHTML = `<div style="color:var(--bear)">Error: ${e.message}</div>`;
+  }
+
+  btn.disabled = false; btn.textContent = 'ANALYZE';
+}
+
+// ─── FETCH POSITIONS ──────────────────────────────────────────────────────────
+async function fetchPositions(){
+  const pk = document.getElementById('privKey').value;
+  if(!pk) return;
+  try {
+    let wallet;
+    if(typeof ethers !== 'undefined'){
+      wallet = new ethers.Wallet(pk.startsWith('0x') ? pk : '0x'+pk);
+    } else { return; }
+
+    const addr = wallet.address;
+    const resp = await fetch(`${hlBase()}/info`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({type:'clearinghouseState', user: addr})
     });
+    const data = await resp.json();
+    const assetPos = data?.assetPositions || [];
+    state.positions = assetPos.filter(p => parseFloat(p.position.szi) !== 0);
     renderPositions();
-  }
+    document.getElementById('posCount').textContent = state.positions.length;
+    log(`Positions fetched: ${state.positions.length} open`, 'ok');
+  } catch(e){ log(`Positions fetch: ${e.message}`, 'warn'); }
 }
 
-function startPnLPolling() {
-  if (state.pnlInterval) return; // already running
-  state.pnlInterval = setInterval(fetchRealPnL, 5000); // every 5s
-}
-
-function stopPnLPolling() {
-  if (!state.positions.length) {
-    clearInterval(state.pnlInterval);
-    state.pnlInterval = null;
-  }
-}
-
-function renderPositions() {
-  const el = document.getElementById('positionsList');
-  const empty = document.getElementById('emptyPositions');
-  if (!state.positions.length) { empty.style.display = 'block'; el.innerHTML = ''; return; }
-  empty.style.display = 'none';
-  el.innerHTML = state.positions.map(pos => {
-    const pnlCol = pos.pnlPct >= 0 ? 'var(--green)' : 'var(--red)';
-    const pnlDisplay = pos.isPaper
-      ? `${pos.pnlPct >= 0 ? '+' : ''}${(pos.pnlPct * 100).toFixed(2)}% <span style="color:var(--orange);font-size:9px">PAPER</span>`
-      : pos.pnlUsd !== null
-        ? `${pos.pnlPct >= 0 ? '+' : ''}${(pos.pnlPct * 100).toFixed(2)}% <span style="font-size:10px">(${pos.pnlUsd >= 0 ? '+' : ''}$${Math.abs(pos.pnlUsd).toFixed(2)})</span>`
-        : '—';
-    return `
-    <div class="pos-card">
-      <div class="pos-item">
-        <div class="pos-coin">${pos.coin}</div>
-        <div class="pos-sub">${pos.isPaper ? '◈ PAPER' : 'PERP'}</div>
+function renderPositions(){
+  const box = document.getElementById('posBox');
+  if(!state.positions.length){ box.innerHTML='<div class="no-pos">No open positions</div>'; return; }
+  box.innerHTML = state.positions.map(p=>{
+    const pos = p.position;
+    const size = parseFloat(pos.szi);
+    const dir = size > 0 ? 'long' : 'short';
+    const entry = parseFloat(pos.entryPx);
+    const uPnl = parseFloat(pos.unrealizedPnl);
+    return `<div class="pos-item">
+      <div class="pos-side ${dir}">${dir.toUpperCase()}</div>
+      <div class="pos-info">
+        <div class="pos-pair">${p.position.coin}-PERP</div>
+        <div class="pos-detail">Size: ${Math.abs(size).toFixed(4)} | Entry: $${fmt(entry)} | Lev: ${pos.leverage?.value||'—'}x</div>
       </div>
-      <div class="side-badge ${pos.side.toLowerCase()}">${pos.side}</div>
-      <div class="pos-stats">
-        <div>
-          <div class="pos-stat-label">Entry</div>
-          <div class="pos-stat-val">$${pos.entry?.toLocaleString('en-US', { minimumFractionDigits: 1 })}</div>
-        </div>
-        <div>
-          <div class="pos-stat-label">Leverage</div>
-          <div class="pos-stat-val" style="color:var(--blue)">${pos.leverage}×</div>
-        </div>
-        <div>
-          <div class="pos-stat-label">Stop Loss</div>
-          <div class="pos-stat-val" style="color:var(--red)">$${pos.sl?.toLocaleString('en-US', { minimumFractionDigits: 1 })}</div>
-        </div>
-        <div>
-          <div class="pos-stat-label">Take Profit</div>
-          <div class="pos-stat-val" style="color:var(--green)">$${pos.tp1?.toLocaleString('en-US', { minimumFractionDigits: 1 })}</div>
-        </div>
-        <div>
-          <div class="pos-stat-label">Unrealized PnL${pos.isPaper ? ' 〜' : ''}</div>
-          <div class="pos-stat-val" style="color:${pnlCol}">${pnlDisplay}</div>
-        </div>
-      </div>
-      <div class="pos-time">opened ${pos.time}</div>
-      <button class="pos-close-btn" onclick="closePosition(${pos.id})">CLOSE</button>
+      <div class="pos-pnl ${uPnl>=0?'pos':'neg'}">${uPnl>=0?'+':''}$${uPnl.toFixed(2)}</div>
     </div>`;
   }).join('');
 }
 
-// ── FIX #5: closePosition sends real order to Hyperliquid ──
-async function closePosition(id) {
-  const pos = state.positions.find(p => p.id === id);
-  if (!pos) return;
-
-  const walletKey = document.getElementById('walletKey').value.trim();
-  const isReal = walletKey && !pos.isPaper && pos.actualSz && pos.assetIndex >= 0;
-
-  const confirmed = await showConfirm({
-    title: isReal ? '⚠ Close Live Position' : 'Close Paper Position',
-    body: isReal
-      ? `This will send a market close order for your <strong>${pos.side} ${pos.coin}</strong> position to Hyperliquid.\n\nThe order is <em>reduce-only IOC</em> and will fill at the current market price.`
-      : `Remove this paper position from your tracking list.`,
-    rows: [
-      { key: 'Coin', val: pos.coin + '-PERP' },
-      { key: 'Side', val: pos.side },
-      { key: 'Size', val: pos.actualSz ? `${pos.actualSz} ${pos.coin}` : `${(pos.size * 100).toFixed(0)}% (paper)` },
-      { key: 'PnL', val: `${pos.pnlPct >= 0 ? '+' : ''}${(pos.pnlPct * 100).toFixed(2)}%` },
-    ],
-    confirmText: isReal ? 'CLOSE ON EXCHANGE' : 'REMOVE',
-    isLong: false,
-  });
-  if (!confirmed) return;
-
-  if (isReal) {
-    log(`→ Sending close order for ${pos.side} ${pos.coin} to Hyperliquid…`, 'warn');
-    try {
-      const wallet = new ethers.Wallet(walletKey);
-      // Fetch current mark price to set aggressive IOC limit
-      const meta = await hlInfo({ type: 'metaAndAssetCtxs' });
-      const ctx = (meta[1] || [])[pos.assetIndex] || {};
-      const markPx = parseFloat(ctx.markPx || pos.entry);
-      // For close: use 3% slippage so IOC definitely fills
-      const slippagedPx = pos.side === 'LONG'
-        ? markPx * 0.97   // closing LONG → sell, set price below market
-        : markPx * 1.03;  // closing SHORT → buy, set price above market
-      const pxStr = formatOrderPrice(slippagedPx, state.marketData?.assetMeta?.szDecimals ?? 3);
-      const closeNonce = Date.now();
-      const closeAction = {
-        type: 'order',
-        orders: [{
-          a: pos.assetIndex,
-          b: pos.side === 'SHORT', // close LONG = sell (false→true direction)
-          p: pxStr,
-          s: String(pos.actualSz),
-          r: true,                 // reduce-only
-          t: { limit: { tif: 'Ioc' } }, // IOC = immediate fill or cancel
-        }],
-        grouping: 'na',
-      };
-      const closeSig = await signL1Action(wallet, closeAction, closeNonce);
-      const closeResult = await hlExchange(closeAction, closeNonce, closeSig);
-      log(`✓ Close order sent: ${JSON.stringify(closeResult).slice(0, 120)}`, 'ok');
-    } catch (e) {
-      log(`✗ Close order failed: ${e.message}`, 'err');
-      return; // don't remove from list if order failed
-    }
-  } else {
-    log(`→ Removed paper position: ${pos.side} ${pos.coin} (PnL: ${(pos.pnlPct * 100).toFixed(2)}%)`, 'info');
-  }
-
-  state.positions = state.positions.filter(p => p.id !== id);
-  renderPositions();
-  document.getElementById('posTab').textContent = `Positions (${state.positions.length})`;
-  stopPnLPolling();
-  log(`✓ Position closed`, 'ok');
+// ─── CONFIRM MODAL ────────────────────────────────────────────────────────────
+function showConfirm(){
+  const p = state.plan;
+  if(!p){ log('No plan to execute', 'warn'); return; }
+  const rows = [
+    ['Asset', `${state.coin}-PERP`],
+    ['Direction', p.direction],
+    ['Entry', `$${fmt(p.entry)}`],
+    ['Take Profit', `$${fmt(p.tp)} (${(((p.tp-p.entry)/p.entry)*100).toFixed(1)}%)`],
+    ['Stop Loss', `$${fmt(p.sl)} (${(((p.sl-p.entry)/p.entry)*100).toFixed(1)}%)`],
+    ['Hold Period', p.hold||'2-4 days'],
+    ['Leverage', `${document.getElementById('levSlider').value}x`],
+    ['Size', `$${document.getElementById('orderSize').value}`],
+    ['Network', state.testnet ? 'TESTNET' : '🔴 MAINNET'],
+    ['R:R', p.rr||'—'],
+  ];
+  document.getElementById('modalRows').innerHTML = rows.map(([k,v])=>`
+    <div class="modal-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  document.getElementById('confirmModal').classList.add('open');
 }
+function closeConfirm(){ document.getElementById('confirmModal').classList.remove('open'); }
 
-// ─── CONFIRMATION MODAL ───────────────────────────────────────────────────────
-let _modalResolve = null;
-function showConfirm({ title, body, rows = [], confirmText = 'CONFIRM', isLong = true }) {
-  return new Promise(resolve => {
-    _modalResolve = resolve;
-    const modal = document.getElementById('confirmModal');
-    const bodyEl = document.getElementById('modalBody');
-    const rowsEl = document.getElementById('modalRows');
-    const btn = document.getElementById('modalConfirmBtn');
-    document.querySelector('.modal-title').textContent = title;
-    bodyEl.innerHTML = body;
-    rowsEl.innerHTML = rows.map(r =>
-      `<div class="modal-row"><span class="modal-key">${r.key}</span><span class="modal-val" style="color:${r.color||'var(--text)'}">${r.val}</span></div>`
-    ).join('');
-    btn.textContent = '✓ ' + confirmText;
-    btn.className = 'modal-confirm' + (isLong ? ' long-mode' : '');
-    modal.classList.add('open');
-  });
-}
-function modalAccept() {
-  document.getElementById('confirmModal').classList.remove('open');
-  if (_modalResolve) { _modalResolve(true); _modalResolve = null; }
-}
-function modalReject() {
-  document.getElementById('confirmModal').classList.remove('open');
-  if (_modalResolve) { _modalResolve(false); _modalResolve = null; }
-}
+// ─── EXECUTE SWING TRADE ──────────────────────────────────────────────────────
+async function executeSwingTrade(){
+  closeConfirm();
+  const pk = document.getElementById('privKey').value;
+  if(!pk){ log('No private key provided', 'err'); return; }
+  const plan = state.plan;
+  if(!plan){ log('No plan available', 'err'); return; }
 
-// ─── MAIN ANALYSIS FLOW ───────────────────────────────────────────────────────
-async function runAnalysis() {
-  const coin = document.getElementById('coinInput').value.trim().toUpperCase();
-  const groqKey = document.getElementById('geminiKey').value.trim(); // input ID kept for compat
+  const btn = document.getElementById('execConfirmBtn');
+  btn.textContent = 'EXECUTING…'; btn.disabled = true;
 
-  if (!coin) { showError('Enter a coin symbol (e.g. BTC, ETH, SOL)'); return; }
-  if (!groqKey) { showError('Enter your Groq API key in Config (⚙)'); return; }  // FIX #10: correct name
-
-  // ── FIX: Rate limit — prevent spam-clicking Analyze ──
-  const now_ms = Date.now();
-  if (now_ms - state.lastAnalyzeTime < ANALYZE_RATE_LIMIT_MS) {
-    const wait = Math.ceil((ANALYZE_RATE_LIMIT_MS - (now_ms - state.lastAnalyzeTime)) / 1000);
-    showError(`Rate limit: wait ${wait}s before analyzing again`);
-    return;
-  }
-  state.lastAnalyzeTime = now_ms;
-
-  state.coin = coin; state.groqKey = groqKey;
-  state.walletKey = document.getElementById('walletKey').value.trim();
-  hideError(); setLoading(true, coin, 'CONNECTING TO HYPERLIQUID…');
+  log('Preparing Hyperliquid order…', 'info');
 
   try {
-    // PHASE 1: Fetch market data
-    setStatus(true, 'FETCHING');
-    log(`════ NEW ANALYSIS: ${coin}-PERP ════`, 'info');
-    const data = await fetchMarketData(coin);
-    state.marketData = data;
-    updateSnapshot(data, coin);
+    if(typeof ethers === 'undefined') throw new Error('ethers.js not loaded');
 
-    if (data.assetIndex === -1) {
-      throw new Error(`"${coin}" not found on Hyperliquid. Check the symbol (e.g. BTC, ETH, SOL, HYPE).`);
-    }
-    log(`✓ Asset "${coin}" → index ${data.assetIndex} (szDecimals=${data.assetMeta?.szDecimals ?? '?'})`, 'ok');
+    const wallet = new ethers.Wallet(pk.startsWith('0x') ? pk : '0x'+pk);
+    const addr = wallet.address;
+    log(`Wallet: ${addr.slice(0,8)}…${addr.slice(-6)}`, 'info');
 
-    // Render book
-    document.getElementById('emptyBook').style.display = 'none';
-    document.getElementById('bookGrid').style.display = 'grid';
-    renderOrderBook(data.book);
-    renderCandleTable(data.candles);
-    requestAnimationFrame(() => drawFundingChart(data.fundingHistory));
+    // Get asset index
+    const metaR = await fetch(`${hlBase()}/info`, {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({type:'meta'})});
+    const meta = await metaR.json();
+    const assetIdx = meta.universe.findIndex(u=>u.name===state.coin.toUpperCase());
+    if(assetIdx===-1) throw new Error(`Asset ${state.coin} not found`);
 
-    // PHASE 2: Build analysis prompt
-    setLoading(true, coin, 'NEXUS IS ANALYZING…');
-    setStatus(true, 'ANALYZING');
-    log('→ Building market context for NEXUS…', 'info');
+    const isBuy = plan.direction.toUpperCase() === 'LONG';
+    const leverage = parseInt(document.getElementById('levSlider').value);
+    const sizeUSD = parseFloat(document.getElementById('orderSize').value);
+    const price = plan.entry;
+    const sz = (sizeUSD * leverage / price).toFixed(6);
 
-    const lp = parseFloat(data.candles?.at(-1)?.[4] || 0);
-    const candles = data.candles || [];
+    log(`Order: ${isBuy?'BUY':'SELL'} ${sz} ${state.coin} @ $${fmt(price)} | Lev: ${leverage}x`, 'warn');
 
-    // FIX: Send all 72 candles instead of just 16
-    const ohlcv = candles.slice(-72).map(c => {
-      const ts = c[0] ? new Date(Number(c[0])).toISOString().slice(11, 16) : '--:--';
-      return `  ${ts} | O:${parseFloat(c[1]).toFixed(2)} H:${parseFloat(c[2]).toFixed(2)} L:${parseFloat(c[3]).toFixed(2)} C:${parseFloat(c[4]).toFixed(2)} V:${parseFloat(c[5]).toFixed(0)}`;
-    }).join('\n');
+    // Set leverage first
+    const nonce = Date.now();
+    const leverageAction = {
+      type: 'updateLeverage',
+      asset: assetIdx,
+      isCross: true,
+      leverage: leverage
+    };
 
-    const bids = data.book?.levels?.[0]?.slice(0, 8) || [];
-    const asks = data.book?.levels?.[1]?.slice(0, 8) || [];
-    const bookPx = l => l.px ?? l[0] ?? '?';
-    const bookSz = l => parseFloat(l.sz ?? l[1] ?? 0);
-    const recentFunding = (data.fundingHistory || []).slice(-12).map(f => {
-      const t = f.time ? new Date(Number(f.time)).toISOString().slice(11, 16) : '--:--';
-      return `${t} ${(parseFloat(f.fundingRate) * 100).toFixed(4)}%`;
-    }).join(' | ');
+    // Sign leverage action
+    const leverageSig = await signHyperliquidAction(wallet, leverageAction, nonce);
+    const levResp = await fetch(`${hlBase()}/exchange`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action: leverageAction, nonce, signature: leverageSig})
+    });
+    const levData = await levResp.json();
+    log(`Leverage set: ${JSON.stringify(levData?.status||levData)}`, levData?.status==='ok'?'ok':'warn');
 
-    const c72 = candles.slice(-72);
-    const hi72 = Math.max(...c72.map(c => parseFloat(c[2])));
-    const lo72 = Math.min(...c72.map(c => parseFloat(c[3])));
-    const vol24 = candles.slice(-24).reduce((s, c) => s + parseFloat(c[5]) * parseFloat(c[4]), 0);
+    // Place order
+    const orderNonce = Date.now()+1;
+    const orderAction = {
+      type: 'order',
+      orders: [{
+        a: assetIdx,
+        b: isBuy,
+        p: price.toFixed(2),
+        s: sz,
+        r: false, // not reduce-only
+        t: { limit: { tif: 'Gtc' } } // Good till cancelled (swing trade)
+      }],
+      grouping: 'na'
+    };
 
-    const prompt = `
-INSTRUMENT: ${coin}/USDT Perpetual Futures — Hyperliquid DEX
+    const orderSig = await signHyperliquidAction(wallet, orderAction, orderNonce);
+    const orderResp = await fetch(`${hlBase()}/exchange`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action: orderAction, nonce: orderNonce, signature: orderSig})
+    });
+    const orderData = await orderResp.json();
 
-PRICE DATA:
-  Last Price:    $${lp.toLocaleString()}
-  Mark Price:    $${parseFloat(data.assetCtx?.markPx || lp).toLocaleString()}
-  72h High:      $${hi72.toLocaleString()}
-  72h Low:       $${lo72.toLocaleString()}
-  24h Volume:    ${fmtCompact(vol24)}
+    log(`Order response: ${JSON.stringify(orderData?.response||orderData?.status||orderData)}`, 'ok');
 
-DERIVATIVES DATA:
-  Open Interest: $${fmtCompact(parseFloat(data.assetCtx?.openInterest || 0) * lp)}
-  Funding Rate:  ${(parseFloat(data.assetCtx?.funding || 0) * 100).toFixed(4)}% per hour
-  Funding 12h:   ${recentFunding}
+    if(orderData?.status==='ok' || orderData?.response?.data?.statuses){
+      log(`✓ SWING TRADE PLACED — ${isBuy?'LONG':'SHORT'} ${state.coin} | Entry: $${fmt(price)} | TP: $${fmt(plan.tp)} | SL: $${fmt(plan.sl)} | Hold: ${plan.hold}`, 'ok');
 
-L2 ORDER BOOK (Top 8):
-  BIDS: ${bids.map(b => `$${bookPx(b)}×${bookSz(b).toFixed(2)}`).join(' ')}
-  ASKS: ${asks.map(a => `$${bookPx(a)}×${bookSz(a).toFixed(2)}`).join(' ')}
+      // Place TP/SL orders (reduce-only)
+      await placeTPSL(wallet, assetIdx, isBuy, sz, plan.tp, plan.sl);
 
-OHLCV (Last 72 × 1h candles — full 3-day window):
-${ohlcv}
-
-Provide your complete NEXUS analysis and trading plan. Be specific about price levels and rationale.`;
-
-    log('→ Sending 72-candle context to Groq — Llama 3.3 70B…', 'info');  // FIX #10: "Groq" not "Gemini"
-    const raw = await askGroq(groqKey, prompt);   // FIX #10: askGroq not askGemini
-    log('✓ NEXUS analysis received from Groq', 'ok');
-
-    // PHASE 3: Parse + render
-    setLoading(true, coin, 'PROCESSING SIGNAL…');
-    const analysis = parseAnalysis(raw);
-    state.analysis = analysis;
-
-    if (analysis) {
-      renderAnalysis(analysis, coin);
-      log(`✓ Signal: ${analysis.signal} | Confidence: ${analysis.confidence}% | Leverage: ${analysis.leverage}× | R/R: ${(analysis.riskReward || 0).toFixed(2)}×`, 'ok');
-      log(`✓ Entry: $${fmt(analysis.entry?.price)} | SL: $${fmt(analysis.stopLoss?.price)} | TP1: $${fmt(analysis.takeProfit?.[0]?.price)}`, 'ok');
+      // Refresh positions
+      setTimeout(()=>fetchPositions(), 2000);
     } else {
-      log('⚠ Could not parse JSON — check Terminal for raw output', 'warn');
-      log('RAW: ' + raw.slice(0, 300), 'info');
-      document.getElementById('emptyAnalysis').innerHTML = `
-        <div class="empty-icon">⚠</div>
-        <div class="empty-title">Parse Error</div>
-        <div class="empty-sub">Groq returned unstructured data. Check Terminal tab.</div>`;  // FIX #10
+      log(`Order result: ${JSON.stringify(orderData)}`, 'warn');
     }
 
-    // PHASE 4: Execute trade — with confirmation dialog
-    if (state.autoTrade && state.walletKey && analysis && analysis.signal !== 'NEUTRAL') {
-      const isLong = analysis.signal.includes('LONG');
-      const szDecimals = data.assetMeta?.szDecimals ?? 3;
-
-      // ── FIX #9: Show confirmation before executing ──
-      const confirmed = await showConfirm({
-        title: `${isLong ? '▲ LONG' : '▼ SHORT'} ${coin} — Confirm Live Order`,
-        body: `<span style="color:var(--orange);font-family:var(--mono);font-size:11px">⚠ This will place a REAL leveraged order on Hyperliquid using your private key. Review carefully.</span>`,
-        rows: [
-          { key: 'Signal', val: analysis.signal, color: isLong ? 'var(--green)' : 'var(--red)' },
-          { key: 'Entry', val: `$${fmt(analysis.entry?.price)}`, color: 'var(--blue)' },
-          { key: 'Leverage', val: `${analysis.leverage}×`, color: 'var(--blue)' },
-          { key: 'Position Size', val: `${(analysis.positionSize * 100).toFixed(0)}% of balance` },
-          { key: 'Stop Loss', val: `$${fmt(analysis.stopLoss?.price)}`, color: 'var(--red)' },
-          { key: 'Take Profit 1', val: `$${fmt(analysis.takeProfit?.[0]?.price)}`, color: 'var(--green)' },
-          { key: 'Confidence', val: `${analysis.confidence}%` },
-        ],
-        confirmText: `EXECUTE ${isLong ? 'LONG' : 'SHORT'}`,
-        isLong,
-      });
-
-      if (!confirmed) {
-        log('ℹ Trade cancelled by user — adding as paper position', 'warn');
-        if (analysis) addPosition(coin, analysis, {});
-      } else {
-        setStatus(true, 'EXECUTING');
-        setLoading(true, coin, 'EXECUTING TRADE…');
-        log(`→ Placing ${isLong ? 'LONG' : 'SHORT'} order with SL/TP on Hyperliquid…`, 'warn');
-        try {
-          const execData = await executeHyperliquidOrder(
-            state.walletKey, coin, isLong, analysis, data
-          );
-          addPosition(coin, analysis, execData);
-          log(`✓ Position opened — ${isLong ? 'LONG' : 'SHORT'} ${execData.sz} ${coin} @ ~$${fmt(analysis.entry?.price)}`, 'ok');
-          log(`✓ SL @ $${fmt(analysis.stopLoss?.price)} and TP1 @ $${fmt(analysis.takeProfit?.[0]?.price)} set on exchange`, 'ok');
-          switchTab('positions', document.querySelectorAll('.tab')[1]);
-        } catch (e) {
-          log(`✗ Trade execution failed: ${e.message}`, 'err');
-          log(`ℹ Adding as paper position for tracking`, 'warn');
-          addPosition(coin, analysis, {}); // fallback to paper
-        }
-      }
-    } else if (state.autoTrade && !state.walletKey) {
-      log('⚠ Auto-trade on but no wallet key — paper position added', 'warn');
-      if (analysis) addPosition(coin, analysis, {});
-    } else {
-      log('ℹ Auto-trade disabled — no order placed. Enable in Config to execute.', 'info');
-    }
-
-    setStatus(false);
-    log('════ ANALYSIS COMPLETE ════', 'ok');
-
-  } catch (e) {
-    showError(e.message);
-    log(`✗ ERROR: ${e.message}`, 'err');
-    document.getElementById('emptyAnalysis').style.display = 'block';
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('analysisGrid').style.display = 'none';
-    setStatus(false);
+  } catch(e){
+    log(`Execution error: ${e.message}`, 'err');
+    console.error(e);
   }
 
-  setLoading(false);
+  btn.textContent = '✓ EXECUTE'; btn.disabled = false;
 }
 
-// ─── UI HELPERS ───────────────────────────────────────────────────────────────
-function toggleConfig() {
-  document.getElementById('configPanel').classList.toggle('open');
+// ─── PLACE TP/SL ─────────────────────────────────────────────────────────────
+async function placeTPSL(wallet, assetIdx, wasBuy, sz, tp, sl){
+  log('Placing TP & SL orders (reduce-only)…', 'info');
+  try {
+    const nonce = Date.now()+2;
+    const tpSlAction = {
+      type: 'order',
+      orders: [
+        // Take profit (limit, reduce-only)
+        { a: assetIdx, b: !wasBuy, p: tp.toFixed(2), s: sz, r: true, t: { limit: { tif: 'Gtc' } } },
+        // Stop loss (stop-market, reduce-only)
+        { a: assetIdx, b: !wasBuy, p: sl.toFixed(2), s: sz, r: true, t: { trigger: { isMarket: true, triggerPx: sl.toFixed(2), tpsl: 'sl' } } }
+      ],
+      grouping: 'tpsl'
+    };
+    const sig = await signHyperliquidAction(wallet, tpSlAction, nonce);
+    const resp = await fetch(`${hlBase()}/exchange`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action: tpSlAction, nonce, signature: sig})
+    });
+    const data = await resp.json();
+    log(`TP/SL result: ${JSON.stringify(data?.status||data?.response?.data||'sent')}`, 'ok');
+  } catch(e){ log(`TP/SL error: ${e.message}`, 'warn'); }
 }
 
-function toggleAutoTrade() {
-  state.autoTrade = !state.autoTrade;
-  const t = document.getElementById('autoToggle');
-  const l = document.getElementById('autoLabel');
-  t.classList.toggle('on', state.autoTrade);
-  l.textContent = state.autoTrade
-    ? 'Auto-trade ENABLED — analysis will trigger real orders on Hyperliquid'
-    : 'Auto-trade disabled — analysis only, no orders placed';
-  l.style.color = state.autoTrade ? 'var(--green)' : 'var(--muted)';
+// ─── HYPERLIQUID SIGNING ──────────────────────────────────────────────────────
+async function signHyperliquidAction(wallet, action, nonce){
+  // Hyperliquid uses EIP-712 signing
+  const domain = {
+    name: 'Exchange',
+    version: '1',
+    chainId: state.testnet ? 421614 : 42161, // Arbitrum Sepolia vs Arbitrum One
+    verifyingContract: '0x0000000000000000000000000000000000000000'
+  };
+
+  // Encode action as agent message
+  const msgToSign = JSON.stringify({ action, nonce });
+  const msgHash = ethers.hashMessage(msgToSign);
+
+  // For Hyperliquid we sign the JSON string directly
+  const sig = await wallet.signMessage(msgToSign);
+
+  // Parse signature components
+  const sigBytes = ethers.Signature.from(sig);
+  return {
+    r: sigBytes.r,
+    s: sigBytes.s,
+    v: sigBytes.v
+  };
 }
 
-function switchTab(id, btn) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-' + id).classList.add('active');
-  if (btn) btn.classList.add('active');
-  // Re-draw canvas charts when their tab becomes visible (canvas needs offsetWidth > 0)
-  if (id === 'orderbook' && state.marketData) {
-    requestAnimationFrame(() => drawFundingChart(state.marketData.fundingHistory));
-  }
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function fmt(n){
+  if(!n || isNaN(n)) return '—';
+  if(n >= 10000) return n.toLocaleString('en', {maximumFractionDigits:0});
+  if(n >= 100) return n.toFixed(2);
+  if(n >= 1) return n.toFixed(4);
+  return n.toFixed(6);
 }
 
-function setLoading(on, coin, phase) {
-  const btn = document.getElementById('analyzeBtn');
-  const ls = document.getElementById('loadingState');
-  const ea = document.getElementById('emptyAnalysis');
-  btn.disabled = on;
-  btn.classList.toggle('loading', on);
-  btn.textContent = on ? '…' : '▶ ANALYZE';
-  if (on) {
-    document.getElementById('loadingCoin').textContent = coin || '';
-    document.getElementById('loadingPhase').textContent = phase || '';
-    if (document.getElementById('analysisGrid').style.display === 'none') {
-      ls.style.display = 'block'; ea.style.display = 'none';
-    }
-  } else {
-    ls.style.display = 'none';
-  }
-}
-
-function setStatus(on, text) {
-  const el = document.getElementById('statusPill');
-  el.style.display = on ? 'flex' : 'none';
-  document.getElementById('statusText').textContent = text || 'ACTIVE';
-}
-
-function showError(msg) {
-  const el = document.getElementById('errorBar');
-  el.textContent = '✗ ' + msg;
-  el.style.display = 'block';
-}
-function hideError() {
-  document.getElementById('errorBar').style.display = 'none';
-}
-
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-window.addEventListener('load', () => {
-  // Load saved Groq key from sessionStorage (session only — not persisted to disk)
-  const sk = sessionStorage.getItem('groqKey');
-  if (sk) document.getElementById('geminiKey').value = sk;
-  document.getElementById('geminiKey').addEventListener('input', e => sessionStorage.setItem('groqKey', e.target.value));
-
-  // Close modal on overlay click
-  document.getElementById('confirmModal').addEventListener('click', e => {
-    if (e.target === document.getElementById('confirmModal')) modalReject();
-  });
-
-  document.getElementById('coinInput').focus();
-  log('NEXUS Trader v3.0 initialized — Groq Llama 3.3 70B × Hyperliquid', 'info');
-  log('Fixes applied: EIP-712 signing · dynamic asset index · real SL/TP · real PnL · size from balance', 'ok');
-  log('Enter a coin symbol and your Groq API key in Config (⚙) to begin.', 'info');
-});
+// ─── INIT ────────────────────────────────────────────────────────────────────
+log('NEXUS SWING TRADER v3.0 ready', 'accent');
+log('Mode: SWING TRADE (4H/1D timeframe, hold 1-7 days)', 'ok');
+log('Target: 5-15% TP | 2-5% SL | Min R:R 2:1', 'info');
+log(`Hyperliquid: ${HL_BASE}`, 'dim');
+log('Groq AI: Llama 3.3 70B Versatile (FREE)', 'dim');
+log('⚠ Testnet mode ON by default', 'warn');
+log('Enter a coin and press ANALYZE to begin', 'info');
 </script>
 </body>
 </html>
