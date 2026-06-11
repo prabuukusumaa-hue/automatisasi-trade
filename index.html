@@ -1,1271 +1,890 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEXUS SWING — Groq × Hyperliquid</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
+<title>Final Portfolio — Prabu</title>
 <style>
-:root {
-  --bg: #05080f;
-  --surface: #0a0f1c;
-  --surface2: #111827;
-  --border: #1e2d45;
-  --accent: #00d4ff;
-  --accent2: #7c3aed;
-  --bull: #00e676;
-  --bear: #ff3d71;
-  --warn: #ffb300;
-  --text: #e2e8f0;
-  --muted: #4a5568;
-  --dim: #2d3748;
-}
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #070710;
+    --surface: #0d0d1a;
+    --surface2: #121224;
+    --border: #1c1c35;
+    --border2: #252545;
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Space Mono', monospace;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
+    --bull: #00e5a0;
+    --bull-bg: rgba(0,229,160,0.07);
+    --bull-border: rgba(0,229,160,0.25);
 
-/* Grid bg */
-body::before {
-  content: '';
-  position: fixed; inset: 0; z-index: 0;
-  background-image:
-    linear-gradient(rgba(0,212,255,.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-}
+    --bear: #ff4d6d;
+    --bear-bg: rgba(255,77,109,0.07);
+    --bear-border: rgba(255,77,109,0.25);
 
-.scanline {
-  position: fixed; top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: .4;
-  animation: scan 4s linear infinite;
-  z-index: 10; pointer-events: none;
-}
-@keyframes scan { from{top:-2px} to{top:100vh} }
+    --euphoria: #ffb700;
+    --euphoria-bg: rgba(255,183,0,0.07);
+    --euphoria-border: rgba(255,183,0,0.25);
 
-/* HEADER */
-header {
-  position: relative; z-index: 5;
-  border-bottom: 1px solid var(--border);
-  padding: 16px 24px;
-  display: flex; align-items: center; justify-content: space-between;
-  background: linear-gradient(180deg, rgba(0,212,255,.05), transparent);
-}
-.logo { display: flex; align-items: center; gap: 12px; }
-.logo-icon {
-  width: 36px; height: 36px;
-  border: 1.5px solid var(--accent);
-  display: grid; place-items: center;
-  font-family: 'Syne', sans-serif;
-  font-weight: 800; font-size: 14px;
-  color: var(--accent);
-  position: relative;
-  animation: pulse-border 3s ease infinite;
-}
-@keyframes pulse-border {
-  0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,.4)}
-  50%{box-shadow:0 0 0 6px rgba(0,212,255,0)}
-}
-.logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: .1em; }
-.logo-sub { font-size: 9px; color: var(--muted); letter-spacing: .2em; margin-top: 2px; }
-.badge {
-  background: rgba(0,230,118,.1);
-  border: 1px solid rgba(0,230,118,.3);
-  color: var(--bull);
-  font-size: 9px; letter-spacing: .15em;
-  padding: 3px 10px;
-  text-transform: uppercase;
-}
+    --text: #e8eaf6;
+    --muted: #4a4a6a;
+    --muted2: #6b6b9a;
 
-/* LAYOUT */
-.app {
-  position: relative; z-index: 2;
-  max-width: 1400px; margin: 0 auto;
-  padding: 20px;
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  grid-template-rows: auto 1fr;
-  gap: 16px;
-}
+    --crypto: #8b5cf6;
+    --us-eq: #3b82f6;
+    --id-eq: #06b6d4;
+    --cash: #64748b;
+    --bond: #10b981;
+  }
 
-/* PANELS */
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-.panel-header {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  font-size: 9px; letter-spacing: .2em; color: var(--accent);
-  display: flex; align-items: center; gap: 8px;
-  text-transform: uppercase;
-  background: rgba(0,212,255,.03);
-}
-.panel-header .dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent);
-  animation: blink 2s ease infinite;
-}
-@keyframes blink { 0%,100%{opacity:1}50%{opacity:.2} }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* SIDEBAR */
-.sidebar { grid-row: 1 / -1; display: flex; flex-direction: column; gap: 12px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding: 28px 16px 60px;
+  }
 
-/* INPUT ROW */
-.input-row {
-  display: flex; gap: 8px;
-  padding: 12px;
-}
-.input-row input {
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: 'Space Mono', monospace;
-  font-size: 13px;
-  padding: 8px 12px;
-  text-transform: uppercase;
-  outline: none;
-  transition: border-color .2s;
-}
-.input-row input:focus { border-color: var(--accent); }
-.btn-analyze {
-  background: var(--accent);
-  color: #000;
-  border: none; cursor: pointer;
-  font-family: 'Syne', sans-serif;
-  font-weight: 800; font-size: 10px;
-  letter-spacing: .05em; padding: 8px 10px;
-  text-transform: uppercase;
-  transition: all .2s;
-  white-space: nowrap;
-  flex-shrink: 0;
-  min-width: 80px;
-}
-.btn-analyze:hover { background: #33deff; transform: translateY(-1px); }
-.btn-analyze:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  /* ── HEADER ── */
+  .hdr { max-width: 980px; margin: 0 auto 32px; }
 
-/* SWING TIMEFRAME */
-.tf-row {
-  display: grid; grid-template-columns: repeat(3,1fr);
-  gap: 6px; padding: 0 12px 12px;
-}
-.tf-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  font-size: 10px; padding: 6px;
-  cursor: pointer; transition: all .15s;
-  text-align: center;
-}
-.tf-btn.active {
-  border-color: var(--accent); color: var(--accent);
-  background: rgba(0,212,255,.08);
-}
+  .hdr-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
 
-/* METRICS */
-.metrics { padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.metric {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 10px 12px;
-}
-.metric-label { font-size: 8px; color: var(--muted); letter-spacing: .15em; text-transform: uppercase; margin-bottom: 4px; }
-.metric-val { font-size: 15px; font-weight: 700; color: var(--text); }
-.metric-val.bull { color: var(--bull); }
-.metric-val.bear { color: var(--bear); }
+  .mono { font-family: 'DM Mono', monospace; }
 
-/* SWING PLAN */
-.swing-plan { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-.plan-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 10px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  font-size: 11px;
-}
-.plan-label { color: var(--muted); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
-.plan-val { font-weight: 700; }
-.plan-val.entry { color: var(--accent); }
-.plan-val.tp { color: var(--bull); }
-.plan-val.sl { color: var(--bear); }
-.plan-val.hold { color: var(--warn); }
-.rr-bar {
-  height: 4px;
-  background: var(--dim);
-  position: relative; overflow: hidden;
-  margin-top: 4px;
-}
-.rr-fill {
-  position: absolute; left: 0; top: 0; bottom: 0;
-  background: linear-gradient(90deg, var(--bull), var(--accent));
-  transition: width .8s ease;
-}
+  .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--muted2);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
 
-/* CONFIG */
-.cfg-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-.cfg-row { display: flex; flex-direction: column; gap: 4px; }
-.cfg-label { font-size: 9px; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
-.cfg-input {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: 'Space Mono', monospace;
-  font-size: 11px; padding: 7px 10px; outline: none;
-  width: 100%;
-  transition: border-color .2s;
-}
-.cfg-input:focus { border-color: var(--accent); }
-.cfg-toggle {
-  display: flex; align-items: center; gap: 8px;
-  cursor: pointer; padding: 8px 10px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  transition: border-color .2s;
-}
-.cfg-toggle:hover { border-color: var(--accent); }
-.toggle-switch {
-  width: 32px; height: 17px;
-  background: var(--dim);
-  border-radius: 9px; position: relative;
-  transition: background .2s; flex-shrink: 0;
-}
-.toggle-switch::after {
-  content: '';
-  position: absolute; left: 2px; top: 2px;
-  width: 13px; height: 13px; border-radius: 50%;
-  background: var(--muted);
-  transition: all .2s;
-}
-.cfg-toggle.active .toggle-switch { background: var(--accent); }
-.cfg-toggle.active .toggle-switch::after { left: 17px; background: #000; }
-.toggle-text { font-size: 10px; color: var(--muted); }
-.cfg-toggle.active .toggle-text { color: var(--accent); }
+  h1 {
+    font-size: clamp(26px, 5vw, 42px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.0;
+  }
 
-/* LEVERAGE */
-.lev-slider { width: 100%; accent-color: var(--accent); }
+  .hdr-sub {
+    font-size: 13px;
+    color: var(--muted2);
+    margin-top: 8px;
+    line-height: 1.6;
+  }
 
-/* MAIN AREA */
-.main { display: flex; flex-direction: column; gap: 12px; }
-.top-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  /* asset pill list */
+  .asset-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 18px;
+  }
 
-/* TERMINAL */
-.terminal-body {
-  padding: 12px;
-  height: 260px;
-  overflow-y: auto;
-  font-size: 11px; line-height: 1.7;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-.log-line { margin-bottom: 2px; }
-.log-line .ts { color: var(--muted); margin-right: 6px; font-size: 10px; }
-.log-line.info .msg { color: var(--text); }
-.log-line.ok .msg { color: var(--bull); }
-.log-line.warn .msg { color: var(--warn); }
-.log-line.err .msg { color: var(--bear); }
-.log-line.accent .msg { color: var(--accent); }
-.log-line.dim .msg { color: var(--muted); }
+  .pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    color: var(--muted2);
+  }
 
-/* AI ANALYSIS */
-.analysis-body {
-  padding: 16px;
-  min-height: 200px;
-  font-size: 12px; line-height: 1.8;
-  color: var(--text);
-  white-space: pre-wrap;
-}
-.analysis-body .loading {
-  color: var(--muted);
-  display: flex; align-items: center; gap: 8px;
-}
-.spinner {
-  width: 14px; height: 14px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin .8s linear infinite;
-}
-@keyframes spin { to{ transform: rotate(360deg); } }
+  .pill.crypto { border-color: rgba(139,92,246,0.4); color: #a78bfa; background: rgba(139,92,246,0.08); }
+  .pill.us { border-color: rgba(59,130,246,0.4); color: #60a5fa; background: rgba(59,130,246,0.08); }
+  .pill.id { border-color: rgba(6,182,212,0.4); color: #22d3ee; background: rgba(6,182,212,0.08); }
+  .pill.cash { border-color: rgba(100,116,139,0.4); color: #94a3b8; background: rgba(100,116,139,0.08); }
 
-/* CHART AREA */
-.chart-body { padding: 12px; }
-.candle-chart {
-  width: 100%; height: 160px;
-  display: flex; align-items: flex-end; gap: 3px;
-  position: relative;
-}
-.candle-wrap {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
-  gap: 0; position: relative; height: 100%;
-  justify-content: flex-end;
-}
-.candle-wick { width: 1px; background: var(--muted); }
-.candle-body { width: 80%; min-height: 2px; }
-.candle-body.bull { background: var(--bull); }
-.candle-body.bear { background: var(--bear); }
-.price-line {
-  position: absolute; left: 0; right: 0; height: 1px;
-  border-top: 1px dashed rgba(0,212,255,.4);
-  pointer-events: none;
-}
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin: 0 auto 24px;
+    max-width: 980px;
+    flex-wrap: wrap;
+  }
 
-/* ORDER BOOK */
-.ob-body { padding: 8px 12px; }
-.ob-row {
-  display: grid; grid-template-columns: 1fr 1fr 1fr;
-  font-size: 10px; padding: 3px 0;
-  border-bottom: 1px solid rgba(255,255,255,.03);
-}
-.ob-row.ask .price { color: var(--bear); }
-.ob-row.bid .price { color: var(--bull); }
-.ob-row .size, .ob-row .total { color: var(--muted); text-align: right; }
-.ob-spread {
-  text-align: center; font-size: 9px;
-  color: var(--accent); letter-spacing: .1em;
-  padding: 4px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-  background: rgba(0,212,255,.03);
-}
-.ob-header { display: grid; grid-template-columns: 1fr 1fr 1fr; font-size: 8px; color: var(--muted); letter-spacing: .1em; padding-bottom: 4px; text-transform: uppercase; }
-.ob-header .right { text-align: right; }
+  .tab {
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted2);
+    transition: all 0.18s;
+    font-family: 'DM Sans', sans-serif;
+  }
 
-/* POSITIONS */
-.pos-body { padding: 12px; }
-.pos-item {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 10px 12px; margin-bottom: 8px;
-  display: grid; grid-template-columns: auto 1fr auto;
-  gap: 12px; align-items: center;
-}
-.pos-side {
-  font-size: 9px; letter-spacing: .1em; padding: 3px 8px;
-  font-weight: 700;
-}
-.pos-side.long { background: rgba(0,230,118,.15); color: var(--bull); border: 1px solid rgba(0,230,118,.3); }
-.pos-side.short { background: rgba(255,61,113,.15); color: var(--bear); border: 1px solid rgba(255,61,113,.3); }
-.pos-info { font-size: 11px; }
-.pos-pair { font-weight: 700; margin-bottom: 2px; }
-.pos-detail { font-size: 9px; color: var(--muted); }
-.pos-pnl { text-align: right; font-size: 13px; font-weight: 700; }
-.pos-pnl.pos { color: var(--bull); }
-.pos-pnl.neg { color: var(--bear); }
-.no-pos { color: var(--muted); font-size: 11px; text-align: center; padding: 20px; }
+  .tab:hover { color: var(--text); }
+  .tab.t-bull  { border-color: var(--bull-border);     color: var(--bull);     background: var(--bull-bg); }
+  .tab.t-bear  { border-color: var(--bear-border);     color: var(--bear);     background: var(--bear-bg); }
+  .tab.t-euph  { border-color: var(--euphoria-border); color: var(--euphoria); background: var(--euphoria-bg); }
 
-/* CONFIRM MODAL */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 100;
-  background: rgba(0,0,0,.85);
-  display: none; place-items: center;
-  backdrop-filter: blur(4px);
-}
-.modal-overlay.open { display: grid; }
-.modal {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 24px; width: 380px;
-  box-shadow: 0 0 60px rgba(0,212,255,.15);
-}
-.modal-title {
-  font-family: 'Syne', sans-serif; font-weight: 800;
-  font-size: 16px; margin-bottom: 16px;
-  color: var(--accent); letter-spacing: .05em;
-}
-.modal-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--dim); font-size: 11px; }
-.modal-row .k { color: var(--muted); }
-.modal-row .v { font-weight: 700; }
-.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
-.btn-cancel { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: 'Space Mono', monospace; font-size: 11px; padding: 10px; cursor: pointer; }
-.btn-cancel:hover { border-color: var(--bear); color: var(--bear); }
-.btn-exec { flex: 1; background: var(--bull); border: none; color: #000; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 12px; letter-spacing: .08em; padding: 10px; cursor: pointer; }
-.btn-exec:hover { background: #33ff8a; }
+  /* ── MAIN ── */
+  .main { max-width: 980px; margin: 0 auto; }
 
-/* SWING STATUS */
-.swing-status {
-  padding: 8px 12px;
-  display: flex; align-items: center; gap: 8px;
-  font-size: 10px;
-}
-.swing-badge {
-  padding: 2px 10px;
-  font-size: 8px; letter-spacing: .15em;
-  text-transform: uppercase; font-weight: 700;
-}
-.swing-badge.bull { background: rgba(0,230,118,.15); border: 1px solid rgba(0,230,118,.4); color: var(--bull); }
-.swing-badge.bear { background: rgba(255,61,113,.15); border: 1px solid rgba(255,61,113,.4); color: var(--bear); }
-.swing-badge.neutral { background: rgba(255,179,0,.1); border: 1px solid rgba(255,179,0,.3); color: var(--warn); }
+  .panel { display: none; flex-direction: column; gap: 18px; }
+  .panel.active { display: flex; }
 
-/* SIGNAL BARS */
-.signal-row { display: flex; gap: 3px; }
-.sig-bar { width: 12px; height: 20px; background: var(--dim); }
-.sig-bar.filled.bull { background: var(--bull); }
-.sig-bar.filled.bear { background: var(--bear); }
+  /* ── HERO BANNER ── */
+  .banner {
+    border-radius: 14px;
+    padding: 22px 24px;
+    border: 1px solid;
+    position: relative;
+    overflow: hidden;
+  }
 
-/* FOOTER */
-footer {
-  text-align: center; padding: 12px;
-  font-size: 8px; color: var(--muted); letter-spacing: .15em;
-  border-top: 1px solid var(--border); margin-top: 8px;
-  position: relative; z-index: 2;
-}
+  .banner::after {
+    content: attr(data-label);
+    position: absolute;
+    right: 24px; top: 50%;
+    transform: translateY(-50%);
+    font-family: 'DM Mono', monospace;
+    font-size: clamp(36px, 8vw, 72px);
+    font-weight: 700;
+    opacity: 0.04;
+    letter-spacing: -0.04em;
+    pointer-events: none;
+    white-space: nowrap;
+  }
 
-/* TABS */
-.tabs { display: flex; border-bottom: 1px solid var(--border); }
-.tab { padding: 8px 14px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: all .15s; }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.tab-content { display: none; }
-.tab-content.active { display: block; }
+  .banner.bull  { background: var(--bull-bg);     border-color: var(--bull-border); }
+  .banner.bear  { background: var(--bear-bg);      border-color: var(--bear-border); }
+  .banner.euph  { background: var(--euphoria-bg);  border-color: var(--euphoria-border); }
 
-@media(max-width:900px) {
-  .app { grid-template-columns: 1fr; }
-  .sidebar { grid-row: auto; }
-  .top-row { grid-template-columns: 1fr; }
-}
+  .banner-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+
+  .banner-title { font-size: clamp(18px, 3.5vw, 26px); font-weight: 700; letter-spacing: -0.02em; }
+  .bull  .banner-title { color: var(--bull); }
+  .bear  .banner-title { color: var(--bear); }
+  .euph  .banner-title { color: var(--euphoria); }
+
+  .mode-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+
+  .bull  .mode-tag { color: var(--bull);     border-color: var(--bull-border); }
+  .bear  .mode-tag { color: var(--bear);      border-color: var(--bear-border); }
+  .euph  .mode-tag { color: var(--euphoria);  border-color: var(--euphoria-border); }
+
+  .banner-desc { font-size: 13px; color: var(--muted2); line-height: 1.65; max-width: 640px; }
+
+  .signals { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
+  .sig { font-size: 11px; color: var(--muted2); display: flex; align-items: center; gap: 5px; }
+  .sig-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+  /* ── TWO-COL ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 16px;
+  }
+  @media(max-width:640px){ .two-col { grid-template-columns: 1fr; } }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+
+  .card-eye {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* ── STACKED BAR ── */
+  .sbar {
+    display: flex;
+    height: 28px;
+    border-radius: 5px;
+    overflow: hidden;
+    gap: 2px;
+    margin-bottom: 14px;
+  }
+
+  .sbar-seg {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.8);
+    overflow: hidden;
+    white-space: nowrap;
+    transition: flex 0.55s cubic-bezier(.4,0,.2,1);
+  }
+
+  .leg { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .leg-name { flex: 1; color: var(--muted2); font-size: 11px; }
+  .leg-pct { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; }
+
+  /* ── ASSET LIST ── */
+  .alist { display: flex; flex-direction: column; gap: 6px; }
+
+  .aitem {
+    display: grid;
+    grid-template-columns: 20px 1fr 56px 40px;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    border-radius: 7px;
+    background: rgba(255,255,255,0.018);
+    border: 1px solid transparent;
+    transition: border-color 0.15s;
+  }
+
+  .aitem:hover { border-color: var(--border2); }
+  .aitem.dimmed { opacity: 0.32; }
+
+  .aico { font-size: 13px; text-align: center; }
+  .anm  { font-size: 12px; font-weight: 600; }
+  .asub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+  .abar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .abar-fill { height: 100%; border-radius: 2px; }
+
+  .apct {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: right;
+  }
+
+  .apct.zero { color: var(--muted) !important; }
+
+  /* ── CATEGORY HEADER ── */
+  .cat-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    margin-top: 2px;
+  }
+
+  .cat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); }
+  .cat-line { flex: 1; height: 1px; background: var(--border); }
+  .cat-total { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; }
+
+  /* ── NOTES ── */
+  .notes { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  @media(max-width:600px){ .notes { grid-template-columns: 1fr; } }
+
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 15px;
+  }
+
+  .note-t { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+  .note-b { font-size: 11px; color: var(--muted2); line-height: 1.6; }
+
+  /* ── BOND OPINION ── */
+  .bond-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 24px;
+  }
+
+  .bond-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .bond-title { font-size: 16px; font-weight: 700; }
+
+  .verdict {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 5px 12px;
+    border-radius: 5px;
+    border: 1px solid rgba(16,185,129,0.35);
+    color: var(--bond);
+    background: rgba(16,185,129,0.08);
+  }
+
+  .bond-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media(max-width:560px){ .bond-grid { grid-template-columns: 1fr; } }
+
+  .bond-col-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted2);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .bond-point {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 9px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--muted2);
+  }
+
+  .bond-point-ico { flex-shrink: 0; margin-top: 1px; }
+
+  .bond-conclusion {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted2);
+    line-height: 1.7;
+  }
+
+  .bond-conclusion strong { color: var(--text); }
+
+  /* ── TRANSITION FLOW ── */
+  .flow-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+
+  .flow-step {
+    flex: 1;
+    min-width: 100px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .flow-circle {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    border: 2px solid;
+  }
+
+  .flow-circle.bull  { border-color: var(--bull);     background: var(--bull-bg); }
+  .flow-circle.bear  { border-color: var(--bear);      background: var(--bear-bg); }
+  .flow-circle.euph  { border-color: var(--euphoria);  background: var(--euphoria-bg); }
+
+  .flow-name   { font-size: 11px; font-weight: 700; }
+  .flow-action { font-size: 10px; color: var(--muted2); line-height: 1.4; max-width: 120px; }
+
+  .flow-arrow { color: var(--muted); font-size: 16px; flex-shrink: 0; }
+  @media(max-width:480px){ .flow-arrow { display: none; } }
+
 </style>
 </head>
 <body>
 
-<div class="scanline"></div>
-
-<header>
-  <div class="logo">
-    <div class="logo-icon">N</div>
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-top">
     <div>
-      <div class="logo-text">NEXUS SWING</div>
-      <div class="logo-sub">GROQ × HYPERLIQUID • SWING TRADER</div>
+      <div class="eyebrow">// Final Portfolio · Prabu</div>
+      <h1>Alokasi Final<br>3 Fase Market</h1>
+      <div class="hdr-sub">Portofolio agresif dengan 9 aset lintas 4 kategori — crypto, US equity, IDX, dan cash/bond.</div>
     </div>
   </div>
-  <div class="badge">● SWING MODE ACTIVE</div>
-</header>
-
-<div class="app">
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-
-    <!-- Search -->
-    <div class="panel">
-      <div class="panel-header"><div class="dot"></div>INSTRUMENT</div>
-      <div class="input-row">
-        <input id="coinInput" type="text" value="BTC" placeholder="BTC, ETH, SOL…" maxlength="10">
-        <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()">ANALYZE</button>
-      </div>
-      <div class="tf-row">
-        <button class="tf-btn" onclick="setTF(this,'1h')">1H</button>
-        <button class="tf-btn active" onclick="setTF(this,'4h')">4H</button>
-        <button class="tf-btn" onclick="setTF(this,'1d')">1D</button>
-      </div>
-    </div>
-
-    <!-- Market Data -->
-    <div class="panel">
-      <div class="panel-header"><div class="dot"></div>MARKET DATA</div>
-      <div class="metrics">
-        <div class="metric"><div class="metric-label">Mark Price</div><div class="metric-val" id="mPrice">—</div></div>
-        <div class="metric"><div class="metric-label">24h Change</div><div class="metric-val" id="mChange">—</div></div>
-        <div class="metric"><div class="metric-label">Open Interest</div><div class="metric-val" id="mOI">—</div></div>
-        <div class="metric"><div class="metric-label">Funding/1h</div><div class="metric-val" id="mFunding">—</div></div>
-        <div class="metric"><div class="metric-label">24h Volume</div><div class="metric-val" id="mVol">—</div></div>
-        <div class="metric"><div class="metric-label">Swing Bias</div>
-          <div id="mBias" class="swing-status" style="padding:0">
-            <span class="swing-badge neutral" id="biasBadge">—</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Swing Plan -->
-    <div class="panel">
-      <div class="panel-header"><div class="dot"></div>SWING PLAN</div>
-      <div class="swing-plan">
-        <div class="plan-row">
-          <div><div class="plan-label">Entry Zone</div><div class="plan-val entry" id="planEntry">—</div></div>
-          <div><div class="plan-label">Direction</div><div class="plan-val" id="planDir">—</div></div>
-        </div>
-        <div class="plan-row">
-          <div><div class="plan-label">Take Profit</div><div class="plan-val tp" id="planTP">—</div></div>
-          <div><div class="plan-label">TP %</div><div class="plan-val tp" id="planTPpct">—</div></div>
-        </div>
-        <div class="plan-row">
-          <div><div class="plan-label">Stop Loss</div><div class="plan-val sl" id="planSL">—</div></div>
-          <div><div class="plan-label">SL %</div><div class="plan-val sl" id="planSLpct">—</div></div>
-        </div>
-        <div class="plan-row">
-          <div><div class="plan-label">Hold Period</div><div class="plan-val hold" id="planHold">—</div></div>
-          <div><div class="plan-label">R:R Ratio</div><div class="plan-val" id="planRR">—</div></div>
-        </div>
-        <div class="rr-bar"><div class="rr-fill" id="rrFill" style="width:0%"></div></div>
-
-        <!-- Execute Button -->
-        <button id="execBtn" style="display:none;margin-top:4px;width:100%;background:var(--bull);border:none;color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;letter-spacing:.08em;padding:10px;cursor:pointer;" onclick="showConfirm()">
-          ▶ EXECUTE SWING TRADE
-        </button>
-      </div>
-    </div>
-
-    <!-- Config -->
-    <div class="panel">
-      <div class="panel-header"><div class="dot"></div>CONFIG</div>
-      <div class="cfg-body">
-        <div class="cfg-row" style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.2);padding:8px 10px;">
-          <div class="cfg-label" style="color:var(--accent);margin-bottom:5px;">⚡ GROQ API KEY <span style="color:var(--bear);font-size:8px;">* WAJIB</span></div>
-          <input class="cfg-input" id="groqKey" type="password" placeholder="gsk_… (dapatkan di console.groq.com)" style="border-color:rgba(0,212,255,.3);font-size:10px;">
-          <div style="font-size:8px;color:var(--muted);margin-top:4px;">Gratis di: console.groq.com/keys</div>
-        </div>
-        <div class="cfg-row">
-          <div class="cfg-label">Hyperliquid Private Key</div>
-          <input class="cfg-input" id="privKey" type="password" placeholder="0x… (untuk live trading)">
-        </div>
-        <div class="cfg-row">
-          <div class="cfg-label">Leverage: <span id="levVal">3</span>x</div>
-          <input type="range" class="lev-slider" id="levSlider" min="1" max="10" value="3"
-            oninput="document.getElementById('levVal').textContent=this.value">
-        </div>
-        <div class="cfg-row">
-          <div class="cfg-label">Order Size (USD)</div>
-          <input class="cfg-input" id="orderSize" type="number" value="100" min="10" step="10">
-        </div>
-        <div class="cfg-toggle" id="autoToggle" onclick="toggleAuto()">
-          <div class="toggle-switch"></div>
-          <div class="toggle-text" id="autoTxt">Auto-trade OFF — Analysis only</div>
-        </div>
-        <div class="cfg-toggle" id="testnetToggle" onclick="toggleTestnet()" style="background:rgba(255,179,0,.05);border-color:rgba(255,179,0,.2)">
-          <div class="toggle-switch" style="background:var(--warn)"><div style="position:absolute;left:17px;top:2px;width:13px;height:13px;border-radius:50%;background:#000;transition:all .2s"></div></div>
-          <div class="toggle-text" style="color:var(--warn)">⚠ Testnet Mode ON</div>
-        </div>
-      </div>
-    </div>
-
-  </aside>
-
-  <!-- MAIN -->
-  <main class="main">
-
-    <!-- Top Row: Chart + Order Book -->
-    <div class="top-row">
-      <div class="panel">
-        <div class="panel-header"><div class="dot"></div><span id="chartLabel">4H CANDLES — BTC</span></div>
-        <div class="chart-body">
-          <canvas id="priceCanvas" width="100%" height="160" style="width:100%;height:160px;display:block;"></canvas>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header"><div class="dot"></div>L2 ORDER BOOK</div>
-        <div class="ob-body">
-          <div class="ob-header"><span>Price</span><span class="right">Size</span><span class="right">Total</span></div>
-          <div id="obAsks"></div>
-          <div class="ob-spread" id="obSpread">— SPREAD —</div>
-          <div id="obBids"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Analysis -->
-    <div class="panel">
-      <div class="tabs">
-        <div class="tab active" onclick="switchTab(this,'analysis')">AI SWING ANALYSIS</div>
-        <div class="tab" onclick="switchTab(this,'positions')">POSITIONS (<span id="posCount">0</span>)</div>
-        <div class="tab" onclick="switchTab(this,'terminal')">EXECUTION LOG</div>
-      </div>
-      <div id="tab-analysis" class="tab-content active">
-        <div class="analysis-body" id="analysisBox">
-          <div style="color:var(--muted)">
-            Enter a coin symbol and click ANALYZE.<br>
-            NEXUS will fetch Hyperliquid data and generate a <strong style="color:var(--accent)">swing trading plan</strong> (hold 1–7 days, 4H/1D timeframe).
-          </div>
-        </div>
-      </div>
-      <div id="tab-positions" class="tab-content">
-        <div class="pos-body" id="posBox"><div class="no-pos">No open positions</div></div>
-      </div>
-      <div id="tab-terminal" class="tab-content">
-        <div class="terminal-body" id="terminal"></div>
-      </div>
-    </div>
-
-  </main>
-</div>
-
-<!-- Confirm Modal -->
-<div class="modal-overlay" id="confirmModal">
-  <div class="modal">
-    <div class="modal-title">⚠ CONFIRM SWING ORDER</div>
-    <div id="modalRows"></div>
-    <div style="font-size:9px;color:var(--warn);margin-top:12px;line-height:1.6;">
-      ⚠ This will place a real order on Hyperliquid.<br>
-      Swing trades may be held for 1–7 days.<br>
-      NOT financial advice. Trade at your own risk.
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeConfirm()">✕ CANCEL</button>
-      <button class="btn-exec" id="execConfirmBtn" onclick="executeSwingTrade()">✓ EXECUTE</button>
-    </div>
+  <div class="asset-pills">
+    <span class="pill crypto">BTC</span>
+    <span class="pill crypto">ETH</span>
+    <span class="pill crypto">SOL</span>
+    <span class="pill crypto">HYPE</span>
+    <span class="pill us">S&P 500 ETF</span>
+    <span class="pill us">MSTR</span>
+    <span class="pill id">BBCA</span>
+    <span class="pill id">BBRI</span>
+    <span class="pill cash">Cash · Bond ETF</span>
   </div>
 </div>
 
-<footer>NEXUS SWING TRADER • GROQ AI × HYPERLIQUID • SWING MODE (4H/1D) • FOR EDUCATIONAL PURPOSES ONLY • NOT FINANCIAL ADVICE</footer>
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab t-bull" onclick="sw('bull',this)">🟢 Bull Market</button>
+  <button class="tab"        onclick="sw('bear',this)">🔴 Bear / Defensif</button>
+  <button class="tab"        onclick="sw('euph',this)">🟡 Euforia</button>
+</div>
+
+<div class="main">
+
+<!-- ══════════════════ BULL ══════════════════ -->
+<div class="panel active" id="p-bull">
+
+  <div class="banner bull" data-label="BULL">
+    <div class="banner-row">
+      <div class="banner-title">🟢 Bull Market</div>
+      <div class="mode-tag">FULL DEPLOY</div>
+    </div>
+    <div class="banner-desc">Semua posisi dibuka penuh. Crypto mendapat alokasi terbesar karena beta tertinggi. Cash minimal — setiap rupiah yang idle adalah opportunity cost.</div>
+    <div class="signals">
+      <div class="sig"><div class="sig-dot" style="background:var(--bull)"></div>BTC di atas 200 MA</div>
+      <div class="sig"><div class="sig-dot" style="background:var(--bull)"></div>Fear & Greed 55–75</div>
+      <div class="sig"><div class="sig-dot" style="background:var(--bull)"></div>Altcoin mulai outperform BTC</div>
+      <div class="sig"><div class="sig-dot" style="background:var(--bull)"></div>Volume naik konsisten</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+
+    <!-- stacked bar -->
+    <div class="card">
+      <div class="card-eye">// komposisi kategori</div>
+      <div class="sbar">
+        <div class="sbar-seg" style="flex:58;background:#8b5cf6">58%</div>
+        <div class="sbar-seg" style="flex:20;background:#3b82f6">20%</div>
+        <div class="sbar-seg" style="flex:12;background:#06b6d4">12%</div>
+        <div class="sbar-seg" style="flex:10;background:#475569">10%</div>
+      </div>
+      <div class="leg">
+        <div class="leg-item"><div class="leg-dot" style="background:#8b5cf6"></div><span class="leg-name">Crypto</span><span class="leg-pct" style="color:#a78bfa">58%</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#3b82f6"></div><span class="leg-name">US Equity</span><span class="leg-pct" style="color:#60a5fa">20%</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#06b6d4"></div><span class="leg-name">IDX</span><span class="leg-pct" style="color:#22d3ee">12%</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#475569"></div><span class="leg-name">Cash/Bond</span><span class="leg-pct" style="color:#94a3b8">10%</span></div>
+      </div>
+
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div class="card-eye" style="margin-bottom:6px">// target return (per siklus)</div>
+        <div style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:#00e5a0">+100–250%</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px">estimasi 18–36 bulan bull run</div>
+      </div>
+    </div>
+
+    <!-- asset breakdown -->
+    <div class="card">
+      <div class="card-eye">// breakdown per aset</div>
+      <div class="alist">
+
+        <div class="cat-hdr"><span class="cat-label">Crypto</span><span class="cat-line"></span><span class="cat-total" style="color:#a78bfa">58%</span></div>
+        <div class="aitem">
+          <div class="aico">₿</div>
+          <div><div class="anm">BTC</div><div class="asub">Anchor</div></div>
+          <div class="abar"><div class="abar-fill" style="width:88%;background:#f7931a"></div></div>
+          <div class="apct" style="color:#f7931a">22%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">Ξ</div>
+          <div><div class="anm">ETH</div><div class="asub">DeFi base</div></div>
+          <div class="abar"><div class="abar-fill" style="width:68%;background:#627eea"></div></div>
+          <div class="apct" style="color:#627eea">16%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">◎</div>
+          <div><div class="anm">SOL</div><div class="asub">High beta</div></div>
+          <div class="abar"><div class="abar-fill" style="width:50%;background:#9945ff"></div></div>
+          <div class="apct" style="color:#9945ff">12%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">⚡</div>
+          <div><div class="anm">HYPE</div><div class="asub">Speculative</div></div>
+          <div class="abar"><div class="abar-fill" style="width:33%;background:#00d1b2"></div></div>
+          <div class="apct" style="color:#00d1b2">8%</div>
+        </div>
+
+        <div class="cat-hdr" style="margin-top:6px"><span class="cat-label">US Equity</span><span class="cat-line"></span><span class="cat-total" style="color:#60a5fa">20%</span></div>
+        <div class="aitem">
+          <div class="aico">📊</div>
+          <div><div class="anm">S&P 500 ETF</div><div class="asub">Index passive</div></div>
+          <div class="abar"><div class="abar-fill" style="width:48%;background:#3b82f6"></div></div>
+          <div class="apct" style="color:#3b82f6">12%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">🧲</div>
+          <div><div class="anm">MSTR</div><div class="asub">BTC proxy</div></div>
+          <div class="abar"><div class="abar-fill" style="width:33%;background:#ff6b35"></div></div>
+          <div class="apct" style="color:#ff6b35">8%</div>
+        </div>
+
+        <div class="cat-hdr" style="margin-top:6px"><span class="cat-label">IDX</span><span class="cat-line"></span><span class="cat-total" style="color:#22d3ee">12%</span></div>
+        <div class="aitem">
+          <div class="aico">🏦</div>
+          <div><div class="anm">BBCA</div><div class="asub">Compounder</div></div>
+          <div class="abar"><div class="abar-fill" style="width:30%;background:#0062cc"></div></div>
+          <div class="apct" style="color:#0062cc">7%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">🏛️</div>
+          <div><div class="anm">BBRI</div><div class="asub">Dividen</div></div>
+          <div class="abar"><div class="abar-fill" style="width:21%;background:#22d3ee"></div></div>
+          <div class="apct" style="color:#22d3ee">5%</div>
+        </div>
+
+        <div class="cat-hdr" style="margin-top:6px"><span class="cat-label">Cash / Bond</span><span class="cat-line"></span><span class="cat-total" style="color:#94a3b8">10%</span></div>
+        <div class="aitem">
+          <div class="aico">💵</div>
+          <div><div class="anm">USDT/USD</div><div class="asub">Dip buy ammo</div></div>
+          <div class="abar"><div class="abar-fill" style="width:21%;background:#475569"></div></div>
+          <div class="apct" style="color:#94a3b8">5%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">📈</div>
+          <div><div class="anm">Bond ETF</div><div class="asub">Parkir yield</div></div>
+          <div class="abar"><div class="abar-fill" style="width:21%;background:#10b981"></div></div>
+          <div class="apct" style="color:#10b981">5%</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><div class="note-t">📈 Strategi</div><div class="note-b">Hold dan DCA setiap dip 10–15%. Jangan exit terlalu cepat. Let winners run — HYPE dan SOL bisa jadi alpha terbesar di fase ini.</div></div>
+    <div class="note"><div class="note-t">🧲 MSTR Logic</div><div class="note-b">Di bull, MSTR bisa outperform BTC 2–3x karena leverage implisit. Sizing 8% adalah sweet spot — besar cukup untuk impactful, kecil cukup kalau reversal.</div></div>
+    <div class="note"><div class="note-t">🔄 Rebalancing</div><div class="note-b">Jika crypto melewati 65% total, trim ke 58% dan rotate ke S&P 500 ETF atau cash. Jaga proporsi — jangan biarkan satu aset dominasi tidak terkontrol.</div></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════ BEAR ══════════════════ -->
+<div class="panel" id="p-bear">
+
+  <div class="banner bear" data-label="BEAR">
+    <div class="banner-row">
+      <div class="banner-title">🔴 Bear / Defensif</div>
+      <div class="mode-tag">CAPITAL PRESERVATION</div>
+    </div>
+    <div class="banner-desc">Prioritas utama adalah survive. Altcoin dan leveraged play di-exit. Cash dan bond ETF naik drastis sebagai dry powder untuk siklus berikutnya.</div>
+    <div class="signals">
+      <div class="sig"><div class="sig-dot" style="background:var(--bear)"></div>BTC di bawah 200 MA</div>
+      <div class="sig"><div class="sig-dot" style="background:var(--bear)"></div>Fear & Greed &lt; 25</div>
+      <div class="sig"><div class="sig-dot" style="background:var(--bear)"></div>Altcoin bleeding 80%+</div>
+      <div class="sig"><div class="sig-dot" style="background:var(--bear)"></div>Volume jual dominan minggu ke minggu</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-eye">// komposisi kategori</div>
+      <div class="sbar">
+        <div class="sbar-seg" style="flex:15;background:#8b5cf6;font-size:8px">15%</div>
+        <div class="sbar-seg" style="flex:15;background:#3b82f6;font-size:8px">15%</div>
+        <div class="sbar-seg" style="flex:20;background:#06b6d4;font-size:8px">20%</div>
+        <div class="sbar-seg" style="flex:50;background:#475569">50%</div>
+      </div>
+      <div class="leg">
+        <div class="leg-item"><div class="leg-dot" style="background:#8b5cf6"></div><span class="leg-name">Crypto</span><span class="leg-pct" style="color:#a78bfa">15%</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#3b82f6"></div><span class="leg-name">US Equity</span><span class="leg-pct" style="color:#60a5fa">15%</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#06b6d4"></div><span class="leg-name">IDX</span><span class="leg-pct" style="color:#22d3ee">20%</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#475569"></div><span class="leg-name">Cash/Bond</span><span class="leg-pct" style="color:#94a3b8">50%</span></div>
+      </div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div class="card-eye" style="margin-bottom:6px">// target</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#ff4d6d">Survive + Akumulasi</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px">build dry powder untuk bottom fishing</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-eye">// breakdown per aset</div>
+      <div class="alist">
+
+        <div class="cat-hdr"><span class="cat-label">Crypto</span><span class="cat-line"></span><span class="cat-total" style="color:#a78bfa">15%</span></div>
+        <div class="aitem">
+          <div class="aico">₿</div>
+          <div><div class="anm">BTC</div><div class="asub">Satu-satunya hold</div></div>
+          <div class="abar"><div class="abar-fill" style="width:63%;background:#f7931a"></div></div>
+          <div class="apct" style="color:#f7931a">15%</div>
+        </div>
+        <div class="aitem dimmed">
+          <div class="aico">Ξ</div>
+          <div><div class="anm">ETH</div><div class="asub">Exit / minimal</div></div>
+          <div class="abar"><div class="abar-fill" style="width:0%;background:#627eea"></div></div>
+          <div class="apct zero">0%</div>
+        </div>
+        <div class="aitem dimmed">
+          <div class="aico">◎</div>
+          <div><div class="anm">SOL / HYPE</div><div class="asub">Exit semua</div></div>
+          <div class="abar"><div class="abar-fill" style="width:0%;background:#9945ff"></div></div>
+          <div class="apct zero">0%</div>
+        </div>
+
+        <div class="cat-hdr" style="margin-top:6px"><span class="cat-label">US Equity</span><span class="cat-line"></span><span class="cat-total" style="color:#60a5fa">15%</span></div>
+        <div class="aitem">
+          <div class="aico">📊</div>
+          <div><div class="anm">S&P 500 ETF</div><div class="asub">Hold — paling defensif</div></div>
+          <div class="abar"><div class="abar-fill" style="width:63%;background:#3b82f6"></div></div>
+          <div class="apct" style="color:#3b82f6">15%</div>
+        </div>
+        <div class="aitem dimmed">
+          <div class="aico">🧲</div>
+          <div><div class="anm">MSTR</div><div class="asub">Exit — terlalu volatile</div></div>
+          <div class="abar"><div class="abar-fill" style="width:0%;background:#ff6b35"></div></div>
+          <div class="apct zero">0%</div>
+        </div>
+
+        <div class="cat-hdr" style="margin-top:6px"><span class="cat-label">IDX</span><span class="cat-line"></span><span class="cat-total" style="color:#22d3ee">20%</span></div>
+        <div class="aitem">
+          <div class="aico">🏦</div>
+          <div><div class="anm">BBCA</div><div class="asub">Defensif + dividen</div></div>
+          <div class="abar"><div class="abar-fill" style="width:50%;background:#0062cc"></div></div>
+          <div class="apct" style="color:#0062cc">12%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">🏛️</div>
+          <div><div class="anm">BBRI</div><div class="asub">Yield tinggi</div></div>
+          <div class="abar"><div class="abar-fill" style="width:33%;background:#22d3ee"></div></div>
+          <div class="apct" style="color:#22d3ee">8%</div>
+        </div>
+
+        <div class="cat-hdr" style="margin-top:6px"><span class="cat-label">Cash / Bond</span><span class="cat-line"></span><span class="cat-total" style="color:#94a3b8">50%</span></div>
+        <div class="aitem">
+          <div class="aico">💵</div>
+          <div><div class="anm">USDT/USD Cash</div><div class="asub">Siap deploy ke crypto</div></div>
+          <div class="abar"><div class="abar-fill" style="width:63%;background:#475569"></div></div>
+          <div class="apct" style="color:#94a3b8">25%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">📈</div>
+          <div><div class="anm">Bond ETF</div><div class="asub">Yield + siap rotate</div></div>
+          <div class="abar"><div class="abar-fill" style="width:63%;background:#10b981"></div></div>
+          <div class="apct" style="color:#10b981">25%</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><div class="note-t">🛡️ BTC Only Crypto</div><div class="note-b">Di bear, ETH bisa -80%, SOL -90%, HYPE bisa lebih. BTC "hanya" -60–70%. Mengurangi altcoin adalah keputusan paling impactful di fase ini.</div></div>
+    <div class="note"><div class="note-t">📈 Bond ETF di Bear</div><div class="note-b">Bond ETF seperti SHY, BND, atau SBIG memberikan yield 4–5% saat cash nganggur. Lebih baik dari USDT di exchange, dan lebih liquid dari deposito.</div></div>
+    <div class="note"><div class="note-t">🔄 Kapan Rotate Balik?</div><div class="note-b">BTC reclaim 200 MA + Fear & Greed naik dari extreme fear + volume beli konsisten 2 minggu. Jangan terburu-buru — false bottom itu nyata.</div></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════ EUPHORIA ══════════════════ -->
+<div class="panel" id="p-euph">
+
+  <div class="banner euph" data-label="EUFORIA">
+    <div class="banner-row">
+      <div class="banner-title">🟡 Euforia</div>
+      <div class="mode-tag">DISTRIBUTION MODE</div>
+    </div>
+    <div class="banner-desc">Fase paling berbahaya dan paling menggiurkan. Distribusi diam-diam saat semua orang beli. Tujuan: keluar dengan profit maksimal dan bangun amunisi untuk siklus berikutnya.</div>
+    <div class="signals">
+      <div class="sig"><div class="sig-dot" style="background:var(--euphoria)"></div>Fear & Greed &gt; 85 konsisten</div>
+      <div class="sig"><div class="sig-dot" style="background:var(--euphoria)"></div>Meme coin pumping gila-gilaan</div>
+      <div class="sig"><div class="sig-dot" style="background:var(--euphoria)"></div>Orang non-crypto masuk pasar</div>
+      <div class="sig"><div class="sig-dot" style="background:var(--euphoria)"></div>Media mainstream ramai crypto</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-eye">// komposisi kategori</div>
+      <div class="sbar">
+        <div class="sbar-seg" style="flex:20;background:#8b5cf6;font-size:8px">20%</div>
+        <div class="sbar-seg" style="flex:10;background:#3b82f6;font-size:8px">10%</div>
+        <div class="sbar-seg" style="flex:10;background:#06b6d4;font-size:8px">10%</div>
+        <div class="sbar-seg" style="flex:60;background:#475569">60%</div>
+      </div>
+      <div class="leg">
+        <div class="leg-item"><div class="leg-dot" style="background:#8b5cf6"></div><span class="leg-name">Crypto</span><span class="leg-pct" style="color:#a78bfa">20%</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#3b82f6"></div><span class="leg-name">US Equity</span><span class="leg-pct" style="color:#60a5fa">10%</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#06b6d4"></div><span class="leg-name">IDX</span><span class="leg-pct" style="color:#22d3ee">10%</span></div>
+        <div class="leg-item"><div class="leg-dot" style="background:#475569"></div><span class="leg-name">Cash/Bond</span><span class="leg-pct" style="color:#94a3b8">60%</span></div>
+      </div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div class="card-eye" style="margin-bottom:6px">// target</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:#ffb700">Realize Profit</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px">konversi unrealized gain ke cash nyata</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-eye">// breakdown per aset</div>
+      <div class="alist">
+
+        <div class="cat-hdr"><span class="cat-label">Crypto</span><span class="cat-line"></span><span class="cat-total" style="color:#a78bfa">20%</span></div>
+        <div class="aitem">
+          <div class="aico">₿</div>
+          <div><div class="anm">BTC</div><div class="asub">Trim 50% posisi</div></div>
+          <div class="abar"><div class="abar-fill" style="width:50%;background:#f7931a"></div></div>
+          <div class="apct" style="color:#f7931a">12%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">Ξ</div>
+          <div><div class="anm">ETH</div><div class="asub">Trim agresif</div></div>
+          <div class="abar"><div class="abar-fill" style="width:21%;background:#627eea"></div></div>
+          <div class="apct" style="color:#627eea">5%</div>
+        </div>
+        <div class="aitem dimmed">
+          <div class="aico">◎⚡</div>
+          <div><div class="anm">SOL / HYPE</div><div class="asub">Exit hampir semua</div></div>
+          <div class="abar"><div class="abar-fill" style="width:12%;background:#9945ff"></div></div>
+          <div class="apct" style="color:#9945ff">3%</div>
+        </div>
+
+        <div class="cat-hdr" style="margin-top:6px"><span class="cat-label">US Equity</span><span class="cat-line"></span><span class="cat-total" style="color:#60a5fa">10%</span></div>
+        <div class="aitem">
+          <div class="aico">📊</div>
+          <div><div class="anm">S&P 500 ETF</div><div class="asub">Hold core position</div></div>
+          <div class="abar"><div class="abar-fill" style="width:42%;background:#3b82f6"></div></div>
+          <div class="apct" style="color:#3b82f6">10%</div>
+        </div>
+        <div class="aitem dimmed">
+          <div class="aico">🧲</div>
+          <div><div class="anm">MSTR</div><div class="asub">Exit semua</div></div>
+          <div class="abar"><div class="abar-fill" style="width:0%;background:#ff6b35"></div></div>
+          <div class="apct zero">0%</div>
+        </div>
+
+        <div class="cat-hdr" style="margin-top:6px"><span class="cat-label">IDX</span><span class="cat-line"></span><span class="cat-total" style="color:#22d3ee">10%</span></div>
+        <div class="aitem">
+          <div class="aico">🏦</div>
+          <div><div class="anm">BBCA</div><div class="asub">Hold — defensif</div></div>
+          <div class="abar"><div class="abar-fill" style="width:25%;background:#0062cc"></div></div>
+          <div class="apct" style="color:#0062cc">6%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">🏛️</div>
+          <div><div class="anm">BBRI</div><div class="asub">Hold — dividen</div></div>
+          <div class="abar"><div class="abar-fill" style="width:17%;background:#22d3ee"></div></div>
+          <div class="apct" style="color:#22d3ee">4%</div>
+        </div>
+
+        <div class="cat-hdr" style="margin-top:6px"><span class="cat-label">Cash / Bond</span><span class="cat-line"></span><span class="cat-total" style="color:#94a3b8">60%</span></div>
+        <div class="aitem">
+          <div class="aico">💵</div>
+          <div><div class="anm">USDT/USD Cash</div><div class="asub">Hasil distribusi</div></div>
+          <div class="abar"><div class="abar-fill" style="width:63%;background:#475569"></div></div>
+          <div class="apct" style="color:#94a3b8">30%</div>
+        </div>
+        <div class="aitem">
+          <div class="aico">📈</div>
+          <div><div class="anm">Bond ETF</div><div class="asub">Yield sambil tunggu bear</div></div>
+          <div class="abar"><div class="abar-fill" style="width:63%;background:#10b981"></div></div>
+          <div class="apct" style="color:#10b981">30%</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><div class="note-t">🚨 Disiplin > FOMO</div><div class="note-b">Market bisa terus naik setelah kamu jual. Itu menyakitkan tapi normal. PM profesional selalu keluar terlalu awal — dan itu benar. Tidak ada yang bisa timing puncak persis.</div></div>
+    <div class="note"><div class="note-t">📐 Trim Bertahap</div><div class="note-b">Jual 20–30% posisi setiap kenaikan 30–40% berikutnya. Jangan satu kali exit. Dengan cara ini kamu tidak pernah fully wrong — baik market lanjut naik atau berbalik.</div></div>
+    <div class="note"><div class="note-t">💵 60% Cash/Bond</div><div class="note-b">Terasa sakit saat market masih hijau. Tapi 60% ini adalah modal beli BTC di -70% di bear berikutnya. Inilah yang membedakan siklus pertama dan siklus kedua kamu.</div></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════ BOND OPINION ══════════════════ -->
+<div class="bond-card">
+  <div class="bond-header">
+    <div class="bond-title">💬 Pendapatku: Apakah Kamu Perlu Bond ETF?</div>
+    <div class="verdict">VERDICT: YA, TAPI KONDISIONAL</div>
+  </div>
+
+  <div class="bond-grid">
+    <div>
+      <div class="bond-col-title">// alasan perlu bond ETF</div>
+      <div class="bond-point"><span class="bond-point-ico">✅</span><span>Cash idle di exchange tidak menghasilkan apa-apa. Bond ETF seperti SHY atau BND memberikan yield 4–5% per tahun — lumayan saat kamu nunggu momen entry.</span></div>
+      <div class="bond-point"><span class="bond-point-ico">✅</span><span>Di bear dan euforia, kamu akan hold 25–30% cash dalam waktu lama. Bond ETF adalah cara paling efisien untuk "parkir" dana itu.</span></div>
+      <div class="bond-point"><span class="bond-point-ico">✅</span><span>Bond ETF lebih liquid dari deposito dan lebih aman dari staking di exchange yang punya counterparty risk.</span></div>
+      <div class="bond-point"><span class="bond-point-ico">✅</span><span>Short-duration bond ETF (SHY, SGOV) harganya relatif stabil — tidak turun signifikan saat rate naik seperti long-duration bond.</span></div>
+    </div>
+    <div>
+      <div class="bond-col-title">// kapan bond ETF tidak perlu</div>
+      <div class="bond-point"><span class="bond-point-ico">⚠️</span><span>Kalau cash kamu cuma 10% di bull market, overhead biaya dan kerumitan manajemen tidak worth it. Cukup USDT di exchange.</span></div>
+      <div class="bond-point"><span class="bond-point-ico">⚠️</span><span>Kalau kamu belum familiar dengan platform untuk beli bond ETF (misalnya Interactive Brokers), setup awalnya perlu usaha.</span></div>
+      <div class="bond-point"><span class="bond-point-ico">⚠️</span><span>USDC/USDT di platform seperti Aave atau Compound bisa beri yield 5–8% — lebih tinggi dari bond ETF, meski dengan DeFi risk.</span></div>
+    </div>
+  </div>
+
+  <div class="bond-conclusion">
+    <strong>Kesimpulan praktis:</strong> Untuk profil kamu, pakai <strong>bond ETF saat cash di atas 20% portofolio</strong> — yaitu di fase bear dan euforia. Di bull market dengan cash hanya 5–10%, <strong>USDT/USDC cukup</strong>. Pilihan bond ETF yang cocok: <strong>SGOV atau SHY</strong> untuk USD (short-duration, stabil), atau <strong>SBIG</strong> jika beli lewat broker lokal Indonesia. Hindari long-duration bond ETF seperti TLT karena sensitif terhadap perubahan suku bunga dan volatilitasnya bisa mengejutkan.
+  </div>
+</div>
+
+<!-- ══════════════════ FLOW ══════════════════ -->
+<div class="flow-card">
+  <div class="card-eye">// siklus rotasi alokasi</div>
+  <div class="flow-row">
+    <div class="flow-step">
+      <div class="flow-circle bear">🔴</div>
+      <div class="flow-name" style="color:var(--bear)">Bear</div>
+      <div class="flow-action">Deploy cash & bond ETF ke BTC saat capitulation</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-circle bull">🟢</div>
+      <div class="flow-name" style="color:var(--bull)">Bull</div>
+      <div class="flow-action">Fully deployed, let winners run, rebalancing tiap 3 bulan</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-circle euph">🟡</div>
+      <div class="flow-name" style="color:var(--euphoria)">Euforia</div>
+      <div class="flow-action">Distribusi bertahap, bangun 60% cash & bond ETF</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-circle bear">🔴</div>
+      <div class="flow-name" style="color:var(--bear)">Bear</div>
+      <div class="flow-action">Ulangi — dengan modal 2–3x lebih besar</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
 
 <script>
-// ─── STATE ───────────────────────────────────────────────────────────────────
-const state = {
-  tf: '4h',
-  coin: 'BTC',
-  autoTrade: false,
-  testnet: true,
-  positions: [],
-  plan: null,
-  marketData: null,
-  candles: []
-};
-
-function getGroqKey(){ return document.getElementById('groqKey').value.trim(); }
-const HL_BASE = 'https://api.hyperliquid.xyz';
-const HL_TEST = 'https://api.hyperliquid-testnet.xyz';
-
-function hlBase(){ return state.testnet ? HL_TEST : HL_BASE; }
-
-// ─── LOGGING ─────────────────────────────────────────────────────────────────
-function log(msg, type='info'){
-  const el = document.getElementById('terminal');
-  const ts = new Date().toTimeString().slice(0,8);
-  const d = document.createElement('div');
-  d.className = `log-line ${type}`;
-  d.innerHTML = `<span class="ts">[${ts}]</span><span class="msg">${msg}</span>`;
-  el.appendChild(d);
-  el.scrollTop = el.scrollHeight;
-}
-
-// ─── TIMEFRAME ───────────────────────────────────────────────────────────────
-function setTF(btn, tf){
-  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  state.tf = tf;
-  log(`Timeframe set to ${tf.toUpperCase()} (Swing mode)`, 'accent');
-}
-
-// ─── CONFIG TOGGLES ──────────────────────────────────────────────────────────
-function toggleAuto(){
-  state.autoTrade = !state.autoTrade;
-  const el = document.getElementById('autoToggle');
-  el.classList.toggle('active', state.autoTrade);
-  document.getElementById('autoTxt').textContent = state.autoTrade
-    ? 'Auto-trade ON — will execute'
-    : 'Auto-trade OFF — Analysis only';
-  log(`Auto-trade: ${state.autoTrade ? 'ENABLED' : 'DISABLED'}`, state.autoTrade ? 'ok' : 'warn');
-}
-
-let testnetOn = true;
-function toggleTestnet(){
-  testnetOn = !testnetOn;
-  state.testnet = testnetOn;
-  const el = document.getElementById('testnetToggle');
-  el.querySelector('.toggle-text').textContent = testnetOn ? '⚠ Testnet Mode ON' : '🔴 MAINNET MODE';
-  el.querySelector('.toggle-text').style.color = testnetOn ? 'var(--warn)' : 'var(--bear)';
-  log(`Mode: ${testnetOn ? 'TESTNET' : '⚠ MAINNET — real funds'}`, testnetOn ? 'warn' : 'err');
-}
-
-// ─── TABS ─────────────────────────────────────────────────────────────────────
-function switchTab(btn, name){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tab-'+name).classList.add('active');
-}
-
-// ─── FETCH MARKET DATA ────────────────────────────────────────────────────────
-async function fetchMarketData(coin){
-  log(`Fetching Hyperliquid data for ${coin}…`, 'info');
-  const [metaR, oiR] = await Promise.all([
-    fetch(`${hlBase()}/info`, {method:'POST',headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({type:'metaAndAssetCtxs'})}),
-    fetch(`${hlBase()}/info`, {method:'POST',headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({type:'openInterest'})})
-  ]);
-  const metaData = await metaR.json();
-  const universe = metaData[0].universe;
-  const ctxs = metaData[1];
-  const idx = universe.findIndex(u => u.name === coin.toUpperCase());
-  if(idx === -1) throw new Error(`${coin} not found on Hyperliquid`);
-
-  const ctx = ctxs[idx];
-  const price = parseFloat(ctx.markPx);
-  const funding = parseFloat(ctx.funding);
-  const oi = parseFloat(ctx.openInterest) * price;
-  const prevDay = parseFloat(ctx.prevDayPx || ctx.markPx);
-  const change = ((price - prevDay) / prevDay * 100);
-
-  // Candles
-  const tfMap = {'1h':60,'4h':240,'1d':1440};
-  const interval = tfMap[state.tf] || 240;
-  const end = Date.now();
-  const start = end - interval * 60 * 1000 * 60; // ~60 candles
-
-  const candleR = await fetch(`${hlBase()}/info`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({type:'candleSnapshot', req:{coin: coin.toUpperCase(), interval: state.tf+'min'? state.tf : '4h', startTime: start, endTime: end}})
-  });
-
-  let candles = [];
-  try {
-    const raw = await candleR.json();
-    if(Array.isArray(raw)) candles = raw.slice(-48).map(c=>({
-      o: parseFloat(c.o), h: parseFloat(c.h), l: parseFloat(c.l), c: parseFloat(c.c),
-      v: parseFloat(c.v), t: c.t
-    }));
-  } catch(e){ log('Candle parse error, using synthetic', 'warn'); }
-
-  // Synthetic candles if API returns nothing
-  if(candles.length < 8){
-    candles = generateSyntheticCandles(price, 48);
-    log('Using synthetic candle data for chart', 'warn');
+  function sw(phase, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('p-' + phase).classList.add('active');
+    document.querySelectorAll('.tab').forEach(t => t.className = 'tab');
+    const map = { bull: 't-bull', bear: 't-bear', euph: 't-euph' };
+    btn.classList.add(map[phase]);
   }
-
-  // Order book
-  const obR = await fetch(`${hlBase()}/info`, {method:'POST',headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({type:'l2Book', coin: coin.toUpperCase()})});
-  const ob = await obR.json();
-
-  // Volume (estimate)
-  const dayVol = parseFloat(ctx.dayNtlVlm || '0');
-
-  return { price, funding, oi, change, candles, ob, dayVol, universe, idx, coin };
-}
-
-function generateSyntheticCandles(price, n){
-  const candles = [];
-  let cur = price * (1 + (Math.random()-.5)*.1);
-  for(let i=0;i<n;i++){
-    const vol = (Math.random()-.48) * cur * .015;
-    const o = cur;
-    const c = cur + vol;
-    const h = Math.max(o,c) * (1 + Math.random()*.008);
-    const l = Math.min(o,c) * (1 - Math.random()*.008);
-    candles.push({o,h,l,c,v:Math.random()*1e6});
-    cur = c;
-  }
-  return candles;
-}
-
-// ─── DRAW CHART ───────────────────────────────────────────────────────────────
-function drawChart(candles, plan){
-  const canvas = document.getElementById('priceCanvas');
-  const dpr = window.devicePixelRatio || 1;
-  const W = canvas.offsetWidth, H = 160;
-  canvas.width = W * dpr; canvas.height = H * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  if(!candles.length) return;
-
-  const highs = candles.map(c=>c.h), lows = candles.map(c=>c.l);
-  const maxP = Math.max(...highs)*1.001, minP = Math.min(...lows)*.999;
-  const range = maxP - minP;
-  const px = v => H - ((v - minP) / range) * H * .9 - H*.05;
-  const barW = W / candles.length;
-
-  ctx.clearRect(0,0,W,H);
-
-  // Grid lines
-  ctx.strokeStyle = 'rgba(255,255,255,.04)';
-  ctx.lineWidth = 1;
-  for(let i=1;i<5;i++){
-    const y = H * i/5;
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
-  }
-
-  // Plan lines
-  if(plan){
-    const drawLine = (price, color, label) => {
-      const y = px(price);
-      ctx.strokeStyle = color; ctx.setLineDash([4,4]); ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = color; ctx.font = '9px Space Mono'; ctx.textAlign = 'right';
-      ctx.fillText(label, W-4, y-3);
-    };
-    if(plan.tp) drawLine(plan.tp, 'rgba(0,230,118,.7)', `TP $${fmt(plan.tp)}`);
-    if(plan.sl) drawLine(plan.sl, 'rgba(255,61,113,.7)', `SL $${fmt(plan.sl)}`);
-    if(plan.entry) drawLine(plan.entry, 'rgba(0,212,255,.7)', `Entry $${fmt(plan.entry)}`);
-  }
-
-  // Candles
-  candles.forEach((c, i) => {
-    const x = i * barW + barW/2;
-    const bull = c.c >= c.o;
-    const col = bull ? '#00e676' : '#ff3d71';
-    ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(x, px(c.h)); ctx.lineTo(x, px(c.l)); ctx.stroke();
-    const top = px(Math.max(c.o,c.c));
-    const bot = px(Math.min(c.o,c.c));
-    const bh = Math.max(bot-top, 1);
-    ctx.fillStyle = bull ? 'rgba(0,230,118,.85)' : 'rgba(255,61,113,.85)';
-    ctx.fillRect(x - barW*.35, top, barW*.7, bh);
-  });
-}
-
-// ─── ORDER BOOK RENDER ────────────────────────────────────────────────────────
-function renderOB(ob){
-  const asks = (ob?.levels?.[1] || []).slice(0,6).reverse();
-  const bids = (ob?.levels?.[0] || []).slice(0,6);
-  let askHtml='', bidHtml='', askTotal=0, bidTotal=0;
-  asks.forEach(a=>{ askTotal+=parseFloat(a.sz); askHtml+=`<div class="ob-row ask"><span class="price">${fmt(parseFloat(a.px))}</span><span class="size">${parseFloat(a.sz).toFixed(4)}</span><span class="total">${fmt(parseFloat(a.px)*parseFloat(a.sz))}</span></div>`; });
-  bids.forEach(b=>{ bidTotal+=parseFloat(b.sz); bidHtml+=`<div class="ob-row bid"><span class="price">${fmt(parseFloat(b.px))}</span><span class="size">${parseFloat(b.sz).toFixed(4)}</span><span class="total">${fmt(parseFloat(b.px)*parseFloat(b.sz))}</span></div>`; });
-  document.getElementById('obAsks').innerHTML=askHtml;
-  document.getElementById('obBids').innerHTML=bidHtml;
-  if(asks.length && bids.length){
-    const sp = parseFloat(asks[asks.length-1].px) - parseFloat(bids[0].px);
-    document.getElementById('obSpread').textContent=`SPREAD ${sp.toFixed(2)}`;
-  }
-}
-
-// ─── AI SWING ANALYSIS ───────────────────────────────────────────────────────
-async function runAISwingAnalysis(marketData){
-  const key = getGroqKey();
-  if(!key) throw new Error("Groq API Key belum diisi. Masukkan di kolom Groq API Key pada Config.");
-  const { price, funding, oi, change, candles, dayVol, coin } = marketData;
-  const last20 = candles.slice(-20);
-  const prices = last20.map(c=>`O:${c.o.toFixed(2)} H:${c.h.toFixed(2)} L:${c.l.toFixed(2)} C:${c.c.toFixed(2)}`).join('\n');
-
-  const prompt = `You are a professional swing trader analyzing crypto perpetual futures on Hyperliquid DEX.
-Timeframe: ${state.tf.toUpperCase()} — SWING TRADING (hold 1–7 days, NOT scalping)
-
-MARKET DATA:
-- Asset: ${coin}-PERP
-- Current Price: $${price.toFixed(2)}
-- 24h Change: ${change.toFixed(2)}%
-- Funding Rate: ${(funding*100).toFixed(4)}%/1h
-- Open Interest: $${(oi/1e6).toFixed(1)}M
-- 24h Volume: $${(dayVol/1e6).toFixed(1)}M
-
-LAST 20 ${state.tf.toUpperCase()} CANDLES (OHLC):
-${prices}
-
-Provide a SWING TRADE analysis. Your response MUST include:
-
-1. **MARKET STRUCTURE** — trend on ${state.tf} (HH/HL bullish or LL/LH bearish), key S/R levels
-2. **SWING BIAS** — LONG or SHORT with conviction (High/Medium/Low)
-3. **ENTRY ZONE** — price range to enter (limit order recommended)
-4. **TAKE PROFIT** — realistic swing target (5–15% move, not 0.5%)
-5. **STOP LOSS** — swing stop (2–5% away, not 0.1%)
-6. **HOLD PERIOD** — estimated 1–7 days
-7. **RISK:REWARD** — must be ≥ 2:1
-8. **INDICATORS USED** — EMA trend, RSI overbought/oversold, volume confirmation
-9. **INVALIDATION** — what price action invalidates this setup
-10. **EXECUTION** — entry: LIMIT or MARKET? leverage: 2–5x max (swing)
-
-SWING RULES: 
-- Target 5-15% profit, NOT 0.5-2% scalp targets
-- Stop loss 2-5%, NOT 0.1-0.5%
-- Leverage max 5x (swing trades need room to breathe)
-- Look for momentum continuation or mean reversion setups
-- Consider funding rate impact on multi-day holds
-
-End with a JSON block exactly like:
-\`\`\`json
-{"direction":"LONG","entry":${price.toFixed(2)},"tp":0,"sl":0,"hold":"2-3 days","rr":"2.5:1","conviction":"Medium","leverage":3}
-\`\`\``;
-
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{role:'user',content:prompt}],
-      temperature: 0.4,
-      max_tokens: 1200
-    })
-  });
-
-  if(!resp.ok){
-    const err = await resp.json().catch(()=>({}));
-    throw new Error(`Groq error: ${err?.error?.message || resp.status}`);
-  }
-
-  const data = await resp.json();
-  return data.choices[0].message.content;
-}
-
-// ─── PARSE PLAN FROM AI ───────────────────────────────────────────────────────
-function parsePlan(aiText, fallbackPrice){
-  const match = aiText.match(/```json\s*([\s\S]*?)```/);
-  if(!match) return null;
-  try {
-    const p = JSON.parse(match[1]);
-    // If tp/sl are 0 or missing, compute defaults
-    const ep = parseFloat(p.entry) || fallbackPrice;
-    const dir = (p.direction||'LONG').toUpperCase();
-    if(!p.tp || p.tp===0) p.tp = dir==='LONG' ? ep*1.08 : ep*0.92;
-    if(!p.sl || p.sl===0) p.sl = dir==='LONG' ? ep*0.96 : ep*1.04;
-    p.entry = ep;
-    return p;
-  } catch(e){ return null; }
-}
-
-// ─── UPDATE PLAN UI ───────────────────────────────────────────────────────────
-function updatePlanUI(plan){
-  if(!plan) return;
-  const dir = (plan.direction||'LONG').toUpperCase();
-  document.getElementById('planEntry').textContent = `$${fmt(plan.entry)}`;
-  document.getElementById('planDir').textContent = dir;
-  document.getElementById('planDir').style.color = dir==='LONG' ? 'var(--bull)' : 'var(--bear)';
-  document.getElementById('planTP').textContent = `$${fmt(plan.tp)}`;
-  document.getElementById('planSL').textContent = `$${fmt(plan.sl)}`;
-  document.getElementById('planHold').textContent = plan.hold || '2-4 days';
-  document.getElementById('planRR').textContent = plan.rr || '—';
-
-  const tpPct = ((plan.tp - plan.entry) / plan.entry * 100);
-  const slPct = ((plan.sl - plan.entry) / plan.entry * 100);
-  document.getElementById('planTPpct').textContent = `${tpPct>=0?'+':''}${tpPct.toFixed(1)}%`;
-  document.getElementById('planSLpct').textContent = `${slPct>=0?'+':''}${slPct.toFixed(1)}%`;
-
-  // R:R bar
-  const rrNum = parseFloat(plan.rr) || 2;
-  const rrPct = Math.min((rrNum/5)*100, 100);
-  document.getElementById('rrFill').style.width = rrPct+'%';
-
-  // Bias badge
-  const badge = document.getElementById('biasBadge');
-  badge.textContent = dir;
-  badge.className = 'swing-badge ' + (dir==='LONG'?'bull':'bear');
-
-  // Show exec button if auto-trade and private key
-  const pk = document.getElementById('privKey').value;
-  document.getElementById('execBtn').style.display = 'block';
-
-  state.plan = plan;
-}
-
-// ─── MAIN ANALYSIS ────────────────────────────────────────────────────────────
-async function runAnalysis(){
-  const coin = document.getElementById('coinInput').value.trim().toUpperCase();
-  if(!coin){ log('Enter a coin symbol', 'warn'); return; }
-  if(!getGroqKey()){
-    log('⚠ Groq API Key belum diisi! Isi di Config → GROQ API KEY', 'err');
-    document.getElementById('analysisBox').innerHTML = `<div style="color:var(--bear);padding:16px;line-height:2">
-      ⚠ <strong>Groq API Key belum diisi.</strong><br><br>
-      1. Buka <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent)">console.groq.com/keys</a><br>
-      2. Login/daftar gratis → Create API Key<br>
-      3. Copy key (diawali <code style="color:var(--warn)">gsk_…</code>)<br>
-      4. Paste di <strong style="color:var(--accent)">Config → GROQ API KEY</strong><br>
-      5. Klik ANALYZE lagi
-    </div>`;
-    document.getElementById('analyzeBtn').disabled = false;
-    document.getElementById('analyzeBtn').textContent = 'ANALYZE';
-    return;
-  }
-  state.coin = coin;
-
-  const btn = document.getElementById('analyzeBtn');
-  btn.disabled = true; btn.textContent = '…';
-  document.getElementById('analysisBox').innerHTML = `<div class="loading"><div class="spinner"></div> Fetching ${coin} data from Hyperliquid…</div>`;
-  document.getElementById('chartLabel').textContent = `${state.tf.toUpperCase()} CANDLES — ${coin}`;
-
-  try {
-    log(`▶ NEXUS SWING analysis for ${coin} [${state.tf.toUpperCase()}]`, 'accent');
-
-    // 1. Market data
-    const md = await fetchMarketData(coin);
-    state.marketData = md;
-    log(`Market data OK — Price: $${fmt(md.price)} | Change: ${md.change.toFixed(2)}%`, 'ok');
-
-    // 2. Update metrics
-    document.getElementById('mPrice').textContent = `$${fmt(md.price)}`;
-    const chEl = document.getElementById('mChange');
-    chEl.textContent = `${md.change>=0?'+':''}${md.change.toFixed(2)}%`;
-    chEl.className = 'metric-val ' + (md.change>=0?'bull':'bear');
-    document.getElementById('mOI').textContent = `$${(md.oi/1e6).toFixed(1)}M`;
-    document.getElementById('mFunding').textContent = `${(md.funding*100).toFixed(4)}%`;
-    document.getElementById('mVol').textContent = `$${(md.dayVol/1e6).toFixed(1)}M`;
-
-    // 3. Chart
-    drawChart(md.candles, null);
-    log(`Chart rendered — ${md.candles.length} ${state.tf.toUpperCase()} candles`, 'info');
-
-    // 4. Order book
-    renderOB(md.ob);
-    log('Order book loaded', 'info');
-
-    // 5. AI Analysis
-    log('Querying Groq AI for swing analysis…', 'info');
-    document.getElementById('analysisBox').innerHTML = `<div class="loading"><div class="spinner"></div> Groq AI generating swing trade plan…</div>`;
-
-    const aiText = await runAISwingAnalysis(md);
-    log('Groq AI response received', 'ok');
-
-    // 6. Render analysis
-    document.getElementById('analysisBox').textContent = aiText;
-
-    // 7. Parse & display plan
-    const plan = parsePlan(aiText, md.price);
-    if(plan){
-      updatePlanUI(plan);
-      drawChart(md.candles, plan);
-      log(`Swing plan parsed — Dir: ${plan.direction} | Entry: $${fmt(plan.entry)} | TP: $${fmt(plan.tp)} | SL: $${fmt(plan.sl)} | Hold: ${plan.hold}`, 'ok');
-
-      // Auto-execute?
-      if(state.autoTrade && document.getElementById('privKey').value){
-        log('Auto-trade ON — opening confirm dialog', 'warn');
-        showConfirm();
-      }
-    } else {
-      log('Could not parse JSON plan from AI response', 'warn');
-    }
-
-    // Fetch positions
-    await fetchPositions();
-
-  } catch(e){
-    log(`ERROR: ${e.message}`, 'err');
-    document.getElementById('analysisBox').innerHTML = `<div style="color:var(--bear)">Error: ${e.message}</div>`;
-  }
-
-  btn.disabled = false; btn.textContent = 'ANALYZE';
-}
-
-// ─── FETCH POSITIONS ──────────────────────────────────────────────────────────
-async function fetchPositions(){
-  const pk = document.getElementById('privKey').value;
-  if(!pk) return;
-  try {
-    let wallet;
-    if(typeof ethers !== 'undefined'){
-      wallet = new ethers.Wallet(pk.startsWith('0x') ? pk : '0x'+pk);
-    } else { return; }
-
-    const addr = wallet.address;
-    const resp = await fetch(`${hlBase()}/info`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({type:'clearinghouseState', user: addr})
-    });
-    const data = await resp.json();
-    const assetPos = data?.assetPositions || [];
-    state.positions = assetPos.filter(p => parseFloat(p.position.szi) !== 0);
-    renderPositions();
-    document.getElementById('posCount').textContent = state.positions.length;
-    log(`Positions fetched: ${state.positions.length} open`, 'ok');
-  } catch(e){ log(`Positions fetch: ${e.message}`, 'warn'); }
-}
-
-function renderPositions(){
-  const box = document.getElementById('posBox');
-  if(!state.positions.length){ box.innerHTML='<div class="no-pos">No open positions</div>'; return; }
-  box.innerHTML = state.positions.map(p=>{
-    const pos = p.position;
-    const size = parseFloat(pos.szi);
-    const dir = size > 0 ? 'long' : 'short';
-    const entry = parseFloat(pos.entryPx);
-    const uPnl = parseFloat(pos.unrealizedPnl);
-    return `<div class="pos-item">
-      <div class="pos-side ${dir}">${dir.toUpperCase()}</div>
-      <div class="pos-info">
-        <div class="pos-pair">${p.position.coin}-PERP</div>
-        <div class="pos-detail">Size: ${Math.abs(size).toFixed(4)} | Entry: $${fmt(entry)} | Lev: ${pos.leverage?.value||'—'}x</div>
-      </div>
-      <div class="pos-pnl ${uPnl>=0?'pos':'neg'}">${uPnl>=0?'+':''}$${uPnl.toFixed(2)}</div>
-    </div>`;
-  }).join('');
-}
-
-// ─── CONFIRM MODAL ────────────────────────────────────────────────────────────
-function showConfirm(){
-  const p = state.plan;
-  if(!p){ log('No plan to execute', 'warn'); return; }
-  const rows = [
-    ['Asset', `${state.coin}-PERP`],
-    ['Direction', p.direction],
-    ['Entry', `$${fmt(p.entry)}`],
-    ['Take Profit', `$${fmt(p.tp)} (${(((p.tp-p.entry)/p.entry)*100).toFixed(1)}%)`],
-    ['Stop Loss', `$${fmt(p.sl)} (${(((p.sl-p.entry)/p.entry)*100).toFixed(1)}%)`],
-    ['Hold Period', p.hold||'2-4 days'],
-    ['Leverage', `${document.getElementById('levSlider').value}x`],
-    ['Size', `$${document.getElementById('orderSize').value}`],
-    ['Network', state.testnet ? 'TESTNET' : '🔴 MAINNET'],
-    ['R:R', p.rr||'—'],
-  ];
-  document.getElementById('modalRows').innerHTML = rows.map(([k,v])=>`
-    <div class="modal-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
-  document.getElementById('confirmModal').classList.add('open');
-}
-function closeConfirm(){ document.getElementById('confirmModal').classList.remove('open'); }
-
-// ─── EXECUTE SWING TRADE ──────────────────────────────────────────────────────
-async function executeSwingTrade(){
-  closeConfirm();
-  const pk = document.getElementById('privKey').value;
-  if(!pk){ log('No private key provided', 'err'); return; }
-  const plan = state.plan;
-  if(!plan){ log('No plan available', 'err'); return; }
-
-  const btn = document.getElementById('execConfirmBtn');
-  btn.textContent = 'EXECUTING…'; btn.disabled = true;
-
-  log('Preparing Hyperliquid order…', 'info');
-
-  try {
-    if(typeof ethers === 'undefined') throw new Error('ethers.js not loaded');
-
-    const wallet = new ethers.Wallet(pk.startsWith('0x') ? pk : '0x'+pk);
-    const addr = wallet.address;
-    log(`Wallet: ${addr.slice(0,8)}…${addr.slice(-6)}`, 'info');
-
-    // Get asset index
-    const metaR = await fetch(`${hlBase()}/info`, {method:'POST',headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({type:'meta'})});
-    const meta = await metaR.json();
-    const assetIdx = meta.universe.findIndex(u=>u.name===state.coin.toUpperCase());
-    if(assetIdx===-1) throw new Error(`Asset ${state.coin} not found`);
-
-    const isBuy = plan.direction.toUpperCase() === 'LONG';
-    const leverage = parseInt(document.getElementById('levSlider').value);
-    const sizeUSD = parseFloat(document.getElementById('orderSize').value);
-    const price = plan.entry;
-    const sz = (sizeUSD * leverage / price).toFixed(6);
-
-    log(`Order: ${isBuy?'BUY':'SELL'} ${sz} ${state.coin} @ $${fmt(price)} | Lev: ${leverage}x`, 'warn');
-
-    // Set leverage first
-    const nonce = Date.now();
-    const leverageAction = {
-      type: 'updateLeverage',
-      asset: assetIdx,
-      isCross: true,
-      leverage: leverage
-    };
-
-    // Sign leverage action
-    const leverageSig = await signHyperliquidAction(wallet, leverageAction, nonce);
-    const levResp = await fetch(`${hlBase()}/exchange`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action: leverageAction, nonce, signature: leverageSig})
-    });
-    const levData = await levResp.json();
-    log(`Leverage set: ${JSON.stringify(levData?.status||levData)}`, levData?.status==='ok'?'ok':'warn');
-
-    // Place order
-    const orderNonce = Date.now()+1;
-    const orderAction = {
-      type: 'order',
-      orders: [{
-        a: assetIdx,
-        b: isBuy,
-        p: price.toFixed(2),
-        s: sz,
-        r: false, // not reduce-only
-        t: { limit: { tif: 'Gtc' } } // Good till cancelled (swing trade)
-      }],
-      grouping: 'na'
-    };
-
-    const orderSig = await signHyperliquidAction(wallet, orderAction, orderNonce);
-    const orderResp = await fetch(`${hlBase()}/exchange`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action: orderAction, nonce: orderNonce, signature: orderSig})
-    });
-    const orderData = await orderResp.json();
-
-    log(`Order response: ${JSON.stringify(orderData?.response||orderData?.status||orderData)}`, 'ok');
-
-    if(orderData?.status==='ok' || orderData?.response?.data?.statuses){
-      log(`✓ SWING TRADE PLACED — ${isBuy?'LONG':'SHORT'} ${state.coin} | Entry: $${fmt(price)} | TP: $${fmt(plan.tp)} | SL: $${fmt(plan.sl)} | Hold: ${plan.hold}`, 'ok');
-
-      // Place TP/SL orders (reduce-only)
-      await placeTPSL(wallet, assetIdx, isBuy, sz, plan.tp, plan.sl);
-
-      // Refresh positions
-      setTimeout(()=>fetchPositions(), 2000);
-    } else {
-      log(`Order result: ${JSON.stringify(orderData)}`, 'warn');
-    }
-
-  } catch(e){
-    log(`Execution error: ${e.message}`, 'err');
-    console.error(e);
-  }
-
-  btn.textContent = '✓ EXECUTE'; btn.disabled = false;
-}
-
-// ─── PLACE TP/SL ─────────────────────────────────────────────────────────────
-async function placeTPSL(wallet, assetIdx, wasBuy, sz, tp, sl){
-  log('Placing TP & SL orders (reduce-only)…', 'info');
-  try {
-    const nonce = Date.now()+2;
-    const tpSlAction = {
-      type: 'order',
-      orders: [
-        // Take profit (limit, reduce-only)
-        { a: assetIdx, b: !wasBuy, p: tp.toFixed(2), s: sz, r: true, t: { limit: { tif: 'Gtc' } } },
-        // Stop loss (stop-market, reduce-only)
-        { a: assetIdx, b: !wasBuy, p: sl.toFixed(2), s: sz, r: true, t: { trigger: { isMarket: true, triggerPx: sl.toFixed(2), tpsl: 'sl' } } }
-      ],
-      grouping: 'tpsl'
-    };
-    const sig = await signHyperliquidAction(wallet, tpSlAction, nonce);
-    const resp = await fetch(`${hlBase()}/exchange`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action: tpSlAction, nonce, signature: sig})
-    });
-    const data = await resp.json();
-    log(`TP/SL result: ${JSON.stringify(data?.status||data?.response?.data||'sent')}`, 'ok');
-  } catch(e){ log(`TP/SL error: ${e.message}`, 'warn'); }
-}
-
-// ─── HYPERLIQUID SIGNING ──────────────────────────────────────────────────────
-async function signHyperliquidAction(wallet, action, nonce){
-  // Hyperliquid uses EIP-712 signing
-  const domain = {
-    name: 'Exchange',
-    version: '1',
-    chainId: state.testnet ? 421614 : 42161, // Arbitrum Sepolia vs Arbitrum One
-    verifyingContract: '0x0000000000000000000000000000000000000000'
-  };
-
-  // Encode action as agent message
-  const msgToSign = JSON.stringify({ action, nonce });
-  const msgHash = ethers.hashMessage(msgToSign);
-
-  // For Hyperliquid we sign the JSON string directly
-  const sig = await wallet.signMessage(msgToSign);
-
-  // Parse signature components
-  const sigBytes = ethers.Signature.from(sig);
-  return {
-    r: sigBytes.r,
-    s: sigBytes.s,
-    v: sigBytes.v
-  };
-}
-
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
-function fmt(n){
-  if(!n || isNaN(n)) return '—';
-  if(n >= 10000) return n.toLocaleString('en', {maximumFractionDigits:0});
-  if(n >= 100) return n.toFixed(2);
-  if(n >= 1) return n.toFixed(4);
-  return n.toFixed(6);
-}
-
-// ─── INIT ────────────────────────────────────────────────────────────────────
-log('NEXUS SWING TRADER v3.0 ready', 'accent');
-log('Mode: SWING TRADE (4H/1D timeframe, hold 1-7 days)', 'ok');
-log('Target: 5-15% TP | 2-5% SL | Min R:R 2:1', 'info');
-log(`Hyperliquid: ${HL_BASE}`, 'dim');
-log('Groq AI: Llama 3.3 70B Versatile (FREE)', 'dim');
-log('⚠ Testnet mode ON by default', 'warn');
-log('Enter a coin and press ANALYZE to begin', 'info');
 </script>
 </body>
 </html>
