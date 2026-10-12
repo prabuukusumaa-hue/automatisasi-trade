@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html{color-scheme:light dark}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Meja Crypto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: kartu hero gelap berisi chart di kiri; kolom kanan berisi kartu pasangan aktif dan tiga kartu menu bertumpuk (Wallet, Watchlist, Eksekusi); panel detail muncul di bawah hero. */
+:root {
+  --bg: #ebe4d2; --card: #ffffff; --ink: #15120e; --muted: #6a6355; --line: #ddd4be;
+  --chip: #e9e2d0; --field: #f6f1e3;
+  --red: #d4380d; --amber: #f7b733; --black: #131211; --maroon: #5a0f0d; --green: #1f9d55; --down: #d93b2f;
+  --on-red: #ffffff; --on-amber: #1a1408; --on-black: #ffffff;
+  --h-bg: #0e0d0b; --h-ink: #fbf6e6; --h-muted: #b5ad9a; --h-grid: rgba(255,255,255,.08);
+  --h-up: #3ccf7e; --h-down: #ff6a57; --h-gold: #fde9a2;
+  --font-display: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15120e; --card: #211d17; --ink: #f3eddd; --muted: #a69e8b; --line: #37312a;
+    --chip: #2c2720; --field: #191611; --green: #3ccf7e; --down: #ff6a57; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15120e; --card: #211d17; --ink: #f3eddd; --muted: #a69e8b; --line: #37312a;
+  --chip: #2c2720; --field: #191611; --green: #3ccf7e; --down: #ff6a57; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); padding-inline: clamp(16px, 3vw, 32px); }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 20px 28px; display: grid; gap: 20px;
+  grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero" "side" "panel"; }
+@media (min-width: 980px) {
+  .wrap { grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "hero side" "panel side"; align-items: start; }
+}
+.up { color: var(--green); } .dn { color: var(--down); }
+
+/* HERO */
+.hero { grid-area: hero; min-width: 0; color: var(--h-ink); border-radius: 36px; padding: clamp(22px, 4vw, 44px);
+  display: flex; flex-direction: column; gap: 20px;
+  background: radial-gradient(120% 60% at 15% 0%, rgba(150,70,120,.30), transparent 60%),
+              radial-gradient(70% 50% at 95% 5%, rgba(212,56,13,.22), transparent 60%), var(--h-bg); }
+.hero h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(2.1rem, 6vw, 4rem); line-height: 1.08; text-wrap: balance; }
+.hero h1 em { color: var(--h-gold); }
+.hero .sub { margin: 0; font-size: clamp(1rem, 2vw, 1.25rem); color: var(--h-ink); }
+.hero .sub b { color: var(--amber); font-weight: 500; }
+.finder { display: flex; flex-wrap: wrap; gap: 10px; }
+.finder input { flex: 1 1 200px; min-width: 0; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
+  color: var(--h-ink); border-radius: 999px; padding: 12px 20px; font-size: 1rem; text-transform: uppercase; }
+.finder input::placeholder { color: var(--h-muted); text-transform: none; }
+.btn { border: 0; border-radius: 999px; padding: 12px 22px; font-weight: 700; background: var(--amber); color: var(--on-amber); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid rgba(255,255,255,.2); background: transparent; color: var(--h-ink); border-radius: 999px; padding: 7px 14px; font-size: .9rem; font-weight: 500; }
+.chip[aria-pressed="true"] { background: var(--h-ink); color: var(--h-bg); border-color: var(--h-ink); }
+.msg { min-height: 1.2em; margin: -6px 0 -8px; font-size: .88rem; color: var(--amber); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+.tfs { display: flex; gap: 4px; background: rgba(255,255,255,.07); border-radius: 999px; padding: 4px; }
+.tf { border: 0; background: transparent; color: var(--h-muted); border-radius: 999px; padding: 7px 16px; font-weight: 700; font-size: .9rem; }
+.tf[aria-pressed="true"] { background: var(--h-ink); color: var(--h-bg); }
+.star { border: 1px solid rgba(255,255,255,.2); background: transparent; color: var(--h-ink); border-radius: 999px; padding: 8px 16px; font-weight: 500; font-size: .9rem; }
+.star[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+.chartbox { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); border-radius: 24px; padding: 14px 14px 6px; min-width: 0; }
+.ohlc { font-size: .85rem; color: var(--h-muted); font-variant-numeric: tabular-nums; min-height: 1.4em; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.ohlc b { color: var(--h-ink); font-weight: 500; }
+#chart { width: 100%; }
+#chart svg { display: block; touch-action: pan-y; }
+#chart text { font: 11px var(--font-body); fill: var(--h-muted); font-variant-numeric: tabular-nums; }
+.rule { height: 3px; border-radius: 3px; background: var(--red); width: min(100%, 640px); }
+.stats { display: flex; flex-wrap: wrap; gap: 20px 40px; }
+.stat { display: flex; align-items: center; gap: 16px; color: inherit; text-decoration: none; }
+.dot { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.dot svg { width: 26px; height: 26px; }
+.stat b { display: block; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.3rem, 3vw, 1.9rem); line-height: 1.1; }
+.stat span { display: block; margin-top: 4px; color: var(--h-muted); font-size: .95rem; }
+
+/* SIDE */
+.side { grid-area: side; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.pair { background: var(--card); border-radius: 36px; padding: 24px 26px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.pair .t { min-width: 0; }
+.pair b { display: block; font-family: var(--font-display); font-size: 1.6rem; line-height: 1.15; }
+.pair span { display: block; margin-top: 6px; color: var(--muted); font-size: .98rem; font-variant-numeric: tabular-nums; }
+.pair .ic { width: 56px; height: 56px; border-radius: 50%; background: color-mix(in srgb, var(--green) 18%, transparent); display: grid; place-items: center; flex: none; color: var(--green); }
+.pair .ic svg { width: 28px; height: 28px; }
+.menu { background: var(--card); border-radius: 36px; overflow: hidden; padding-top: 20px; }
+.menu-head { margin: 0 20px; background: var(--chip); border-radius: 28px; padding: 18px 22px; font-weight: 800; font-size: 1.1rem; line-height: 1.3; }
+.mcard { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; width: 100%; border: 0; text-align: left;
+  padding: 36px 24px 42px; margin-top: -30px; border-radius: 36px 36px 0 0; position: relative; }
+.menu-head + .mcard { margin-top: 18px; }
+.mcard .tt { min-width: 0; }
+.mcard b { display: block; font-weight: 800; font-size: 1.2rem; letter-spacing: .02em; text-transform: uppercase; }
+.mcard span.s { display: block; margin-top: 6px; font-size: .98rem; opacity: .88; font-variant-numeric: tabular-nums; }
+.pill { flex: none; border-radius: 999px; padding: 9px 18px; font-weight: 800; font-size: .85rem; letter-spacing: .08em; background: rgba(255,255,255,.22); color: inherit; }
+.mcard[aria-pressed="true"] .pill { background: #fff; color: #167a42; }
+.mcard.red { background: var(--red); color: var(--on-red); }
+.mcard.amber { background: var(--amber); color: var(--on-amber); }
+.mcard.amber .pill { background: rgba(0,0,0,.12); }
+.mcard.black { background: var(--black); color: var(--on-black); padding-bottom: 30px; }
+
+/* PANEL */
+.panel { grid-area: panel; min-width: 0; background: var(--card); border-radius: 36px; overflow: hidden; }
+.panel[data-tab="wallet"] { --tab: var(--red); --on-tab: var(--on-red); }
+.panel[data-tab="watch"] { --tab: var(--amber); --on-tab: var(--on-amber); }
+.panel[data-tab="exec"] { --tab: var(--black); --on-tab: var(--on-black); }
+.phead { background: var(--tab); color: var(--on-tab); padding: 22px 28px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px 16px; flex-wrap: wrap; }
+.phead h2 { margin: 0; font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; }
+.phead .big { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.phead .small { font-size: .95rem; opacity: .85; }
+.pbody { padding: 22px 28px 30px; display: flex; flex-direction: column; gap: 18px; }
+.note { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.5; max-width: 65ch; }
+.bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--chip); }
+.bar i { display: block; min-width: 3px; }
+.rows { display: flex; flex-direction: column; }
+.row, .wrow { display: grid; align-items: center; gap: 8px 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.row { grid-template-columns: minmax(0, 1fr) 120px 110px 36px; }
+.rsym b { display: block; font-size: 1.05rem; } .rsym span { display: block; font-size: .85rem; color: var(--muted); }
+.rval { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rval small { display: block; font-weight: 400; color: var(--muted); font-size: .8rem; }
+.field { background: var(--field); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
+.x { border: 0; background: transparent; color: var(--muted); font-size: 1.4rem; line-height: 1; width: 36px; height: 36px; border-radius: 50%; }
+.x:hover { background: var(--chip); color: var(--ink); }
+.add { display: flex; flex-wrap: wrap; gap: 10px; }
+.add .field { flex: 1 1 140px; width: auto; text-transform: uppercase; }
+.add .field[type="number"] { text-transform: none; }
+.btn2 { border: 0; border-radius: 999px; padding: 11px 22px; font-weight: 700; background: var(--tab); color: var(--on-tab); }
+.wrow { grid-template-columns: minmax(0, 1fr) 36px; padding: 6px 0; }
+.wmain { display: grid; grid-template-columns: minmax(0, 1fr) 72px 110px; align-items: center; gap: 12px; border: 0; background: transparent; text-align: left; padding: 8px 10px; border-radius: 18px; width: 100%; }
+.wmain:hover, .wrow.on .wmain { background: var(--chip); }
+.wmain .rpx { text-align: right; font-variant-numeric: tabular-nums; }
+.wmain .rpx b { display: block; } .wmain .rpx span { font-size: .85rem; font-weight: 700; }
+.spark { width: 72px; height: 24px; display: block; }
+.form { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.lab { display: flex; flex-direction: column; gap: 6px; font-size: .85rem; font-weight: 700; color: var(--muted); min-width: 0; }
+.lab .inl { display: flex; gap: 8px; }
+.side2 { display: flex; gap: 4px; background: var(--chip); border-radius: 999px; padding: 4px; }
+.side2 button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 8px 12px; font-weight: 800; font-size: .9rem; }
+.side2 button[aria-pressed="true"][data-side="long"] { background: var(--green); color: #fff; }
+.side2 button[aria-pressed="true"][data-side="short"] { background: var(--down); color: #fff; }
+.mini { border: 1px solid var(--line); background: transparent; border-radius: 14px; padding: 0 12px; font-weight: 700; font-size: .8rem; white-space: nowrap; }
+.res { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.res div { background: var(--field); border-radius: 18px; padding: 14px 16px; min-width: 0; }
+.res small { display: block; color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.res b { display: block; margin-top: 4px; font-size: 1.15rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.warn { margin: 0; padding: 12px 16px; border-radius: 14px; background: color-mix(in srgb, var(--amber) 28%, transparent); font-size: .92rem; }
+.plans h3 { margin: 0 0 6px; font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.plan { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: .92rem; font-variant-numeric: tabular-nums; }
+.plan > span { min-width: 0; overflow-wrap: anywhere; }
+.tag { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: .75rem; font-weight: 800; color: #fff; margin-right: 6px; }
+.tag.long { background: var(--green); } .tag.short { background: var(--down); }
+.foot { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: .95rem; padding-top: 4px; }
+
+@media (max-width: 600px) {
+  .row { grid-template-columns: minmax(0, 1fr) auto 36px; grid-template-areas: "sym val x" "amt amt amt"; }
+  .row .rsym { grid-area: sym; } .row .rval { grid-area: val; } .row .x { grid-area: x; } .row .amt { grid-area: amt; }
+  .wmain { grid-template-columns: minmax(0, 1fr) 90px; }
+  .wmain .spark { display: none; }
+  .phead, .pbody { padding-inline: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+
+</head>
+<body>
+<main class="wrap">
+  <section class="hero" aria-labelledby="h1">
+    <h1 id="h1">Lihat chart <em id="h1sym">BTC</em> / USDT</h1>
+    <p class="sub">Pilih koin, ganti timeframe, lalu simpan ke <b>watchlist</b>.</p>
+
+    <form class="finder" id="finder" autocomplete="off">
+      <input id="symIn" list="coinList" maxlength="14" placeholder="Ketik simbol koin, mis. HYPE" aria-label="Simbol koin">
+      <button class="btn" type="submit">Tampilkan</button>
+    </form>
+    <datalist id="coinList"></datalist>
+    <div class="msg" id="msg" role="status"></div>
+    <div class="chips" id="chips"></div>
+
+    <div class="toolbar">
+      <div class="tfs" id="tfs" role="group" aria-label="Timeframe"></div>
+      <button class="star" id="star" type="button" aria-pressed="false">★ Pantau</button>
+    </div>
+
+    <div class="chartbox">
+      <div class="ohlc" id="ohlc" aria-live="off"></div>
+      <div id="chart"></div>
+    </div>
+
+    <div class="rule" aria-hidden="true"></div>
+    <div class="stats">
+      <div class="stat">
+        <span class="dot" style="background:#1f9d55" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <div><b>Simulasi</b><span>Candle &amp; harga contoh, bukan live</span></div>
+      </div>
+      <a class="stat" id="tv" href="https://www.tradingview.com/chart/?symbol=BTCUSDT" target="_blank" rel="noopener noreferrer">
+        <span class="dot" style="background:var(--red)" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        <div><b>TradingView</b><span id="tvSub">Chart live BTCUSDT, tab baru</span></div>
+      </a>
+    </div>
+  </section>
+
+  <aside class="side">
+    <div class="pair">
+      <div class="t"><b id="pairName">BTC / USDT</b><span id="pairSub"></span></div>
+      <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 8-9"/><path d="M15 5h5v5"/></svg></span>
+    </div>
+    <nav class="menu" aria-label="Menu">
+      <div class="menu-head">Menu Wallet, Watchlist &amp; Eksekusi</div>
+      <button class="mcard red" type="button" data-tab="wallet" aria-pressed="true">
+        <span class="tt"><b>Wallet</b><span class="s" id="mWallet"></span></span><span class="pill">DIBUKA</span>
+      </button>
+      <button class="mcard amber" type="button" data-tab="watch" aria-pressed="false">
+        <span class="tt"><b>Watchlist</b><span class="s" id="mWatch"></span></span><span class="pill">BUKA</span>
+      </button>
+      <button class="mcard black" type="button" data-tab="exec" aria-pressed="false">
+        <span class="tt"><b>Eksekusi</b><span class="s">Hitung ukuran posisi &amp; risiko</span></span><span class="pill">BUKA</span>
+      </button>
+    </nav>
+  </aside>
+
+  <section class="panel" id="panel" data-tab="wallet" aria-live="polite"></section>
+  <div class="foot">© Meja Crypto · harga contoh, simpan di browser ini</div>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var COINS = {
+    BTC: ['Bitcoin', 112000], ETH: ['Ethereum', 4200], SOL: ['Solana', 210], HYPE: ['Hyperliquid', 42],
+    BNB: ['BNB', 980], XRP: ['XRP', 2.9], DOGE: ['Dogecoin', 0.24], AVAX: ['Avalanche', 38],
+    LINK: ['Chainlink', 22], SUI: ['Sui', 3.6], USDT: ['Tether', 1]
+  };
+  var QUICK = ['BTC', 'ETH', 'SOL', 'HYPE', 'BNB', 'XRP', 'DOGE'];
+  var TF = { '15m': [900000, 0.004], '1H': [3600000, 0.008], '4H': [14400000, 0.016], '1D': [86400000, 0.03] };
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  var SEG = ['var(--red)', 'var(--amber)', 'var(--ink)', 'var(--maroon)', 'var(--green)'];
+  var KEY = 'meja-crypto-v1';
+
+  function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function base(s) { if (COINS[s]) return COINS[s][1]; return +Math.pow(10, -1 + rng(hash('p' + s))() * 3.2).toPrecision(3); }
+  function nm(s) { return COINS[s] ? COINS[s][0] : s; }
+  function okSym(s) { return typeof s === 'string' && /^[A-Z0-9]{2,10}$/.test(s) && s !== 'USDT'; }
+  function fmtp(p) {
+    if (!isFinite(p)) return '—';
+    var d = p >= 1000 ? 0 : p >= 100 ? 1 : p >= 1 ? 2 : 4;
+    return p.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function usd(n) { return '$' + n.toLocaleString('en-US', { maximumFractionDigits: n >= 100 ? 0 : 2 }); }
+  function pct(x) { return (x >= 0 ? '+' : '') + (x * 100).toFixed(2) + '%'; }
+
+  var cache = {};
+  function series(s, tf) {
+    var k = s + tf; if (cache[k]) return cache[k];
+    var step = TF[tf][0], v0 = TF[tf][1], r = rng(hash(k));
+    var vol = v0 * (0.7 + rng(hash('v' + s))() * 0.9), N = 72, p = 1, out = [];
+    var drift = (rng(hash('d' + k))() - 0.5) * vol * 0.25;
+    for (var i = 0; i < N; i++) {
+      var o = p, c = o * (1 + (r() - 0.5) * 2 * vol + drift);
+      var h = Math.max(o, c) * (1 + r() * vol * 0.5), l = Math.min(o, c) * (1 - r() * vol * 0.5);
+      var v = 30 + r() * 70 * (1 + Math.abs(c / o - 1) / vol);
+      out.push({ o: o, h: h, l: l, c: c, v: v }); p = c;
+    }
+    var f = base(s) / p, end = Math.floor(Date.now() / step) * step;
+    out.forEach(function (x, i) { x.o *= f; x.h *= f; x.l *= f; x.c *= f; x.t = end - (N - 1 - i) * step; });
+    return (cache[k] = out);
+  }
+  function chg(s) { var d = series(s, '1D'), x = d[d.length - 1]; return x.c / x.o - 1; }
+
+  /* state */
+  var S = {
+    sym: 'BTC', tf: '1H', tab: 'wallet',
+    watch: ['BTC', 'ETH', 'SOL', 'HYPE', 'BNB', 'XRP'],
+    wallet: [{ s: 'BTC', a: 0.05 }, { s: 'ETH', a: 1.2 }, { s: 'SOL', a: 10 }, { s: 'USDT', a: 250 }],
+    plans: [],
+    t: { pair: 'BTC', side: 'long', entry: base('BTC'), sl: 2, tp: 4, risk: 10, lev: 5 }
+  };
+  try {
+    var raw = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (raw) {
+      if (okSym(raw.sym)) S.sym = raw.sym;
+      if (TF[raw.tf]) S.tf = raw.tf;
+      if (Array.isArray(raw.watch)) S.watch = raw.watch.filter(okSym).slice(0, 20);
+      if (Array.isArray(raw.wallet)) S.wallet = raw.wallet.filter(function (w) { return w && (okSym(w.s) || w.s === 'USDT') && isFinite(w.a) && w.a >= 0; }).map(function (w) { return { s: w.s, a: +w.a }; }).slice(0, 30);
+      if (Array.isArray(raw.plans)) S.plans = raw.plans.filter(function (p) { return p && okSym(p.pair) && isFinite(p.entry) && isFinite(p.sl) && isFinite(p.tp) && isFinite(p.size) && (p.side === 'long' || p.side === 'short'); }).slice(0, 8);
+      if (raw.t && okSym(raw.t.pair)) {
+        ['entry', 'sl', 'tp', 'risk', 'lev'].forEach(function (k) { if (isFinite(raw.t[k])) S.t[k] = +raw.t[k]; });
+        S.t.pair = raw.t.pair; S.t.side = raw.t.side === 'short' ? 'short' : 'long';
+      }
+    }
+  } catch (e) { }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+
+  /* static bits */
+  $('coinList').innerHTML = Object.keys(COINS).filter(function (k) { return k !== 'USDT'; }).map(function (k) { return '<option value="' + k + '">' + COINS[k][0] + '</option>'; }).join('');
+  $('tfs').innerHTML = Object.keys(TF).map(function (k) { return '<button class="tf" type="button" data-tf="' + k + '" aria-pressed="false">' + k + '</button>'; }).join('');
+
+  /* chart */
+  var lastW = 0;
+  function tlabel(t, tf) {
+    var d = new Date(t);
+    if (tf === '15m' || tf === '1H') return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    return d.getDate() + ' ' + MON[d.getMonth()];
+  }
+  function drawChart(force) {
+    var box = $('chart'), W = Math.max(280, Math.floor(box.clientWidth));
+    if (!force && W === lastW) return; lastW = W;
+    var H = W < 520 ? 260 : 320, d = series(S.sym, S.tf), N = d.length;
+    var padL = 6, padR = W < 520 ? 54 : 64, padT = 10, padB = 24;
+    var pw = W - padL - padR, volH = Math.round((H - padT - padB) * 0.16), ph = H - padT - padB - volH - 8;
+    var lo = Infinity, hi = -Infinity, maxV = 0;
+    d.forEach(function (x) { if (x.l < lo) lo = x.l; if (x.h > hi) hi = x.h; if (x.v > maxV) maxV = x.v; });
+    var pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
+    var y = function (v) { return padT + (hi - v) / (hi - lo) * ph; };
+    var step = pw / N, cw = Math.max(2, step * 0.62), g = '', i;
+    for (i = 0; i < 5; i++) {
+      var v = lo + (hi - lo) * i / 4, yy = y(v).toFixed(1);
+      g += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--h-grid)"/>';
+      g += '<text x="' + (W - padR + 6) + '" y="' + (+yy + 4) + '">' + fmtp(v) + '</text>';
+    }
+    var every = W < 520 ? 18 : 12;
+    for (i = 6; i < N; i += every) {
+      g += '<text x="' + (padL + step * (i + 0.5)).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + tlabel(d[i].t, S.tf) + '</text>';
+    }
+    var vb = H - padB;
+    d.forEach(function (x, j) {
+      var up = x.c >= x.o, col = up ? 'var(--h-up)' : 'var(--h-down)', cx = padL + step * (j + 0.5);
+      var yo = y(x.o), yc = y(x.c), top = Math.min(yo, yc), bh = Math.max(1, Math.abs(yo - yc));
+      var vh = Math.max(1, x.v / maxV * volH);
+      g += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + (vb - vh).toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + vh.toFixed(1) + '" fill="' + col + '" opacity=".3"/>';
+      g += '<line x1="' + cx.toFixed(1) + '" x2="' + cx.toFixed(1) + '" y1="' + y(x.h).toFixed(1) + '" y2="' + y(x.l).toFixed(1) + '" stroke="' + col + '"/>';
+      g += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" fill="' + col + '"/>';
+    });
+    var last = d[N - 1], ly = y(last.c), lcol = last.c >= last.o ? 'var(--h-up)' : 'var(--h-down)';
+    g += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + ly.toFixed(1) + '" y2="' + ly.toFixed(1) + '" stroke="' + lcol + '" stroke-dasharray="3 4" opacity=".8"/>';
+    g += '<rect x="' + (W - padR + 2) + '" y="' + (ly - 9).toFixed(1) + '" width="' + (padR - 4) + '" height="18" rx="9" fill="' + lcol + '"/>';
+    g += '<text x="' + (W - padR / 2).toFixed(1) + '" y="' + (ly + 4).toFixed(1) + '" text-anchor="middle" style="fill:#0e0d0b;font-weight:700">' + fmtp(last.c) + '</text>';
+    g += '<line id="xh" x1="0" x2="0" y1="' + padT + '" y2="' + vb + '" stroke="var(--h-muted)" stroke-dasharray="2 3" visibility="hidden"/>';
+    box.style.height = H + 'px';
+    box.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Candlestick ' + S.sym + ' USDT timeframe ' + S.tf + ', data contoh">' + g + '</svg>';
+    var svg = box.firstChild, xh = svg.querySelector('#xh');
+    function readout(j) {
+      var x = d[j], p = x.c >= x.o ? 'up' : 'dn';
+      $('ohlc').innerHTML = '<span>' + tlabel(x.t, S.tf) + '</span><span>O <b>' + fmtp(x.o) + '</b></span><span>H <b>' + fmtp(x.h) + '</b></span><span>L <b>' + fmtp(x.l) + '</b></span><span>C <b>' + fmtp(x.c) + '</b></span><span class="' + p + '">' + pct(x.c / x.o - 1) + '</span>';
+    }
+    readout(N - 1);
+    svg.addEventListener('pointermove', function (e) {
+      var r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width);
+      var j = Math.max(0, Math.min(N - 1, Math.floor((px - padL) / step)));
+      var cx = padL + step * (j + 0.5);
+      xh.setAttribute('x1', cx); xh.setAttribute('x2', cx); xh.setAttribute('visibility', 'visible'); readout(j);
+    });
+    svg.addEventListener('pointerleave', function () { xh.setAttribute('visibility', 'hidden'); readout(N - 1); });
+  }
+
+  /* hero + side */
+  function renderHero() {
+    var s = S.sym, c = chg(s);
+    $('h1sym').textContent = s;
+    $('pairName').textContent = s + ' / USDT';
+    $('pairSub').innerHTML = usd(base(s)).replace('$', '$') + ' · <span class="' + (c >= 0 ? 'up' : 'dn') + '">' + pct(c) + '</span> · contoh';
+    $('tv').href = 'https://www.tradingview.com/chart/?symbol=' + s + 'USDT';
+    $('tvSub').textContent = 'Chart live ' + s + 'USDT, tab baru';
+    document.querySelectorAll('.tf').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.tf === S.tf ? 'true' : 'false'); });
+    $('chips').innerHTML = QUICK.map(function (k) { return '<button class="chip" type="button" data-sym="' + k + '" aria-pressed="' + (k === s) + '">' + k + '</button>'; }).join('');
+    var on = S.watch.indexOf(s) >= 0;
+    $('star').setAttribute('aria-pressed', on); $('star').textContent = on ? '★ Dipantau' : '★ Pantau';
+    drawChart(true);
+  }
+  function walletTotal() { return S.wallet.reduce(function (t, w) { return t + w.a * base(w.s); }, 0); }
+  function renderMenu() {
+    $('mWallet').textContent = 'Total ≈ ' + usd(walletTotal()) + ' (contoh)';
+    $('mWatch').textContent = S.watch.length + ' koin dipantau';
+    document.querySelectorAll('.mcard').forEach(function (b) {
+      var on = b.dataset.tab === S.tab; b.setAttribute('aria-pressed', on);
+      b.querySelector('.pill').textContent = on ? 'DIBUKA' : 'BUKA';
+    });
+  }
+
+  function setSym(s, silent) {
+    S.sym = s; S.t.pair = s; S.t.entry = base(s); save();
+    renderHero(); renderMenu();
+    if (S.tab === 'watch') renderPanel(); else if (S.tab === 'exec') renderPanel();
+  }
+
+  /* panels */
+  function spark(s) {
+    var d = series(s, '1D').map(function (x) { return x.c; }), lo = Math.min.apply(null, d), hi = Math.max.apply(null, d), w = 72, h = 24;
+    var pts = d.map(function (v, i) { return (i / (d.length - 1) * w).toFixed(1) + ',' + (h - 2 - (v - lo) / (hi - lo || 1) * (h - 4)).toFixed(1); }).join(' ');
+    var up = chg(s) >= 0;
+    return '<svg class="spark" viewBox="0 0 72 24" aria-hidden="true"><polyline points="' + pts + '" fill="none" stroke="' + (up ? 'var(--green)' : 'var(--down)') + '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  }
+  function walletRows() {
+    var tot = walletTotal();
+    return S.wallet.map(function (w, i) {
+      var v = w.a * base(w.s);
+      return '<div class="row" data-i="' + i + '"><div class="rsym"><b>' + w.s + '</b><span>' + nm(w.s) + '</span></div>' +
+        '<input class="field amt" type="number" inputmode="decimal" step="any" min="0" value="' + w.a + '" aria-label="Jumlah ' + w.s + '">' +
+        '<div class="rval">' + usd(v) + '<small>' + (tot ? (v / tot * 100).toFixed(1) : '0.0') + '%</small></div>' +
+        '<button class="x" type="button" data-rm="' + i + '" aria-label="Hapus ' + w.s + '">×</button></div>';
+    }).join('');
+  }
+  function walletBar() {
+    var tot = walletTotal();
+    return S.wallet.map(function (w, i) { var p = tot ? w.a * base(w.s) / tot * 100 : 0; return p > 0 ? '<i style="width:' + p.toFixed(2) + '%;background:' + SEG[i % SEG.length] + '"></i>' : ''; }).join('');
+  }
+  function updateWalletValues() {
+    var tot = walletTotal();
+    $('wTotal').textContent = usd(tot); $('wBar').innerHTML = walletBar();
+    document.querySelectorAll('.row').forEach(function (r) {
+      var w = S.wallet[+r.dataset.i], v = w.a * base(w.s);
+      r.querySelector('.rval').innerHTML = usd(v) + '<small>' + (tot ? (v / tot * 100).toFixed(1) : '0.0') + '%</small>';
+    });
+    renderMenu();
+  }
+
+  function calc() {
+    var t = S.t, ok = t.entry > 0 && t.sl > 0 && t.tp > 0 && t.risk > 0 && t.lev >= 1;
+    if (!ok) return null;
+    var long = t.side === 'long', notional = t.risk / (t.sl / 100);
+    return {
+      slp: long ? t.entry * (1 - t.sl / 100) : t.entry * (1 + t.sl / 100),
+      tpp: long ? t.entry * (1 + t.tp / 100) : t.entry * (1 - t.tp / 100),
+      size: notional / t.entry, notional: notional, margin: notional / t.lev, rr: t.tp / t.sl,
+      danger: t.sl >= (100 / t.lev) * 0.9
+    };
+  }
+  function fsize(n) { return Number(n.toPrecision(3)).toLocaleString('en-US', { maximumFractionDigits: 8 }); }
+  function resultHtml() {
+    var c = calc();
+    if (!c) return { r: '<div><small>Hasil</small><b>Isi semua kolom dengan angka lebih dari 0</b></div>', w: '' };
+    var t = S.t;
+    return {
+      r: '<div><small>Harga stop loss</small><b>' + fmtp(c.slp) + '</b></div><div><small>Harga take profit</small><b>' + fmtp(c.tpp) + '</b></div>' +
+        '<div><small>Ukuran posisi</small><b>' + fsize(c.size) + ' ' + t.pair + '</b></div><div><small>Nilai posisi</small><b>' + usd(c.notional) + '</b></div>' +
+        '<div><small>Margin dipakai</small><b>' + usd(c.margin) + '</b></div><div><small>Rasio R:R</small><b>1 : ' + c.rr.toFixed(2) + '</b></div>',
+      w: c.danger ? 'Stop loss ' + t.sl + '% hampir sama dengan jarak likuidasi pada leverage ' + t.lev + 'x (sekitar ' + (100 / t.lev).toFixed(1) + '%). Kecilkan leverage atau stop loss.' : ''
+    };
+  }
+  function updateExec() { var o = resultHtml(); $('xRes').innerHTML = o.r; $('xWarn').innerHTML = o.w ? '<p class="warn">' + o.w + '</p>' : ''; }
+
+  function pairOptions() {
+    var l = S.watch.slice(); if (l.indexOf(S.sym) < 0) l.push(S.sym); if (l.indexOf(S.t.pair) < 0) l.push(S.t.pair);
+    return l.map(function (k) { return '<option value="' + k + '"' + (k === S.t.pair ? ' selected' : '') + '>' + k + ' / USDT</option>'; }).join('');
+  }
+
+  function renderPanel() {
+    var p = $('panel'), h = '';
+    p.dataset.tab = S.tab;
+    if (S.tab === 'wallet') {
+      h = '<div class="phead"><h2>Wallet</h2><div class="big" id="wTotal">' + usd(walletTotal()) + '</div></div>' +
+        '<div class="pbody"><div class="bar" id="wBar" role="img" aria-label="Komposisi aset">' + walletBar() + '</div>' +
+        '<div class="rows" id="wRows">' + walletRows() + '</div>' +
+        '<form class="add" id="wAdd" autocomplete="off"><input class="field" id="wSym" list="coinList" maxlength="14" placeholder="Simbol, mis. HYPE" aria-label="Simbol aset">' +
+        '<input class="field" id="wAmt" type="number" inputmode="decimal" step="any" min="0" placeholder="Jumlah" aria-label="Jumlah aset"><button class="btn2" type="submit">Tambah</button></form>' +
+        '<div class="msg" id="wMsg" role="status" style="color:var(--muted)"></div>' +
+        '<p class="note">Saldo diisi manual dan tersimpan di browser ini. Nilai dihitung dari harga contoh, bukan harga pasar.</p></div>';
+    } else if (S.tab === 'watch') {
+      h = '<div class="phead"><h2>Watchlist</h2><div class="small">Ketuk koin untuk membuka chart</div></div><div class="pbody"><div class="rows">' +
+        (S.watch.length ? S.watch.map(function (s) {
+          var c = chg(s);
+          return '<div class="wrow' + (s === S.sym ? ' on' : '') + '"><button class="wmain" type="button" data-pick="' + s + '"><span class="rsym"><b>' + s + '</b><span>' + nm(s) + '</span></span>' + spark(s) +
+            '<span class="rpx"><b>' + usd(base(s)) + '</b><span class="' + (c >= 0 ? 'up' : 'dn') + '">' + pct(c) + '</span></span></button>' +
+            '<button class="x" type="button" data-wrm="' + s + '" aria-label="Hapus ' + s + ' dari watchlist">×</button></div>';
+        }).join('') : '<p class="note">Belum ada koin. Tambahkan simbol di bawah.</p>') +
+        '</div><form class="add" id="wlAdd" autocomplete="off"><input class="field" id="wlSym" list="coinList" maxlength="14" placeholder="Tambah simbol, mis. SUI" aria-label="Simbol koin">' +
+        '<button class="btn2" type="submit">Tambah</button></form><div class="msg" id="wlMsg" role="status" style="color:var(--muted)"></div>' +
+        '<p class="note">Harga dan perubahan 24 jam adalah data contoh.</p></div>';
+    } else {
+      var t = S.t, o = resultHtml();
+      h = '<div class="phead"><h2>Eksekusi</h2><div class="small">Rencana trade, tidak mengirim order</div></div><div class="pbody">' +
+        '<div class="form">' +
+        '<label class="lab">Pasangan<select class="field" id="xPair">' + pairOptions() + '</select></label>' +
+        '<div class="lab">Arah<div class="side2" id="xSide"><button type="button" data-side="long" aria-pressed="' + (t.side === 'long') + '">LONG</button><button type="button" data-side="short" aria-pressed="' + (t.side === 'short') + '">SHORT</button></div></div>' +
+        '<label class="lab">Harga entry (USDT)<span class="inl"><input class="field" id="xEntry" type="number" inputmode="decimal" step="any" min="0" value="' + t.entry + '"><button class="mini" type="button" id="xNow">Harga contoh</button></span></label>' +
+        '<label class="lab">Stop loss (%)<input class="field" id="xSl" type="number" inputmode="decimal" step="any" min="0" value="' + t.sl + '"></label>' +
+        '<label class="lab">Take profit (%)<input class="field" id="xTp" type="number" inputmode="decimal" step="any" min="0" value="' + t.tp + '"></label>' +
+        '<label class="lab">Risiko per trade (USDT)<input class="field" id="xRisk" type="number" inputmode="decimal" step="any" min="0" value="' + t.risk + '"></label>' +
+        '<label class="lab">Leverage (x)<input class="field" id="xLev" type="number" inputmode="decimal" step="any" min="1" value="' + t.lev + '"></label></div>' +
+        '<div class="res" id="xRes">' + o.r + '</div><div id="xWarn">' + (o.w ? '<p class="warn">' + o.w + '</p>' : '') + '</div>' +
+        '<div><button class="btn2" type="button" id="xSave">Simpan rencana</button></div>' +
+        '<div class="plans"><h3>Rencana tersimpan</h3>' +
+        (S.plans.length ? S.plans.map(function (q, i) {
+          return '<div class="plan"><span><span class="tag ' + q.side + '">' + q.side.toUpperCase() + '</span>' + q.pair + ' · entry ' + fmtp(q.entry) + ' · SL ' + fmtp(q.sl) + ' · TP ' + fmtp(q.tp) + ' · ' + fsize(q.size) + ' ' + q.pair + '</span>' +
+            '<button class="x" type="button" data-prm="' + i + '" aria-label="Hapus rencana">×</button></div>';
+        }).join('') : '<p class="note">Belum ada rencana. Atur angka di atas lalu simpan.</p>') + '</div>' +
+        '<p class="note">Halaman ini hanya menghitung. Salin angkanya ke bursa kamu untuk eksekusi manual.</p></div>';
+    }
+    p.innerHTML = h;
+    bindPanel();
+  }
+
+  function cleanSym(v) {
+    var s = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (s.length > 4 && s.slice(-4) === 'USDT') s = s.slice(0, -4);
+    return s;
+  }
+  function bindPanel() {
+    var q = function (id) { return $(id); };
+    if (S.tab === 'wallet') {
+      q('wRows').addEventListener('input', function (e) {
+        if (!e.target.classList.contains('amt')) return;
+        var i = +e.target.closest('.row').dataset.i, v = parseFloat(e.target.value);
+        S.wallet[i].a = isFinite(v) && v > 0 ? v : 0; save(); updateWalletValues();
+      });
+      q('wRows').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-rm]'); if (!b) return;
+        S.wallet.splice(+b.dataset.rm, 1); save(); renderPanel(); renderMenu();
+      });
+      q('wAdd').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var s = cleanSym(q('wSym').value), a = parseFloat(q('wAmt').value);
+        if (!(okSym(s) || s === 'USDT')) { q('wMsg').textContent = 'Ketik simbol 2–10 huruf atau angka, contoh HYPE.'; return; }
+        if (!(a >= 0)) { q('wMsg').textContent = 'Isi jumlah dengan angka 0 atau lebih.'; return; }
+        var ex = S.wallet.filter(function (w) { return w.s === s; })[0];
+        if (ex) ex.a += a; else S.wallet.push({ s: s, a: a });
+        save(); renderPanel(); renderMenu();
+      });
+    } else if (S.tab === 'watch') {
+      q('panel').querySelector('.rows').addEventListener('click', function (e) {
+        var r = e.target.closest('[data-wrm]');
+        if (r) { S.watch = S.watch.filter(function (k) { return k !== r.dataset.wrm; }); save(); renderHero(); renderMenu(); renderPanel(); return; }
+        var p = e.target.closest('[data-pick]'); if (p) setSym(p.dataset.pick);
+      });
+      q('wlAdd').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var s = cleanSym(q('wlSym').value);
+        if (!okSym(s)) { q('wlMsg').textContent = 'Ketik simbol 2–10 huruf atau angka, contoh SUI.'; return; }
+        if (S.watch.indexOf(s) < 0) S.watch.push(s);
+        save(); renderHero(); renderMenu(); renderPanel();
+      });
+    } else {
+      var bind = function (id, k) { q(id).addEventListener('input', function (e) { var v = parseFloat(e.target.value); S.t[k] = isFinite(v) ? v : NaN; save(); updateExec(); }); };
+      bind('xEntry', 'entry'); bind('xSl', 'sl'); bind('xTp', 'tp'); bind('xRisk', 'risk'); bind('xLev', 'lev');
+      q('xPair').addEventListener('change', function (e) { setSym(e.target.value); });
+      q('xNow').addEventListener('click', function () { S.t.entry = base(S.t.pair); save(); q('xEntry').value = S.t.entry; updateExec(); });
+      q('xSide').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-side]'); if (!b) return;
+        S.t.side = b.dataset.side; save();
+        q('xSide').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        updateExec();
+      });
+      q('xSave').addEventListener('click', function () {
+        var c = calc(); if (!c) return;
+        S.plans.unshift({ pair: S.t.pair, side: S.t.side, entry: S.t.entry, sl: c.slp, tp: c.tpp, size: c.size, ts: Date.now() });
+        S.plans = S.plans.slice(0, 8); save(); renderPanel();
+      });
+      q('panel').querySelector('.plans').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-prm]'); if (!b) return;
+        S.plans.splice(+b.dataset.prm, 1); save(); renderPanel();
+      });
+    }
+  }
+
+  /* wiring */
+  $('finder').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var s = cleanSym($('symIn').value);
+    if (!s) { $('msg').textContent = 'Ketik simbol koin dulu, contoh BTC atau HYPE.'; return; }
+    if (!okSym(s)) { $('msg').textContent = 'Simbol harus 2–10 huruf atau angka (bukan USDT).'; return; }
+    $('msg').textContent = ''; $('symIn').value = ''; setSym(s);
+  });
+  $('chips').addEventListener('click', function (e) { var b = e.target.closest('[data-sym]'); if (b) { $('msg').textContent = ''; setSym(b.dataset.sym); } });
+  $('tfs').addEventListener('click', function (e) { var b = e.target.closest('[data-tf]'); if (b) { S.tf = b.dataset.tf; save(); renderHero(); } });
+  $('star').addEventListener('click', function () {
+    var i = S.watch.indexOf(S.sym);
+    if (i >= 0) S.watch.splice(i, 1); else S.watch.push(S.sym);
+    save(); renderHero(); renderMenu(); if (S.tab === 'watch') renderPanel();
+  });
+  document.querySelectorAll('.mcard').forEach(function (b) { b.addEventListener('click', function () { S.tab = b.dataset.tab; renderMenu(); renderPanel(); }); });
+  if (window.ResizeObserver) new ResizeObserver(function () { drawChart(false); }).observe($('chart'));
+  else window.addEventListener('resize', function () { drawChart(false); });
+
+  renderHero(); renderMenu(); renderPanel();
+})();
+</script>
+</body>
+</html>
